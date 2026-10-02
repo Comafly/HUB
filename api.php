@@ -232,6 +232,11 @@ try {
                 $names[$name] = true;
                 $entries[] = ['name'=>$name, 'path'=>$path];
             }
+            $selectedIndex = array_key_exists('index', $_GET) ? filter_var($_GET['index'], FILTER_VALIDATE_INT) : null;
+            if ($selectedIndex !== null) {
+                if ($selectedIndex === false || $selectedIndex < 0 || $selectedIndex >= count($entries)) fail('File unavailable', 404);
+                $entries = [$entries[$selectedIndex]];
+            }
             if (count($entries) > 1 || preg_match('/\.(?:[cm]?js|jsx)$/i', $entries[0]['name'])) {
                 require_once __DIR__ . '/backup.php';
                 $name = trim(preg_replace('/[^a-zA-Z0-9_-]+/', '-', $tile['label'] ?? ''), '-');

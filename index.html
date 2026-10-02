@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1a0f0a" />
   <title>COMMA HUB</title>
   <!-- build: collections-ui-v4-chevron -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261002-6" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20261002-7" />
 </head>
 <body>
   <div class="app-shell" id="app">
@@ -230,19 +230,30 @@
 
   <dialog class="modal media-viewer" id="mediaViewer">
     <div class="viewer-shell">
-      <button class="capsule-x viewer-close" type="button" data-close="mediaViewer" aria-label="Close viewer">×</button>
-      <div class="viewer-media" id="viewerMedia"></div>
+      <button class="capsule-x viewer-close" type="button" data-close="mediaViewer" aria-label="Close viewer"></button>
+      <section class="viewer-main">
+        <div class="viewer-actions" id="viewerActions"></div>
+        <div class="viewer-media" id="viewerMedia"></div>
+        <div class="viewer-thumbnails" id="viewerThumbnails" aria-label="Gallery media"></div>
+      </section>
       <aside class="viewer-meta" id="viewerMeta"></aside>
     </div>
   </dialog>
 
   <dialog class="submission-modal" id="submissionModal" aria-labelledby="submissionMessage" aria-modal="true">
-    <span class="submission-spinner" aria-hidden="true"></span>
-    <p id="submissionMessage" role="status" aria-live="polite">Adding...</p>
+    <div class="submission-heading">
+      <span class="submission-spinner" aria-hidden="true"></span>
+      <p id="submissionMessage" role="status" aria-live="polite">Adding...</p>
+    </div>
+    <div class="submission-progress" id="submissionProgress" hidden>
+      <div class="submission-progress-track"><span id="submissionProgressBar"></span></div>
+      <div class="submission-progress-copy"><span id="submissionProgressAmount">0.00 MB / 0.00 MB</span><span id="submissionProgressPercent">0%</span></div>
+    </div>
+    <button class="btn btn--ghost submission-cancel" id="submissionCancel" type="button" hidden>Cancel</button>
   </dialog>
 
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script type="module" src="assets/js/app.js?v=20261002-6"></script>
+  <script type="module" src="assets/js/app.js?v=20261002-7"></script>
 </body>
 </html>

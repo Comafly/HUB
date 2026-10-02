@@ -18,8 +18,55 @@ async function request(action, options = {}) {
   return payload.data ?? payload;
 }
 
+function multipartRequest(action, formData, { onProgress, signal } = {}) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(API_URL, window.location.href);
+    url.searchParams.set('action', action);
+    const xhr = new XMLHttpRequest();
+    const totalFileBytes = [...formData.values()].reduce((sum, value) => sum + (value instanceof File ? value.size : 0), 0);
+    let aborted = false;
+
+    const abort = () => {
+      aborted = true;
+      xhr.abort();
+    };
+    if (signal) {
+      if (signal.aborted) return abort();
+      signal.addEventListener('abort', abort, { once: true });
+    }
+
+    xhr.open('POST', url);
+    xhr.responseType = 'json';
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.withCredentials = true;
+    xhr.upload.addEventListener('progress', (event) => {
+      if (!onProgress || !event.lengthComputable) return;
+      const ratio = Math.min(1, event.loaded / event.total);
+      onProgress({ loaded: totalFileBytes * ratio, total: totalFileBytes, ratio });
+    });
+    xhr.addEventListener('load', () => {
+      if (signal) signal.removeEventListener('abort', abort);
+      const payload = xhr.response || {};
+      if (xhr.status < 200 || xhr.status >= 300 || payload.ok === false) {
+        reject(new Error(payload.error || (xhr.status === 403
+          ? 'The server denied this save (403). Ask the host to check access and security rules for hub/api.php.'
+          : `Request failed (${xhr.status})`)));
+        return;
+      }
+      onProgress?.({ loaded: totalFileBytes, total: totalFileBytes, ratio: 1 });
+      resolve(payload.data ?? payload);
+    });
+    xhr.addEventListener('error', () => reject(new Error('Upload failed because the connection was interrupted.')));
+    xhr.addEventListener('abort', () => {
+      const error = new DOMException('Upload canceled', 'AbortError');
+      reject(error);
+    });
+    xhr.send(formData);
+  });
+}
+
 // Send tile metadata as a structured object; keep binary uploads multipart.
-function tileRequest(action, form) {
+function tileRequest(action, form, options = {}) {
   const metadata = {}, uploads = new FormData();
   let hasFiles = false;
   for (const [name, value] of form.entries()) {
@@ -28,7 +75,7 @@ function tileRequest(action, form) {
   }
   if (!hasFiles) return request(action, {method: 'POST', body: JSON.stringify(metadata)});
   uploads.set('metadata', JSON.stringify(metadata));
-  return request(action, {method: 'POST', body: uploads});
+  return multipartRequest(action, uploads, options);
 }
 
 export const api = {
@@ -41,8 +88,8 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(settings),
   }),
-  createTile: (formData) => tileRequest('tiles.create', formData),
-  updateTile: (formData) => tileRequest('tiles.update', formData),
+  createTile: (formData, options) => tileRequest('tiles.create', formData, options),
+  updateTile: (formData, options) => tileRequest('tiles.update', formData, options),
   downloadContent: async () => {
     const response = await fetch(new URL('api.php?action=content.download', window.location.href), {credentials: 'same-origin'});
     if (!response.ok) {

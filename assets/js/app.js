@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261002-4";
+import { api } from "./api.js?v=20261002-5";
 
 const TAGS = [
   "All",
@@ -41,6 +41,14 @@ const state = {
   pendingTags: [],
   previewUrls: [],
   fonts: [],
+  activeUploadController: null,
+  activeUploadCanceled: false,
+  viewerTileId: null,
+  viewerIndex: 0,
+  viewerZoom: 1,
+  viewerPanX: 0,
+  viewerPanY: 0,
+  viewerPanning: false,
 };
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -78,6 +86,8 @@ const els = {
   mediaViewer: $("#mediaViewer"),
   viewerMedia: $("#viewerMedia"),
   viewerMeta: $("#viewerMeta"),
+  viewerActions: $("#viewerActions"),
+  viewerThumbnails: $("#viewerThumbnails"),
   collectionModal: $("#collectionModal"),
   collectionForm: $("#collectionForm"),
   collectionAddButton: $("#collectionAddButton"),
@@ -345,19 +355,41 @@ new ResizeObserver(() => {
   layoutFrame = requestAnimationFrame(layoutTiles);
 }).observe(els.tileGrid);
 
-function beginSubmission(message = "Adding...") {
+function formatUploadBytes(bytes) {
+  return `${(Number(bytes || 0) / (1024 * 1024)).toFixed(2)} MB`;
+}
+function updateSubmissionProgress({ loaded = 0, total = 0, ratio = 0 } = {}) {
+  const progress = $("#submissionProgress");
+  if (!progress) return;
+  progress.hidden = total <= 0;
+  const pct = Math.max(0, Math.min(100, Math.round((ratio || (total ? loaded / total : 0)) * 100)));
+  $("#submissionProgressBar").style.width = `${pct}%`;
+  $("#submissionProgressAmount").textContent = `${formatUploadBytes(loaded)} / ${formatUploadBytes(total)}`;
+  $("#submissionProgressPercent").textContent = `${pct}%`;
+}
+function beginSubmission(message = "Adding...", { cancelable = false } = {}) {
   const dialog = $("#submissionModal");
   if (dialog.open) return false;
   $("#submissionMessage").textContent = message;
+  $("#submissionCancel").hidden = !cancelable;
+  updateSubmissionProgress();
   dialog.showModal();
   return true;
 }
 function endSubmission() {
-  $("#submissionModal").close();
+  state.activeUploadController = null;
+  state.activeUploadCanceled = false;
+  const dialog = $("#submissionModal");
+  if (dialog.open) dialog.close();
 }
-$("#submissionModal").addEventListener("cancel", (event) =>
-  event.preventDefault(),
-);
+$("#submissionModal").addEventListener("cancel", (event) => event.preventDefault());
+$("#submissionCancel").addEventListener("click", () => {
+  if (!state.activeUploadController) return;
+  state.activeUploadCanceled = true;
+  state.activeUploadController.abort();
+  $("#submissionMessage").textContent = "Canceling...";
+  $("#submissionCancel").disabled = true;
+});
 
 function renderTopLinks() {
   els.topLinks.innerHTML =
@@ -904,12 +936,20 @@ async function handleContentSubmit(event) {
     );
   form.set("tags", state.pendingTags.join(","));
   if (editingId) form.set("id", editingId);
-  if (!beginSubmission(editingId ? "Saving..." : "Adding...")) return;
+  const uploadTotal = [...form.values()].reduce((sum, value) => sum + (value instanceof File ? value.size : 0), 0);
+  const hasUploadFiles = uploadTotal > 0;
+  if (!beginSubmission(editingId ? "Saving..." : "Adding...", { cancelable: hasUploadFiles })) return;
+  if (hasUploadFiles) updateSubmissionProgress({ loaded: 0, total: uploadTotal, ratio: 0 });
   setContentBusy(true);
+  state.activeUploadCanceled = false;
+  const controller = hasUploadFiles ? new AbortController() : null;
+  state.activeUploadController = controller;
+  $("#submissionCancel").disabled = false;
   try {
+    const uploadOptions = controller ? { signal: controller.signal, onProgress: updateSubmissionProgress } : {};
     const tile = await (editingId
-      ? api.updateTile(form)
-      : api.createTile(form));
+      ? api.updateTile(form, uploadOptions)
+      : api.createTile(form, uploadOptions));
     if (editingId)
       state.tiles = state.tiles.map((t) => (t.id === editingId ? tile : t));
     else state.tiles.unshift(tile);
@@ -920,7 +960,8 @@ async function handleContentSubmit(event) {
     renderBookmarks();
     toast(editingId ? "Content updated" : "Content added");
   } catch (error) {
-    toast(error.message, "error");
+    if (error?.name === "AbortError" || state.activeUploadCanceled) toast("Upload canceled");
+    else toast(error.message, "error");
   } finally {
     setContentBusy(false);
     endSubmission();
@@ -980,11 +1021,19 @@ async function persistCollections() {
   }
 }
 
+function viewerSelectedFile(tile) {
+  return tile.files?.[state.viewerIndex] || tile.files?.[0] || "";
+}
+function viewerSelectedMediaMarkup(tile) {
+  const src = viewerSelectedFile(tile);
+  if (!src) return "";
+  const alt = escapeHtml(tile.label || defaultTileLabel(tile));
+  if (tile.type === "image") return `<div class="viewer-stage"><img class="viewer-zoom-target" src="${escapeHtml(src)}" alt="${alt}" draggable="false" /></div>`;
+  if (tile.type === "video") return `<div class="viewer-stage"><video class="viewer-zoom-target" src="${escapeHtml(src)}" controls autoplay playsinline draggable="false"></video></div>`;
+  return "";
+}
 function viewerMediaMarkup(tile) {
-  if (tile.type === "image")
-    return `<div class="viewer-gallery">${(tile.files || []).map((src) => `<img src="${escapeHtml(src)}" alt="${escapeHtml(tile.label || "Image")}" />`).join("")}</div>`;
-  if (tile.type === "video" && tile.files?.[0])
-    return `<video src="${escapeHtml(tile.files[0])}" controls autoplay playsinline></video>`;
+  if (["image", "video"].includes(tile.type) && tile.files?.length) return viewerSelectedMediaMarkup(tile);
   if (tile.type === "audio" && tile.files?.[0])
     return `<div class="viewer-audio">${tile.thumbnail ? `<img src="${escapeHtml(tile.thumbnail)}" alt="">` : ""}<audio src="${escapeHtml(tile.files[0])}" controls autoplay></audio></div>`;
   if (tile.type === "text") {
@@ -998,10 +1047,11 @@ function viewerMediaMarkup(tile) {
 function viewerPropertiesMarkup(tile) {
   const date = tile.dateAdded || tile.createdAt;
   let html = `<dl class="viewer-properties"><dt>Date added</dt><dd>${escapeHtml(date ? new Date(date).toLocaleString("en-AU") : "Unavailable")}</dd>${tile.location ? `<dt>Location</dt><dd>${escapeHtml(tile.location)}</dd>` : ""}</dl>`;
-  if (["image", "video"].includes(tile.type)) html += (tile.files || []).map((file, i) => {
+  if (["image", "video"].includes(tile.type) && tile.files?.length) {
+    const file = viewerSelectedFile(tile);
     const m = tile.fileMetadata?.[file] || {};
-    return `<div class="media-properties" data-media-index="${i}">${tile.files.length > 1 ? `<h3>File ${i + 1}</h3>` : ""}<dl class="viewer-properties"><dt>Dimensions</dt><dd data-dimensions>${m.width && m.height ? `${m.width} × ${m.height} px` : "Unavailable"}</dd><dt>DPI</dt><dd>${escapeHtml(m.dpi || (tile.type === "video" ? "Not applicable" : "Unavailable"))}</dd><dt>Date taken</dt><dd>${escapeHtml(m.dateTaken || "Unavailable")}</dd></dl></div>`;
-  }).join("");
+    html += `<div class="media-properties"><dl class="viewer-properties"><dt>Dimensions</dt><dd data-dimensions>${m.width && m.height ? `${m.width} × ${m.height} px` : "Unavailable"}</dd><dt>DPI</dt><dd>${escapeHtml(m.dpi || (tile.type === "video" ? "Not applicable" : "Unavailable"))}</dd><dt>Date taken</dt><dd>${escapeHtml(m.dateTaken || "Unavailable")}</dd></dl></div>`;
+  }
   return html;
 }
 function viewerFontLinkMarkup(tile) {
@@ -1010,13 +1060,33 @@ function viewerFontLinkMarkup(tile) {
   const download = font.originalName || `${font.name}.${font.ext}`;
   return `<div class="viewer-font"><div class="eyebrow">Font used</div><a class="viewer-font-link" href="${escapeHtml(encodeURI(font.file))}" download="${escapeHtml(download)}"><span>${escapeHtml(font.name)}</span><small>Download .${escapeHtml(font.ext)}</small></a></div>`;
 }
-function viewerDownloadMarkup(tile) {
+function viewerActionsMarkup(tile) {
   if (!tile.files?.length || ["text", "link"].includes(tile.type)) return "";
-  const zipped = tile.files.length > 1 || /\.(?:[cm]?js|jsx)$/i.test(tile.files[0]);
-  return `<a class="btn btn--primary viewer-download" href="api.php?action=tiles.download&amp;id=${encodeURIComponent(tile.id)}" download>${zipped ? "Download ZIP" : "Download"}</a>`;
+  const selected = `api.php?action=tiles.download&amp;id=${encodeURIComponent(tile.id)}&amp;index=${state.viewerIndex}`;
+  const all = `api.php?action=tiles.download&amp;id=${encodeURIComponent(tile.id)}`;
+  return `<a class="viewer-action-button" href="${selected}" download data-tooltip="Download" aria-label="Download selected media"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 15v5h14v-5"/></svg></a>${tile.files.length > 1 ? `<a class="viewer-action-button" href="${all}" download data-tooltip="Download All" aria-label="Download all media"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v4H8zM6 8h12v4H6zM5 13h14v7H5zM12 15v3m0 0 2-2m-2 2-2-2"/></svg></a>` : ""}`;
 }
-function openViewer(tile) {
+function viewerThumbnailsMarkup(tile) {
+  if (!["image", "video"].includes(tile.type) || (tile.files?.length || 0) < 2) return "";
+  return tile.files.map((src, i) => `<button class="viewer-thumb${i === state.viewerIndex ? " is-active" : ""}" type="button" data-viewer-index="${i}" aria-label="Show media ${i + 1}" aria-pressed="${i === state.viewerIndex}">${tile.type === "image" ? `<img src="${escapeHtml(src)}" alt="" draggable="false" />` : `<video src="${escapeHtml(src)}" muted preload="metadata"></video>`}</button>`).join("");
+}
+function resetViewerTransform() {
+  state.viewerZoom = 1;
+  state.viewerPanX = 0;
+  state.viewerPanY = 0;
+  applyViewerTransform();
+}
+function applyViewerTransform() {
+  const media = $(".viewer-zoom-target", els.viewerMedia);
+  if (!media) return;
+  media.style.transform = `translate3d(${state.viewerPanX}px, ${state.viewerPanY}px, 0) scale(${state.viewerZoom})`;
+  els.viewerMedia.classList.toggle("is-zoomed", state.viewerZoom > 1);
+}
+function renderViewerSelection(tile) {
   els.viewerMedia.innerHTML = viewerMediaMarkup(tile);
+  els.viewerActions.innerHTML = viewerActionsMarkup(tile);
+  els.viewerThumbnails.innerHTML = viewerThumbnailsMarkup(tile);
+  els.viewerThumbnails.hidden = !els.viewerThumbnails.innerHTML;
   els.viewerMedia.classList.toggle("viewer-media--text-background", tile.type === "text" && !!tile.thumbnail);
   if (tile.type === "text" && tile.thumbnail) {
     const background = document.createElement("img");
@@ -1025,16 +1095,23 @@ function openViewer(tile) {
     background.alt = "";
     els.viewerMedia.prepend(background);
   }
-  els.viewerMeta.innerHTML = `<div class="eyebrow">${escapeHtml(tile.type)}</div><h2>${escapeHtml(tile.label || defaultTileLabel(tile))}</h2>${tile.description ? `<p>${escapeHtml(tile.description)}</p>` : ""}${tile.tags?.length ? `<div class="viewer-tags">${tile.tags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${tile.metadataTags?.length ? `<div class="viewer-tags metadata-tags">${tile.metadataTags.map(t => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${viewerPropertiesMarkup(tile)}${viewerFontLinkMarkup(tile)}${viewerDownloadMarkup(tile)}`;
-  $$("img, video", els.viewerMedia).forEach((media, i) => {
+  els.viewerMeta.innerHTML = `<div class="eyebrow">${escapeHtml(tile.type)}</div><h2>${escapeHtml(tile.label || defaultTileLabel(tile))}</h2>${tile.description ? `<p>${escapeHtml(tile.description)}</p>` : ""}${tile.tags?.length ? `<div class="viewer-tags">${tile.tags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${tile.metadataTags?.length ? `<div class="viewer-tags metadata-tags">${tile.metadataTags.map(t => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${viewerPropertiesMarkup(tile)}${viewerFontLinkMarkup(tile)}`;
+  resetViewerTransform();
+  const media = $("img.viewer-zoom-target, video.viewer-zoom-target", els.viewerMedia);
+  if (media) {
     const update = () => {
-      const value = els.viewerMeta.querySelector(`[data-media-index="${i}"] [data-dimensions]`);
+      const value = $("[data-dimensions]", els.viewerMeta);
       const w = media.naturalWidth || media.videoWidth, h = media.naturalHeight || media.videoHeight;
       if (value && w && h) value.textContent = `${w} × ${h} px`;
     };
     media.addEventListener(media.tagName === "VIDEO" ? "loadedmetadata" : "load", update);
     update();
-  });
+  }
+}
+function openViewer(tile) {
+  state.viewerTileId = tile.id;
+  state.viewerIndex = 0;
+  renderViewerSelection(tile);
   els.mediaViewer.showModal();
 }
 function activateTile(tileId) {
@@ -1593,6 +1670,14 @@ function bindEvents() {
       }
       return;
     }
+    const viewerThumb = e.target.closest("[data-viewer-index]");
+    if (viewerThumb) {
+      const tile = state.tiles.find((item) => item.id === state.viewerTileId);
+      if (!tile) return;
+      state.viewerIndex = Number(viewerThumb.dataset.viewerIndex) || 0;
+      renderViewerSelection(tile);
+      return;
+    }
     const close = e.target.closest("[data-close]");
     if (close) {
       document.getElementById(close.dataset.close)?.close();
@@ -1948,6 +2033,47 @@ function bindEvents() {
     if (!images.length) return;
     e.preventDefault();
     handleModalImages(images);
+  });
+  els.viewerMedia.addEventListener("wheel", (e) => {
+    const media = $(".viewer-zoom-target", els.viewerMedia);
+    if (!media) return;
+    e.preventDefault();
+    const previous = state.viewerZoom;
+    const next = Math.max(1, Math.min(2, previous + (e.deltaY < 0 ? 0.1 : -0.1)));
+    if (next === 1) {
+      state.viewerPanX = 0;
+      state.viewerPanY = 0;
+    }
+    state.viewerZoom = Number(next.toFixed(2));
+    applyViewerTransform();
+  }, { passive: false });
+  els.viewerMedia.addEventListener("mousedown", (e) => {
+    if (e.button !== 1 || state.viewerZoom <= 1 || !e.target.closest(".viewer-stage")) return;
+    e.preventDefault();
+    state.viewerPanning = true;
+    const startX = e.clientX, startY = e.clientY;
+    const baseX = state.viewerPanX, baseY = state.viewerPanY;
+    const move = (event) => {
+      if (!state.viewerPanning) return;
+      state.viewerPanX = baseX + event.clientX - startX;
+      state.viewerPanY = baseY + event.clientY - startY;
+      applyViewerTransform();
+    };
+    const stop = () => {
+      state.viewerPanning = false;
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", stop);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", stop, { once: true });
+  });
+  els.viewerMedia.addEventListener("auxclick", (e) => {
+    if (e.button === 1) e.preventDefault();
+  });
+  els.mediaViewer.addEventListener("close", () => {
+    state.viewerTileId = null;
+    state.viewerIndex = 0;
+    resetViewerTransform();
   });
   els.contentModal.addEventListener("close", () => {
     revokePreviewUrls();
