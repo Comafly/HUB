@@ -230,14 +230,18 @@
 
   <dialog class="modal media-viewer" id="mediaViewer">
     <div class="viewer-shell">
-      <button class="tile-action viewer-edit" id="viewerEditButton" type="button" aria-label="Edit content" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button>
-      <button class="capsule-x viewer-close" type="button" data-close="mediaViewer" aria-label="Close viewer"></button>
+      <div class="viewer-toolbar">
+        <div class="viewer-toolbar-group viewer-toolbar-group--downloads" id="viewerActions"></div>
+        <div class="viewer-toolbar-group viewer-toolbar-group--controls">
+          <button class="tile-action viewer-edit" id="viewerEditButton" type="button" aria-label="Edit content" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button>
+          <button class="capsule-x viewer-close" type="button" data-close="mediaViewer" aria-label="Close viewer"></button>
+        </div>
+      </div>
       <section class="viewer-main">
         <div class="viewer-media" id="viewerMedia"></div>
         <div class="viewer-thumbnails" id="viewerThumbnails" aria-label="Gallery media"></div>
       </section>
       <aside class="viewer-sidebar">
-        <div class="viewer-actions" id="viewerActions"></div>
         <div class="viewer-meta" id="viewerMeta"></div>
       </aside>
     </div>
