@@ -1363,6 +1363,10 @@ button {
   gap: 12px;
 }
 
+.modal-card--chooser .content-type-grid {
+  padding-top: 8px;
+}
+
 .content-type-choice {
   min-height: 190px;
   border: 1px solid var(--line);
