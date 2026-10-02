@@ -401,9 +401,14 @@
   border-color: var(--text);
 }
 
-/* v11 fixed gallery rail, square modal media, and single-row text controls */
+/* v12 responsive viewer: fixed thumbnail rail, bounded preview, equal text controls */
 .viewer-main {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
   grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .viewer-main:has(.viewer-thumbnails:not([hidden])) {
@@ -411,40 +416,84 @@
 }
 
 .viewer-media {
+  grid-row: 1;
+  min-width: 0;
   min-height: 0;
+  width: 100%;
   height: 100%;
-  padding: 28px 32px;
+  padding: clamp(16px, 2vw, 32px);
   overflow: hidden;
 }
 
 .viewer-stage,
 .viewer-gallery {
+  min-width: 0;
   min-height: 0;
+  width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .viewer-zoom-target,
 .viewer-gallery img,
+.viewer-gallery video,
 .viewer-audio img,
 .viewer-media--text-background > .viewer-text-background {
+  display: block;
+  width: auto;
+  height: auto;
   max-width: 100%;
   max-height: 100%;
+  object-fit: contain;
   border-radius: 0;
 }
 
 .viewer-thumbnails {
+  grid-row: 2;
   box-sizing: border-box;
+  width: 100%;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
+  margin: 0;
   padding: 10px 24px 20px;
-  align-self: end;
+  align-self: stretch;
+  flex: none;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
+.viewer-thumbnails[hidden] {
+  display: none;
+}
+
+/* Keep the viewer geometry stable at every viewport size. */
+@media (max-width: 900px) {
+  .viewer-shell {
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 36vh);
+  }
+
+  .viewer-main:has(.viewer-thumbnails:not([hidden])) {
+    grid-template-rows: minmax(0, 1fr) 80px;
+  }
+
+  .viewer-thumbnails {
+    height: 80px;
+    min-height: 80px;
+    max-height: 80px;
+    padding: 10px 18px 20px;
+  }
+}
+
+/* Font, size, and style share one control height. */
 .text-format-row {
+  --text-control-height: 46px;
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 74px auto;
+  grid-template-columns: minmax(220px, 1fr) 74px max-content;
   gap: 14px;
   align-items: end;
   min-width: 0;
@@ -454,44 +503,43 @@
   min-width: 0;
 }
 
-.text-format-row .font-picker-row {
-  min-width: 0;
-}
-
+.text-format-row .font-picker-row,
 .text-format-row .format-row {
+  min-width: 0;
+  height: var(--text-control-height);
+  align-items: stretch;
   flex-wrap: nowrap;
 }
 
-@media (max-width: 760px) {
+.text-format-row .font-picker-row select,
+.text-format-row .text-size-field input,
+.text-format-row .font-upload-btn,
+.text-format-row .format-toggle span,
+.text-format-row .align-toggle {
+  box-sizing: border-box;
+  height: var(--text-control-height);
+  min-height: var(--text-control-height);
+  max-height: var(--text-control-height);
+}
+
+.text-format-row .font-upload-btn,
+.text-format-row .format-toggle span,
+.text-format-row .align-toggle {
+  width: var(--text-control-height);
+  min-width: var(--text-control-height);
+}
+
+.text-format-row .text-size-field input {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+@media (max-width: 620px) {
   .text-format-row {
     grid-template-columns: minmax(0, 1fr) 74px;
   }
+
   .text-format-row .text-style-field {
     grid-column: 1 / -1;
   }
 }
-
-@media (max-width: 520px) {
-  .text-format-row {
-    grid-template-columns: 1fr;
-  }
-  .text-format-row .text-style-field {
-    grid-column: auto;
-  }
-}
-
-@media (max-width: 900px) {
-  .viewer-main:has(.viewer-thumbnails:not([hidden])) {
-    grid-template-rows: minmax(0, 1fr) 70px;
-  }
-  .viewer-thumbnails {
-    height: 70px;
-    min-height: 70px;
-    max-height: 70px;
-    padding: 8px 18px 14px;
-  }
-  .viewer-media {
-    padding: 20px;
-  }
-}
-
