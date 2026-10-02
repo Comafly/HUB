@@ -685,10 +685,12 @@
 }
 .calendar-days {
   display: grid;
+  text-align: center;
   grid-auto-flow: column;
   grid-auto-columns: var(--calendar-day-width);
   gap: 10px;
-  width: max-content;
+  width: 100%;
+  justify-content: center;
   transition: grid-auto-columns var(--speed-med) var(--ease);
 }
 .calendar-day {
