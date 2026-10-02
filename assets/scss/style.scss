@@ -5,6 +5,7 @@
 @use "themes/bubblegum";
 @use "themes/caramel";
 @use "themes/marble";
+@use "themes/carbon-lavender";
 @use "base/base";
 @use "layout/shell";
 @use "components/tiles";
@@ -628,3 +629,8 @@
     justify-content: flex-start;
   }
 }
+
+/* v13 collection filtering and deletion controls */
+.theme-swatch--carbon-lavender span:nth-child(1) { background: #1b1a1e; }
+.theme-swatch--carbon-lavender span:nth-child(2) { background: #746a82; }
+.theme-swatch--carbon-lavender span:nth-child(3) { background: #b5a8c4; }

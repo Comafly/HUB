@@ -27,6 +27,7 @@ const state = {
   topLinks: [],
   bookmarks: [],
   collections: [],
+  collectionsInitialized: false,
   settings: { theme: "umber", mode: "dark" },
   editingId: null,
   editingTopLinkId: null,
@@ -49,6 +50,8 @@ const state = {
   viewerPanX: 0,
   viewerPanY: 0,
   viewerPanning: false,
+  activeCollectionId: null,
+  pendingCollectionDeleteId: null,
 };
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -59,7 +62,6 @@ const els = {
   clearSearch: $("#clearSearch"),
   topLinks: $("#topLinks"),
   bookmarks: $("#bookmarkList"),
-  bookmarkCount: $("#bookmarkCount"),
   contentModal: $("#contentModal"),
   contentForm: $("#contentForm"),
   dynamicFields: $("#dynamicFields"),
@@ -91,6 +93,13 @@ const els = {
   collectionModal: $("#collectionModal"),
   collectionForm: $("#collectionForm"),
   collectionAddButton: $("#collectionAddButton"),
+  collectionFilterBar: $("#collectionFilterBar"),
+  collectionFilterName: $("#collectionFilterName"),
+  collectionFilterClear: $("#collectionFilterClear"),
+  collectionGridDropOverlay: $("#collectionGridDropOverlay"),
+  deleteCollectionModal: $("#deleteCollectionModal"),
+  confirmDeleteCollection: $("#confirmDeleteCollection"),
+  contentColumn: $(".content-column"),
 };
 
 function escapeHtml(value = "") {
@@ -197,8 +206,10 @@ function tileMatches(tile) {
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
+  const collection = !state.activeCollectionId ||
+    state.collections.find((c) => c.id === state.activeCollectionId)?.items?.includes(tile.id);
   return (
-    section && tag && (!state.query || hay.includes(state.query.toLowerCase()))
+    section && tag && collection && (!state.query || hay.includes(state.query.toLowerCase()))
   );
 }
 function displayText(tile) {
@@ -402,6 +413,8 @@ function renderTopLinks() {
     `<button class="circle-link circle-link--add" id="addTopLink" data-tooltip="Add top link" aria-label="Add top link">+</button>`;
 }
 function ensureCollections() {
+  if (state.collectionsInitialized) return;
+  state.collectionsInitialized = true;
   if (Array.isArray(state.collections) && state.collections.length) return;
   const legacy = (state.bookmarks || []).filter((id) =>
     state.tiles.some((t) => t.id === id),
@@ -415,9 +428,6 @@ function ensureCollections() {
     },
   ];
 }
-function collectionItemCount() {
-  return state.collections.reduce((n, c) => n + (c.items?.length || 0), 0);
-}
 function renderBookmarks() {
   ensureCollections();
   const byId = new Map(state.tiles.map((t) => [t.id, t]));
@@ -425,7 +435,10 @@ function renderBookmarks() {
     ...c,
     items: (c.items || []).filter((id) => byId.has(id)),
   }));
-  els.bookmarkCount.textContent = collectionItemCount();
+  if (state.activeCollectionId && !state.collections.some((c) => c.id === state.activeCollectionId)) state.activeCollectionId = null;
+  const activeCollection = state.collections.find((c) => c.id === state.activeCollectionId);
+  els.collectionFilterBar.hidden = !activeCollection;
+  els.collectionFilterName.textContent = activeCollection?.name || "";
   els.bookmarks.innerHTML =
     state.collections
       .map((collection, index) => {
@@ -435,7 +448,7 @@ function renderBookmarks() {
             return `<div class="bookmark-item collection-item" draggable="true" tabindex="0" role="button" aria-label="Open ${escapeHtml(tile.label || defaultTileLabel(tile))}" data-bookmark-id="${escapeHtml(id)}" data-collection-id="${escapeHtml(collection.id)}" data-item-index="${itemIndex}"><span class="bookmark-grip">⋮⋮</span><div><strong>${escapeHtml(tile.label || defaultTileLabel(tile))}</strong><small>${escapeHtml(tile.type)}</small></div><button class="bookmark-remove capsule-x" data-remove-bookmark="${escapeHtml(id)}" data-from-collection="${escapeHtml(collection.id)}" aria-label="Remove from collection">×</button></div>`;
           })
           .join("");
-        return `<section class="collection-folder ${collection.collapsed ? "is-collapsed" : ""}" draggable="true" data-collection-id="${escapeHtml(collection.id)}" data-collection-index="${index}"><button class="collection-folder-head" type="button" data-toggle-collection="${escapeHtml(collection.id)}"><span class="collection-folder-grip" aria-hidden="true">⋮⋮</span><span class="collection-chevron" aria-hidden="true"><span></span></span><strong>${escapeHtml(collection.name)}</strong><span class="collection-folder-count">${collection.items?.length || 0}</span></button><div class="collection-items" data-collection-drop="${escapeHtml(collection.id)}">${items || '<div class="collection-empty">Drop tiles here</div>'}</div></section>`;
+        return `<section class="collection-folder ${collection.collapsed ? "is-collapsed" : ""} ${state.activeCollectionId === collection.id ? "is-active-filter" : ""}" draggable="true" data-collection-id="${escapeHtml(collection.id)}" data-collection-index="${index}"><div class="collection-folder-head"><button class="collection-folder-toggle" type="button" data-toggle-collection="${escapeHtml(collection.id)}"><span class="collection-folder-grip" aria-hidden="true">⋮⋮</span><span class="collection-chevron" aria-hidden="true"><span></span></span><strong>${escapeHtml(collection.name)}</strong></button><button class="collection-folder-delete capsule-x" type="button" data-delete-collection="${escapeHtml(collection.id)}" aria-label="Delete ${escapeHtml(collection.name)} collection"></button></div><div class="collection-items" data-collection-drop="${escapeHtml(collection.id)}">${items || '<div class="collection-empty">Drop tiles here</div>'}</div></section>`;
       })
       .join("") ||
     `<div class="bookmark-empty"><span>＋</span><p>Create a collection folder</p></div>`;
@@ -456,7 +469,7 @@ function loadLocalTheme() {
   try {
     const saved = JSON.parse(localStorage.getItem(THEME_KEY) || "null");
     if (!saved) return;
-    if (["umber", "midnight-blue", "bubblegum", "caramel", "marble"].includes(saved.theme)) state.settings.theme = saved.theme;
+    if (["umber", "midnight-blue", "bubblegum", "caramel", "marble", "carbon-lavender"].includes(saved.theme)) state.settings.theme = saved.theme;
     if (["dark", "light"].includes(saved.mode)) state.settings.mode = saved.mode;
   } catch { /* Use the default when browser storage is unavailable. */ }
 }
@@ -1372,9 +1385,43 @@ function setupTileDrag() {
     true,
   );
 }
+function setActiveCollection(collectionId) {
+  state.activeCollectionId = collectionId || null;
+  renderBookmarks();
+  renderTiles();
+}
+function showCollectionDeleteConfirm(collectionId) {
+  const collection = state.collections.find((c) => c.id === collectionId);
+  if (!collection) return;
+  state.pendingCollectionDeleteId = collectionId;
+  $("h2", els.deleteCollectionModal).textContent = `Delete ${collection.name}?`;
+  els.deleteCollectionModal.showModal();
+}
+async function deletePendingCollection() {
+  const id = state.pendingCollectionDeleteId;
+  if (!id) return;
+  const next = state.collections.filter((c) => c.id !== id);
+  els.confirmDeleteCollection.disabled = true;
+  try {
+    await api.saveCollections(next);
+    state.collections = next;
+    if (state.activeCollectionId === id) state.activeCollectionId = null;
+    state.pendingCollectionDeleteId = null;
+    els.deleteCollectionModal.close();
+    renderBookmarks();
+    renderTiles();
+    toast("Collection deleted");
+  } catch (error) {
+    toast(error.message || "Could not delete collection", "error");
+  } finally {
+    els.confirmDeleteCollection.disabled = false;
+  }
+}
+
 function setupDragAndDrop() {
   let dragDepth = 0;
   let nativeInternalDrag = false;
+  let draggedCollectionId = null;
   const isInternalDrag = (e) =>
     state.section !== "dashboard" ||
     $("#submissionModal").open ||
@@ -1419,7 +1466,8 @@ function setupDragAndDrop() {
         if (!isInternalDrag(e)) return;
         e.preventDefault();
         hideImportOverlay();
-        if (!els.bookmarks.contains(e.target)) e.stopPropagation();
+        const collectionToGrid = draggedCollectionId && els.contentColumn.contains(e.target);
+        if (!els.bookmarks.contains(e.target) && !collectionToGrid) e.stopPropagation();
       },
       true,
     );
@@ -1486,6 +1534,7 @@ function setupDragAndDrop() {
         }),
       );
     } else if (folder) {
+      draggedCollectionId = folder.dataset.collectionId;
       folder.classList.add("is-dragging");
       e.dataTransfer.setData(
         "application/x-comma-collection",
@@ -1494,12 +1543,39 @@ function setupDragAndDrop() {
     }
   });
   document.addEventListener("dragend", (e) => {
+    draggedCollectionId = null;
+    els.collectionGridDropOverlay.classList.remove("is-visible");
     e.target.closest(".is-dragging")?.classList.remove("is-dragging");
     $$(".drop-before,.drop-after").forEach((x) =>
       x.classList.remove("drop-before", "drop-after"),
     );
     clearCollectionHighlights();
   });
+  els.contentColumn.addEventListener("dragenter", (e) => {
+    if (!draggedCollectionId) return;
+    e.preventDefault();
+    els.collectionGridDropOverlay.classList.add("is-visible");
+  });
+  els.contentColumn.addEventListener("dragover", (e) => {
+    if (!draggedCollectionId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    els.collectionGridDropOverlay.classList.add("is-visible");
+  });
+  els.contentColumn.addEventListener("dragleave", (e) => {
+    if (!draggedCollectionId || els.contentColumn.contains(e.relatedTarget)) return;
+    els.collectionGridDropOverlay.classList.remove("is-visible");
+  });
+  els.contentColumn.addEventListener("drop", (e) => {
+    if (!draggedCollectionId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = draggedCollectionId;
+    draggedCollectionId = null;
+    els.collectionGridDropOverlay.classList.remove("is-visible");
+    setActiveCollection(id);
+  });
+
   els.bookmarks.addEventListener("dragover", (e) => {
     const folderId = e.dataTransfer.getData("application/x-comma-collection");
     const itemRaw = e.dataTransfer.getData(
@@ -1584,6 +1660,9 @@ function setupDragAndDrop() {
 
 function bindEvents() {
   $("#deleteContentButton").addEventListener("click", deleteEditingContent);
+  els.collectionFilterClear.addEventListener("click", () => setActiveCollection(null));
+  els.confirmDeleteCollection.addEventListener("click", deletePendingCollection);
+  els.deleteCollectionModal.addEventListener("close", () => { state.pendingCollectionDeleteId = null; });
   $("#downloadContentButton").addEventListener("click", downloadContent);
   els.topLinkModal.addEventListener("close", () => setTopLinkImage());
   els.topLinkModal.addEventListener("dragover", (e) => {
@@ -1674,6 +1753,13 @@ function bindEvents() {
     if (e.target.closest("#collectionAddButton")) {
       els.collectionForm.reset();
       els.collectionModal.showModal();
+      return;
+    }
+    const deleteCollection = e.target.closest("[data-delete-collection]");
+    if (deleteCollection) {
+      e.preventDefault();
+      e.stopPropagation();
+      showCollectionDeleteConfirm(deleteCollection.dataset.deleteCollection);
       return;
     }
     const toggleCollection = e.target.closest("[data-toggle-collection]");
@@ -2006,6 +2092,7 @@ function bindEvents() {
     els.topLinkModal,
     els.settingsModal,
     els.collectionModal,
+    els.deleteCollectionModal,
     els.mediaViewer,
   ].forEach((dialog) =>
     dialog.addEventListener("click", (e) => {
@@ -2067,7 +2154,7 @@ function bindEvents() {
     applyViewerTransform();
   }, { passive: false });
   els.viewerMedia.addEventListener("mousedown", (e) => {
-    if (e.button !== 1 || state.viewerZoom <= 1 || !e.target.closest(".viewer-stage")) return;
+    if (e.button !== 0 || state.viewerZoom <= 0 || !e.target.closest(".viewer-stage")) return;
     e.preventDefault();
     state.viewerPanning = true;
     const startX = e.clientX, startY = e.clientY;

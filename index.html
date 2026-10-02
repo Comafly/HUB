@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1a0f0a" />
   <title>COMMA HUB</title>
   <!-- build: collections-ui-v4-chevron -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261002-12" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20261002-13" />
 </head>
 <body>
   <div class="app-shell" id="app">
@@ -28,7 +28,6 @@
 
     <main class="workspace">
       <aside class="tags-panel" aria-label="Tags">
-        <div class="eyebrow">Tags</div>
         <div class="tag-list" id="tagList"></div>
       </aside>
 
@@ -44,6 +43,11 @@
         </div>
 
         <input id="contentFilePicker" type="file" hidden multiple />
+        <div class="collection-filter-bar" id="collectionFilterBar" hidden>
+          <span>Collection: <strong id="collectionFilterName"></strong></span>
+          <button class="capsule-x collection-filter-clear" id="collectionFilterClear" type="button" aria-label="Show all content"></button>
+        </div>
+        <div class="collection-grid-drop-overlay" id="collectionGridDropOverlay" aria-hidden="true"><span>Drop the collection to display it</span></div>
         <div class="tile-grid" id="tileGrid" aria-live="polite"></div>
         <div class="empty-state" id="emptyState" hidden>
           <h2>No matching content</h2>
@@ -54,10 +58,9 @@
       <aside class="bookmarks-panel" id="bookmarksPanel" aria-label="Collections">
         <div class="bookmarks-header">
           <div>
-            <div class="eyebrow">Organise</div>
-            <h2>Collections</h2>
+            <div class="eyebrow">Collections</div>
           </div>
-          <div class="collections-header-actions"><span class="bookmark-count" id="bookmarkCount">0</span><button class="collection-add-button" id="collectionAddButton" type="button" aria-label="Create collection" data-tooltip="New collection">+</button></div>
+          <div class="collections-header-actions"><button class="collection-add-button" id="collectionAddButton" type="button" aria-label="Create collection" data-tooltip="New collection">+</button></div>
         </div>
         <div class="bookmark-dropzone" id="bookmarkList"></div>
         <p class="bookmark-hint">Drag tiles into a collection. Drag collections, and their contents, to reorder.</p>
@@ -199,6 +202,10 @@
             <span class="theme-swatch theme-swatch--marble" aria-hidden="true"><span></span><span></span><span></span></span>
             <span class="theme-meta"><strong>Marble</strong><span>Stone, graphite, and chalk</span></span>
           </button>
+          <button class="theme-card" type="button" data-theme-choice="carbon-lavender" aria-pressed="false">
+            <span class="theme-swatch theme-swatch--carbon-lavender" aria-hidden="true"><span></span><span></span><span></span></span>
+            <span class="theme-meta"><strong>Carbon Lavender</strong><span>Washed carbon and muted purple</span></span>
+          </button>
         </div>
         <div class="mode-row">
           <div class="theme-meta"><strong>Appearance</strong><span id="modeLabel">Dark mode</span></div>
@@ -226,6 +233,20 @@
         <button class="btn btn--primary" type="submit">Create folder</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog class="modal" id="deleteCollectionModal">
+    <div class="modal-card modal-card--confirm">
+      <div class="modal-head">
+        <div><div class="eyebrow">Collections</div><h2>Delete collection?</h2></div>
+        <button class="icon-btn modal-close" type="button" data-close="deleteCollectionModal" aria-label="Close">×</button>
+      </div>
+      <p class="confirm-copy">This will delete the collection list, but not the content itself.</p>
+      <div class="modal-actions">
+        <button class="btn btn--ghost" type="button" data-close="deleteCollectionModal">Cancel</button>
+        <button class="btn btn--danger" id="confirmDeleteCollection" type="button">Delete collection</button>
+      </div>
+    </div>
   </dialog>
 
   <dialog class="modal media-viewer" id="mediaViewer">
@@ -261,6 +282,6 @@
 
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script type="module" src="assets/js/app.js?v=20261002-12"></script>
+  <script type="module" src="assets/js/app.js?v=20261002-13"></script>
 </body>
 </html>

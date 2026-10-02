@@ -1,18 +1,142 @@
-.bookmarks-panel { border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-elevated); padding: 18px; transition: border-color var(--speed-med) var(--ease), background var(--speed-med) var(--ease), transform var(--speed-med) var(--ease-pop); }
-.bookmarks-panel.is-drop-target { border-color: var(--accent); background: var(--accent-soft); transform: scale(1.015); }
-.bookmarks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.bookmarks-header h2 { margin: 4px 0 0; font-size: 17px; }
-.bookmark-count { min-width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--panel-3); color: var(--muted); font-size: 11px; font-weight: 900; }
-.bookmark-dropzone { display: grid; gap: 8px; min-height: 132px; }
-.bookmark-item { position: relative; display: grid; grid-template-columns: 18px 1fr 24px; gap: 9px; align-items: center; padding: 12px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); cursor: grab; transition: transform var(--speed-fast) var(--ease-pop), border-color var(--speed-fast) var(--ease); }
-.bookmark-item:hover { transform: translateX(-3px); border-color: var(--line-strong); }
-.bookmark-item.is-dragging { opacity: .35; }
-.bookmark-item.drop-before::before, .bookmark-item.drop-after::after { content: ''; position: absolute; left: 4px; right: 4px; height: 2px; background: var(--accent); border-radius: 2px; }
-.bookmark-item.drop-before::before { top: -5px; }.bookmark-item.drop-after::after { bottom: -5px; }
-.bookmark-grip { color: var(--faint); font-size: 12px; }
-.bookmark-item strong { display: block; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bookmark-item small { display: block; color: var(--muted); font-size: 9px; margin-top: 3px; text-transform: uppercase; letter-spacing: .08em; }
-.bookmark-remove { border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; }
-.bookmark-hint { color: var(--faint); font-size: 10px; line-height: 1.5; margin: 13px 2px 0; }
-.bookmark-empty { min-height: 128px; display: grid; place-items: center; align-content: center; color: var(--faint); border: 1px dashed var(--line-strong); border-radius: 12px; text-align: center; }
-.bookmark-empty span { font-size: 24px; }.bookmark-empty p { margin: 5px 0 0; font-size: 11px; }
+.bookmarks-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    padding: 18px;
+    transition: border-color var(--speed-med) var(--ease), background var(--speed-med) var(--ease), transform var(--speed-med) var(--ease-pop);
+}
+
+.bookmarks-panel.is-drop-target {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    transform: scale(1.015);
+}
+
+.bookmarks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.bookmarks-header h2 {
+    margin: 4px 0 0;
+    font-size: 17px;
+}
+
+.bookmark-count {
+    min-width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--panel-3);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.bookmark-dropzone {
+    display: grid;
+    gap: 8px;
+    min-height: 132px;
+}
+
+.bookmark-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 18px 1fr 24px;
+    gap: 9px;
+    align-items: center;
+    padding: 12px 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+    cursor: grab;
+    transition: transform var(--speed-fast) var(--ease-pop), border-color var(--speed-fast) var(--ease);
+}
+
+.bookmark-item:hover {
+    transform: translateX(-3px);
+    border-color: var(--line-strong);
+}
+
+.bookmark-item.is-dragging {
+    opacity: .35;
+}
+
+.bookmark-item.drop-before::before,
+.bookmark-item.drop-after::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+}
+
+.bookmark-item.drop-before::before {
+    top: -5px;
+}
+
+.bookmark-item.drop-after::after {
+    bottom: -5px;
+}
+
+.bookmark-grip {
+    color: var(--faint);
+    font-size: 12px;
+}
+
+.bookmark-item strong {
+    display: block;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bookmark-item small {
+    display: block;
+    color: var(--muted);
+    font-size: 9px;
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.bookmark-remove {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.bookmark-hint {
+    color: var(--faint);
+    font-size: 10px;
+    line-height: 1.5;
+    margin: 13px 2px 0;
+}
+
+.bookmark-empty {
+    min-height: 128px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    color: var(--faint);
+    border: 1px dashed var(--line-strong);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.bookmark-empty span {
+    font-size: 24px;
+}
+
+.bookmark-empty p {
+    margin: 5px 0 0;
+    font-size: 11px;
+}

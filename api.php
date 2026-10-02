@@ -259,7 +259,7 @@ try {
         case 'settings.update':
             $input = bodyJson();
             $settings = [
-                'theme' => in_array(($input['theme'] ?? 'umber'), ['umber','midnight-blue','bubblegum','caramel','marble'], true) ? $input['theme'] : 'umber',
+                'theme' => in_array(($input['theme'] ?? 'umber'), ['umber','midnight-blue','bubblegum','caramel','marble','carbon-lavender'], true) ? $input['theme'] : 'umber',
                 'mode' => in_array(($input['mode'] ?? 'dark'), ['dark','light'], true) ? $input['mode'] : 'dark',
             ];
             mutateData(function (&$data) use ($settings) { $data['settings'] = $settings; });
