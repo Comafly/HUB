@@ -2543,7 +2543,7 @@ async function init() {
   }
   loadLocalTheme();
   updateToday();
-  setInterval(() => { updateToday(); renderCalendar(); }, 30000);
+  //setInterval(() => { updateToday(); renderCalendar(); }, 30000);
   let calendarResizeFrame = 0;
   window.addEventListener("resize", () => {
     if (!ENABLE_CALENDAR_MODULE || !state.calendar?.exists) return;
