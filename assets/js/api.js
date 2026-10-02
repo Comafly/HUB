@@ -88,6 +88,12 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(settings),
   }),
+  uploadCalendar: (file) => {
+    const form = new FormData();
+    form.set('calendar', file, file.name);
+    return request('calendar.upload', { method: 'POST', body: form });
+  },
+  deleteCalendar: () => request('calendar.delete', { method: 'POST' }),
   createTile: (formData, options) => tileRequest('tiles.create', formData, options),
   updateTile: (formData, options) => tileRequest('tiles.update', formData, options),
   downloadContent: async () => {

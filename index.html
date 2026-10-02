@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1a0f0a" />
   <title>COMMA HUB</title>
   <!-- build: collections-ui-v4-chevron -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261002-13" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20261003-1" />
 </head>
 <body>
   <div class="app-shell" id="app">
@@ -32,6 +32,13 @@
       </aside>
 
       <section class="content-column">
+        <section class="calendar-module" id="calendarModule" aria-label="Upcoming calendar events" hidden>
+          <div class="calendar-ranges" id="calendarRanges"></div>
+          <div class="calendar-empty" id="calendarEmpty" hidden>
+            <span>No events in the next four weeks</span>
+          </div>
+        </section>
+
         <div class="content-toolbar">
         <div class="search-wrap">
           <span class="search-icon" aria-hidden="true">⌕</span>
@@ -213,6 +220,23 @@
         </div>
       </section>
       <section class="settings-section">
+        <div class="settings-copy"><h3>Calendar</h3><p>Load upcoming events from an ICS calendar file stored in the data folder.</p></div>
+        <div class="calendar-settings" id="calendarSettings">
+          <div class="calendar-file-row" id="calendarFileRow" hidden>
+            <div class="calendar-file-meta">
+              <span class="calendar-file-icon" aria-hidden="true">◫</span>
+              <div><strong id="calendarFileName">calendar.ics</strong><small id="calendarFileStatus">Calendar loaded</small></div>
+            </div>
+            <button class="capsule-x calendar-file-delete" id="calendarDeleteButton" type="button" aria-label="Delete calendar file"></button>
+          </div>
+          <div class="calendar-upload-row" id="calendarUploadRow">
+            <input id="calendarFileInput" type="file" accept=".ics,text/calendar" hidden />
+            <button class="btn btn--primary" id="calendarUploadButton" type="button">Upload ICS</button>
+            <small>One calendar file is stored at a time. Uploading a new file replaces the current one.</small>
+          </div>
+        </div>
+      </section>
+      <section class="settings-section">
         <div class="settings-copy"><h3>Content backup</h3><p>Download saved content, collections, settings, and uploaded files. Extract the ZIP into the project folder to restore its data/ and uploads/ directories.</p></div>
         <button class="btn btn--primary" id="downloadContentButton" type="button">Download Content</button>
       </section>
@@ -282,6 +306,6 @@
 
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script type="module" src="assets/js/app.js?v=20261002-13"></script>
+  <script type="module" src="assets/js/app.js?v=20261003-1"></script>
 </body>
 </html>

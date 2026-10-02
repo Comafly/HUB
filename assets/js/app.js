@@ -1,4 +1,7 @@
-import { api } from "./api.js?v=20261002-5";
+import { api } from "./api.js?v=20261003-1";
+
+// Feature switch: set to false to remove the calendar module and let the dashboard refit automatically.
+const ENABLE_CALENDAR_MODULE = true;
 
 const TAGS = [
   "All",
@@ -29,6 +32,7 @@ const state = {
   collections: [],
   collectionsInitialized: false,
   settings: { theme: "umber", mode: "dark" },
+  calendar: { exists: false, fileName: "", updatedAt: null, content: "" },
   editingId: null,
   editingTopLinkId: null,
   savingContent: false,
@@ -100,6 +104,16 @@ const els = {
   deleteCollectionModal: $("#deleteCollectionModal"),
   confirmDeleteCollection: $("#confirmDeleteCollection"),
   contentColumn: $(".content-column"),
+  calendarModule: $("#calendarModule"),
+  calendarRanges: $("#calendarRanges"),
+  calendarEmpty: $("#calendarEmpty"),
+  calendarFileRow: $("#calendarFileRow"),
+  calendarUploadRow: $("#calendarUploadRow"),
+  calendarFileName: $("#calendarFileName"),
+  calendarFileStatus: $("#calendarFileStatus"),
+  calendarUploadButton: $("#calendarUploadButton"),
+  calendarFileInput: $("#calendarFileInput"),
+  calendarDeleteButton: $("#calendarDeleteButton"),
 };
 
 function escapeHtml(value = "") {
@@ -455,6 +469,8 @@ function renderBookmarks() {
 }
 function renderAll() {
   ensureCollections();
+  renderCalendar();
+  renderCalendarSettings();
   renderTags();
   renderTiles();
   renderTopLinks();
@@ -480,6 +496,184 @@ function updateToday() {
   el.dateTime = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
   el.textContent = `${date.toLocaleDateString("en-AU", {weekday:"long"})}, ${day}${suffix} of ${date.toLocaleDateString("en-AU", {month:"long"})} (${date.toLocaleDateString("en-GB")})`;
 }
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+function dateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+function unescapeIcs(value = "") {
+  return value.replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+}
+function parseIcsDate(value, params = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const allDay = /VALUE=DATE/i.test(params) || /^\d{8}$/.test(raw);
+  const match = raw.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?)?(Z)?$/);
+  if (!match) return null;
+  const [, y, m, d, hh = "00", mm = "00", ss = "00", z] = match;
+  const date = z
+    ? new Date(Date.UTC(+y, +m - 1, +d, +hh, +mm, +ss))
+    : new Date(+y, +m - 1, +d, +hh, +mm, +ss);
+  return { date, allDay };
+}
+function parseRRule(value = "") {
+  return Object.fromEntries(String(value).split(";").map((part) => {
+    const i = part.indexOf("=");
+    return i > 0 ? [part.slice(0, i).toUpperCase(), part.slice(i + 1)] : [part.toUpperCase(), ""];
+  }));
+}
+function monthDiff(a, b) {
+  return (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth();
+}
+function matchesRecurrence(date, start, rule) {
+  const freq = rule.FREQ;
+  const interval = Math.max(1, Number(rule.INTERVAL) || 1);
+  const days = Math.round((startOfDay(date) - startOfDay(start)) / 86400000);
+  if (days < 0) return false;
+  if (freq === "DAILY" && days % interval !== 0) return false;
+  if (freq === "WEEKLY" && Math.floor(days / 7) % interval !== 0) return false;
+  if (freq === "MONTHLY" && monthDiff(start, date) % interval !== 0) return false;
+  if (freq === "YEARLY" && (date.getFullYear() - start.getFullYear()) % interval !== 0) return false;
+  if (!freq) return false;
+  const byDay = rule.BYDAY?.split(",").map((d) => d.replace(/^[-+]?\d+/, ""));
+  if (byDay?.length) {
+    const names = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+    if (!byDay.includes(names[date.getDay()])) return false;
+  } else if (freq === "WEEKLY" && date.getDay() !== start.getDay()) return false;
+  const byMonth = rule.BYMONTH?.split(",").map(Number);
+  if (byMonth?.length && !byMonth.includes(date.getMonth() + 1)) return false;
+  const byMonthDay = rule.BYMONTHDAY?.split(",").map(Number);
+  if (byMonthDay?.length && !byMonthDay.includes(date.getDate())) return false;
+  if (!byMonthDay?.length && freq === "MONTHLY" && date.getDate() !== start.getDate()) return false;
+  if (!byMonth?.length && freq === "YEARLY" && date.getMonth() !== start.getMonth()) return false;
+  if (!byMonthDay?.length && freq === "YEARLY" && date.getDate() !== start.getDate()) return false;
+  return true;
+}
+function parseIcsEvents(content) {
+  if (!content) return [];
+  const unfolded = String(content).replace(/\r?\n[ \t]/g, "").split(/\r?\n/);
+  const events = [];
+  let current = null;
+  for (const line of unfolded) {
+    if (line === "BEGIN:VEVENT") { current = {}; continue; }
+    if (line === "END:VEVENT") {
+      if (current?.DTSTART) events.push(current);
+      current = null;
+      continue;
+    }
+    if (!current) continue;
+    const colon = line.indexOf(":");
+    if (colon < 0) continue;
+    const left = line.slice(0, colon), value = line.slice(colon + 1);
+    const [name, ...paramBits] = left.split(";");
+    const key = name.toUpperCase();
+    if (["DTSTART", "DTEND", "SUMMARY", "LOCATION", "RRULE", "UID"].includes(key)) {
+      current[key] = value;
+      current[`${key}_PARAMS`] = paramBits.join(";");
+    }
+  }
+  return events;
+}
+function expandCalendarEvents(content, windowStart, windowEnd) {
+  const result = new Map();
+  const add = (day, event, occurrenceStart) => {
+    const key = dateKey(day);
+    if (!result.has(key)) result.set(key, []);
+    result.get(key).push({
+      summary: unescapeIcs(event.SUMMARY || "Untitled event"),
+      location: unescapeIcs(event.LOCATION || ""),
+      allDay: occurrenceStart.allDay,
+      time: occurrenceStart.allDay ? "" : occurrenceStart.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+    });
+  };
+  for (const event of parseIcsEvents(content)) {
+    const start = parseIcsDate(event.DTSTART, event.DTSTART_PARAMS);
+    if (!start) continue;
+    const end = parseIcsDate(event.DTEND, event.DTEND_PARAMS);
+    const durationDays = end?.allDay ? Math.max(1, Math.round((startOfDay(end.date) - startOfDay(start.date)) / 86400000)) : 1;
+    const rule = event.RRULE ? parseRRule(event.RRULE) : null;
+    const until = rule?.UNTIL ? parseIcsDate(rule.UNTIL)?.date : null;
+    let occurrenceCount = 0;
+    for (let day = new Date(windowStart); day < windowEnd; day = addDays(day, 1)) {
+      let occurs = false;
+      if (!rule) occurs = dateKey(day) === dateKey(start.date);
+      else if ((!until || day <= until) && matchesRecurrence(day, start.date, rule)) {
+        occurs = true;
+        occurrenceCount++;
+        if (rule.COUNT && occurrenceCount > Number(rule.COUNT)) occurs = false;
+      }
+      if (!occurs) continue;
+      const occurrenceStart = { ...start, date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), start.date.getHours(), start.date.getMinutes(), start.date.getSeconds()) };
+      for (let i = 0; i < durationDays; i++) {
+        const eventDay = addDays(day, i);
+        if (eventDay >= windowStart && eventDay < windowEnd) add(eventDay, event, occurrenceStart);
+      }
+    }
+  }
+  for (const items of result.values()) items.sort((a, b) => (a.time || "").localeCompare(b.time || "") || a.summary.localeCompare(b.summary));
+  return result;
+}
+function calendarWeekStart(reference = new Date()) {
+  const day = startOfDay(reference);
+  return addDays(day, -day.getDay());
+}
+function renderCalendarSettings() {
+  const enabled = ENABLE_CALENDAR_MODULE;
+  const section = $("#calendarSettings")?.closest(".settings-section");
+  if (section) section.hidden = !enabled;
+  if (!enabled) return;
+  const exists = !!state.calendar?.exists;
+  els.calendarFileRow.hidden = !exists;
+  els.calendarUploadRow.hidden = exists;
+  els.calendarFileName.textContent = state.calendar?.fileName || "calendar.ics";
+  els.calendarFileStatus.textContent = exists && state.calendar?.updatedAt
+    ? `Loaded · ${new Date(state.calendar.updatedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`
+    : "Calendar loaded";
+}
+function renderCalendar() {
+  if (!ENABLE_CALENDAR_MODULE) {
+    els.calendarModule.hidden = true;
+    return;
+  }
+  if (!state.calendar?.exists) {
+    els.calendarModule.hidden = true;
+    els.calendarRanges.innerHTML = "";
+    return;
+  }
+  els.calendarModule.hidden = false;
+  const week0 = calendarWeekStart();
+  const windowEnd = addDays(week0, 28);
+  const events = expandCalendarEvents(state.calendar?.content || "", week0, windowEnd);
+  const ranges = [
+    { label: "This Week", start: 0, days: 7 },
+    { label: "Next Week", start: 7, days: 7 },
+    { label: "Upcoming", start: 14, days: 14 },
+  ];
+  const html = ranges.map((range) => {
+    const dayEntries = [];
+    for (let i = 0; i < range.days; i++) {
+      const date = addDays(week0, range.start + i);
+      const items = events.get(dateKey(date)) || [];
+      if (!items.length) continue;
+      const dense = items.length >= 5 ? " is-dense" : items.length >= 3 ? " is-compact" : "";
+      const listClass = items.length > 3 ? " calendar-event-list--scroll" : "";
+      const todayClass = dateKey(date) === dateKey(new Date()) ? " is-today" : "";
+      dayEntries.push(`<article class="calendar-day${dense}${todayClass}"><div class="calendar-date"><strong>${date.getDate()}</strong><span>${date.toLocaleDateString("en-AU", { weekday: "short" })}</span></div><div class="calendar-event-list${listClass}">${items.map((item) => `<div class="calendar-event" title="${escapeHtml(item.location || item.summary)}"><span class="calendar-event-title">${escapeHtml(item.summary)}</span>${item.time ? `<span class="calendar-event-time">${escapeHtml(item.time)}</span>` : ""}</div>`).join("")}</div></article>`);
+    }
+    if (!dayEntries.length) return "";
+    return `<section class="calendar-range" style="--event-days:${dayEntries.length}"><div class="calendar-range-label"><span></span><strong>${range.label}</strong><span></span></div><div class="calendar-days">${dayEntries.join("")}</div></section>`;
+  }).join("");
+  els.calendarRanges.innerHTML = html;
+  els.calendarEmpty.hidden = !!html || !state.calendar?.exists;
+}
+
 function applyTheme() {
   const theme = state.settings.theme || "umber";
   const mode = state.settings.mode || "dark";
@@ -2009,6 +2203,38 @@ function bindEvents() {
       toast(e.message, "error");
     }
   });
+  if (ENABLE_CALENDAR_MODULE) {
+    els.calendarUploadButton.addEventListener("click", () => els.calendarFileInput.click());
+    els.calendarFileInput.addEventListener("change", async () => {
+      const file = els.calendarFileInput.files?.[0];
+      els.calendarFileInput.value = "";
+      if (!file) return;
+      els.calendarUploadButton.disabled = true;
+      try {
+        state.calendar = await api.uploadCalendar(file);
+        renderCalendar();
+        renderCalendarSettings();
+        toast("Calendar uploaded");
+      } catch (error) {
+        toast(error.message, "error");
+      } finally {
+        els.calendarUploadButton.disabled = false;
+      }
+    });
+    els.calendarDeleteButton.addEventListener("click", async () => {
+      els.calendarDeleteButton.disabled = true;
+      try {
+        state.calendar = await api.deleteCalendar();
+        renderCalendar();
+        renderCalendarSettings();
+        toast("Calendar removed");
+      } catch (error) {
+        toast(error.message, "error");
+      } finally {
+        els.calendarDeleteButton.disabled = false;
+      }
+    });
+  }
   els.contentAddButton.addEventListener("click", () =>
     els.contentTypeModal.showModal(),
   );
@@ -2262,7 +2488,7 @@ async function init() {
   }
   loadLocalTheme();
   updateToday();
-  setInterval(updateToday, 30000);
+  setInterval(() => { updateToday(); renderCalendar(); }, 30000);
   applyTheme();
   renderAll();
   bindEvents();

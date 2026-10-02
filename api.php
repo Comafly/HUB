@@ -8,6 +8,7 @@ const UPLOAD_DIR = __DIR__ . '/uploads';
 const UPLOAD_URL = 'uploads';
 const FONT_DIR = __DIR__ . '/assets/fonts';
 const FONT_URL = 'assets/fonts';
+const CALENDAR_DIR = __DIR__ . '/data';
 require_once __DIR__ . '/metadata.php';
 
 function response(mixed $data = null, int $status = 200): never {
@@ -24,6 +25,7 @@ function ensureStorage(): void {
     if (!is_dir(dirname(DATA_FILE))) mkdir(dirname(DATA_FILE), 0775, true);
     if (!is_dir(UPLOAD_DIR)) mkdir(UPLOAD_DIR, 0775, true);
     if (!is_dir(FONT_DIR)) mkdir(FONT_DIR, 0775, true);
+    if (!is_dir(CALENDAR_DIR)) mkdir(CALENDAR_DIR, 0775, true);
     if (!file_exists(DATA_FILE)) file_put_contents(DATA_FILE, json_encode(defaultData(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 }
 function defaultData(): array {
@@ -118,6 +120,27 @@ function deleteUploads(array $paths): void {
         if ($parent !== $root) @rmdir($parent); // Only succeeds when the folder is empty.
     }
 }
+
+function calendarFilePath(): ?string {
+    $files = glob(CALENDAR_DIR . '/*.ics') ?: [];
+    sort($files, SORT_NATURAL | SORT_FLAG_CASE);
+    foreach ($files as $file) if (is_file($file)) return $file;
+    return null;
+}
+function calendarPayload(): array {
+    $path = calendarFilePath();
+    if (!$path) return ['exists'=>false,'fileName'=>'','updatedAt'=>null,'content'=>''];
+    return [
+        'exists'=>true,
+        'fileName'=>basename($path),
+        'updatedAt'=>date(DATE_ATOM, filemtime($path) ?: time()),
+        'content'=>(string)file_get_contents($path),
+    ];
+}
+function validateCalendarContent(string $content): void {
+    if (stripos($content, 'BEGIN:VCALENDAR') === false || stripos($content, 'END:VCALENDAR') === false) fail('That file does not appear to be a valid ICS calendar.');
+}
+
 function normalizedFiles(string $field): array {
     if (!isset($_FILES[$field])) return [];
     $input = $_FILES[$field];
@@ -203,6 +226,7 @@ try {
                 unset($tile);
                 return $data;
             });
+            $data['calendar'] = calendarPayload();
             response($data);
 
         case 'metadata.inspect':
@@ -255,6 +279,25 @@ try {
             if ($_SERVER['REQUEST_METHOD'] !== 'GET') fail('GET required', 405);
             require __DIR__ . '/backup.php';
             downloadBackup(readData());
+
+        case 'calendar.upload':
+            $file = normalizedFiles('calendar')[0] ?? null;
+            if (!$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) fail('Choose an ICS file to upload.');
+            $original = basename((string)($file['name'] ?? 'calendar.ics'));
+            if (strtolower(pathinfo($original, PATHINFO_EXTENSION)) !== 'ics') fail('Calendar files must use the .ics extension.');
+            $content = (string)file_get_contents((string)$file['tmp_name']);
+            validateCalendarContent($content);
+            foreach (glob(CALENDAR_DIR . '/*.ics') ?: [] as $existing) if (is_file($existing)) @unlink($existing);
+            $base = preg_replace('/[^a-zA-Z0-9._-]+/', '-', pathinfo($original, PATHINFO_FILENAME));
+            $name = trim((string)$base, '-_.') ?: 'calendar';
+            $destination = CALENDAR_DIR . '/' . $name . '.ics';
+            if (!move_uploaded_file((string)$file['tmp_name'], $destination)) fail('Unable to save the calendar file.', 500);
+            response(calendarPayload());
+
+        case 'calendar.delete':
+            $path = calendarFilePath();
+            if ($path && is_file($path) && !@unlink($path)) fail('Unable to delete the calendar file.', 500);
+            response(calendarPayload());
 
         case 'settings.update':
             $input = bodyJson();
