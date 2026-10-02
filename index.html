@@ -40,7 +40,7 @@
           <button id="clearSearch" class="search-clear" type="button" aria-label="Clear search">×</button>
         </div>
 
-        <button class="content-add-button" id="contentAddButton" type="button">Add</button>
+        <button class="content-add-button" id="contentAddButton" type="button" data-tooltip="Add New Content" aria-label="Add New Content">Add</button>
         </div>
 
         <input id="contentFilePicker" type="file" hidden multiple />
@@ -230,13 +230,16 @@
 
   <dialog class="modal media-viewer" id="mediaViewer">
     <div class="viewer-shell">
+      <button class="tile-action viewer-edit" id="viewerEditButton" type="button" aria-label="Edit content" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button>
       <button class="capsule-x viewer-close" type="button" data-close="mediaViewer" aria-label="Close viewer"></button>
       <section class="viewer-main">
-        <div class="viewer-actions" id="viewerActions"></div>
         <div class="viewer-media" id="viewerMedia"></div>
         <div class="viewer-thumbnails" id="viewerThumbnails" aria-label="Gallery media"></div>
       </section>
-      <aside class="viewer-meta" id="viewerMeta"></aside>
+      <aside class="viewer-sidebar">
+        <div class="viewer-actions" id="viewerActions"></div>
+        <div class="viewer-meta" id="viewerMeta"></div>
+      </aside>
     </div>
   </dialog>
 

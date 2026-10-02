@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261002-8";
+import { api } from "./api.js?v=20261002-5";
 
 const TAGS = [
   "All",
@@ -682,7 +682,7 @@ function fieldMarkup(type, pending = {}) {
   if (type === "link")
     return `<label class="field field--wide"><span>URL</span><input name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(pending.url || "")}" /></label><div class="field field--wide"><span>Thumbnail image</span>${singleImagePickerMarkup()}</div>`;
   if (type === "text")
-    return `<label class="field field--wide"><span>Text</span><textarea class="text-live-preview-input" name="text" rows="1" required placeholder="Type text for your tile preview...">${escapeHtml(pending.text || "")}</textarea></label><div class="field"><span>Font</span><div class="font-picker-row"><select name="font">${fontOptionsMarkup()}</select><button type="button" class="font-upload-btn" id="fontUploadButton" aria-label="Upload a font file" data-tooltip="Upload font">${FONT_UPLOAD_ICON}</button></div><input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2,.ttc,.otc,.eot" hidden /></div><label class="field"><span>Size</span><input name="fontSize" class="scrub-input" type="number" min="12" max="96" value="28" /></label><div class="field field--wide"><span>Style</span><div class="format-row"><label class="format-toggle"><input name="bold" type="checkbox" /><span>B</span></label><label class="format-toggle"><input name="italic" type="checkbox" /><span><i>I</i></span></label><label class="format-toggle"><input name="underline" type="checkbox" /><span><u>U</u></span></label><input name="align" type="hidden" value="left" /><button type="button" class="align-toggle" id="alignToggle" data-align-cycle aria-label="Text alignment: left" data-tooltip="Align: left"></button></div></div><div class="field field--wide"><span>Thumbnail image</span>${singleImagePickerMarkup()}</div>`;
+    return `<label class="field field--wide"><span>Text</span><textarea class="text-live-preview-input" name="text" rows="1" required placeholder="Type text for your tile preview...">${escapeHtml(pending.text || "")}</textarea></label><div class="field field--wide"><span>Font</span><div class="font-picker-row"><select name="font">${fontOptionsMarkup()}</select><button type="button" class="font-upload-btn" id="fontUploadButton" aria-label="Upload a font file" data-tooltip="Upload font">${FONT_UPLOAD_ICON}</button></div><input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2,.ttc,.otc,.eot" hidden /></div><label class="field"><span>Size</span><input name="fontSize" class="scrub-input" type="number" min="12" max="96" value="28" /></label><div class="field"><span>Style</span><div class="format-row"><label class="format-toggle"><input name="bold" type="checkbox" /><span>B</span></label><label class="format-toggle"><input name="italic" type="checkbox" /><span><i>I</i></span></label><label class="format-toggle"><input name="underline" type="checkbox" /><span><u>U</u></span></label><input name="align" type="hidden" value="left" /><button type="button" class="align-toggle" id="alignToggle" data-align-cycle aria-label="Text alignment: left" data-tooltip="Align: left"></button></div></div><div class="field field--wide"><span>Thumbnail image</span>${singleImagePickerMarkup()}</div>`;
   if (type === "image")
     return `<div class="field field--wide"><span>Gallery images</span>${media}<small>Drop or paste images anywhere in this modal to add them to the gallery.</small></div>`;
   const mediaLabel = {video: "Video", audio: "Audio", font: "Font files", file: "Files"}[type] || "Files";
@@ -1076,9 +1076,25 @@ function resetViewerTransform() {
   state.viewerPanY = 0;
   applyViewerTransform();
 }
+function clampViewerPan() {
+  const media = $(".viewer-zoom-target", els.viewerMedia);
+  const stage = $(".viewer-stage", els.viewerMedia);
+  if (!media || !stage || state.viewerZoom <= 1) {
+    state.viewerPanX = 0;
+    state.viewerPanY = 0;
+    return;
+  }
+  const scaledWidth = media.offsetWidth * state.viewerZoom;
+  const scaledHeight = media.offsetHeight * state.viewerZoom;
+  const maxX = Math.max(0, (scaledWidth - stage.clientWidth) / 2);
+  const maxY = Math.max(0, (scaledHeight - stage.clientHeight) / 2);
+  state.viewerPanX = Math.max(-maxX, Math.min(maxX, state.viewerPanX));
+  state.viewerPanY = Math.max(-maxY, Math.min(maxY, state.viewerPanY));
+}
 function applyViewerTransform() {
   const media = $(".viewer-zoom-target", els.viewerMedia);
   if (!media) return;
+  clampViewerPan();
   media.style.transform = `translate3d(${state.viewerPanX}px, ${state.viewerPanY}px, 0) scale(${state.viewerZoom})`;
   els.viewerMedia.classList.toggle("is-zoomed", state.viewerZoom > 1);
 }
@@ -1111,6 +1127,8 @@ function renderViewerSelection(tile) {
 function openViewer(tile) {
   state.viewerTileId = tile.id;
   state.viewerIndex = 0;
+  const editButton = $("#viewerEditButton");
+  if (editButton) editButton.dataset.editTile = tile.id;
   renderViewerSelection(tile);
   els.mediaViewer.showModal();
 }
@@ -1766,6 +1784,7 @@ function bindEvents() {
     if (editTile) {
       e.preventDefault();
       e.stopPropagation();
+      if (editTile.closest("#mediaViewer") && els.mediaViewer.open) els.mediaViewer.close();
       openEditModal(editTile.dataset.editTile);
       return;
     }
@@ -1794,7 +1813,7 @@ function bindEvents() {
     updateTextPreview();
   });
   initScrubInputs();
-  window.addEventListener("resize", autosizeTextPreview);
+  window.addEventListener("resize", () => { autosizeTextPreview(); if (els.mediaViewer.open) applyViewerTransform(); });
   document.addEventListener("keydown", (e) => {
     if (
       e.target === els.tagInput &&
@@ -2039,7 +2058,7 @@ function bindEvents() {
     if (!media) return;
     e.preventDefault();
     const previous = state.viewerZoom;
-    const next = Math.max(1, Math.min(2, previous + (e.deltaY < 0 ? 0.1 : -0.1)));
+    const next = Math.max(1, Math.min(3, previous + (e.deltaY < 0 ? 0.1 : -0.1)));
     if (next === 1) {
       state.viewerPanX = 0;
       state.viewerPanY = 0;

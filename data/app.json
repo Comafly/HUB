@@ -13,7 +13,10 @@
             "orientation": "landscape",
             "url": "https://example.com",
             "thumbnail": "",
-            "createdAt": "2026-10-01T14:19:18+00:00"
+            "createdAt": "2026-10-01T14:19:18+00:00",
+            "dateAdded": "2026-10-01T14:19:18+00:00",
+            "fileMetadata": [],
+            "metadataTags": []
         },
         {
             "id": "seed-2",
@@ -35,7 +38,10 @@
                 "underline": false,
                 "align": "left"
             },
-            "createdAt": "2026-10-01T14:19:18+00:00"
+            "createdAt": "2026-10-01T14:19:18+00:00",
+            "dateAdded": "2026-10-01T14:19:18+00:00",
+            "fileMetadata": [],
+            "metadataTags": []
         },
         {
             "id": "seed-3",
@@ -50,7 +56,10 @@
             "orientation": "portrait",
             "url": "https://www.awwwards.com",
             "thumbnail": "",
-            "createdAt": "2026-10-01T14:19:18+00:00"
+            "createdAt": "2026-10-01T14:19:18+00:00",
+            "dateAdded": "2026-10-01T14:19:18+00:00",
+            "fileMetadata": [],
+            "metadataTags": []
         },
         {
             "id": "seed-4",
@@ -72,7 +81,10 @@
                 "underline": false,
                 "align": "left"
             },
-            "createdAt": "2026-10-01T14:19:18+00:00"
+            "createdAt": "2026-10-01T14:19:18+00:00",
+            "dateAdded": "2026-10-01T14:19:18+00:00",
+            "fileMetadata": [],
+            "metadataTags": []
         },
         {
             "id": "seed-5",
@@ -94,7 +106,10 @@
                 "underline": false,
                 "align": "left"
             },
-            "createdAt": "2026-10-01T14:19:18+00:00"
+            "createdAt": "2026-10-01T14:19:18+00:00",
+            "dateAdded": "2026-10-01T14:19:18+00:00",
+            "fileMetadata": [],
+            "metadataTags": []
         }
     ],
     "topLinks": [],
@@ -102,8 +117,20 @@
         "seed-1",
         "seed-3"
     ],
+    "collections": [
+        {
+            "id": "collection-default",
+            "name": "Saved",
+            "collapsed": false,
+            "items": [
+                "seed-1",
+                "seed-3"
+            ]
+        }
+    ],
     "settings": {
         "theme": "umber",
         "mode": "dark"
-    }
+    },
+    "fonts": []
 }
