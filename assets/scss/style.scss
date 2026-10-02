@@ -543,3 +543,88 @@
     grid-column: 1 / -1;
   }
 }
+
+/* v13 gallery viewer: thumbnail rail is pinned to the bottom with a fixed height and
+   position; the preview fills the remaining space and can never resize the layout. */
+.viewer-shell {
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.viewer-main,
+.viewer-main:has(.viewer-thumbnails:not([hidden])) {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Preview pane: takes whatever space is left above the rail. */
+.viewer-main > .viewer-media {
+  position: relative;
+  flex: 1 1 0;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  overflow: hidden;
+}
+
+/* The stage is sized by the pane, never by the media inside it. */
+.viewer-main > .viewer-media > .viewer-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.viewer-stage > .viewer-zoom-target {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Thumbnail rail: fixed height, always at the bottom, with breathing room below. */
+.viewer-main > .viewer-thumbnails {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 100%;
+  height: 104px;
+  min-height: 104px;
+  max-height: 104px;
+  margin: 0;
+  padding: 12px 24px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.viewer-main > .viewer-thumbnails[hidden] {
+  display: none;
+}
+
+/* Centre the thumbnails without making the left edge unreachable when they overflow. */
+.viewer-thumbnails > .viewer-thumb:first-child { margin-left: auto; }
+.viewer-thumbnails > .viewer-thumb:last-child { margin-right: auto; }
+
+@media (max-width: 900px) {
+  .viewer-main > .viewer-thumbnails {
+    height: 96px;
+    min-height: 96px;
+    max-height: 96px;
+    padding: 10px 18px 28px;
+    justify-content: flex-start;
+  }
+}
