@@ -859,3 +859,11 @@
   box-shadow: inset 0 0 0 1px var(--accent-soft);
 }
 .calendar-day.is-today .calendar-date strong { color: var(--text); }
+
+/* v15 calendar sparse-fill + past-event states */
+.calendar-event.is-past {
+  opacity: .5;
+}
+.calendar-ranges.is-month-mode .calendar-range-label strong {
+  letter-spacing: .14em;
+}

@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261003-1";
+import { api } from "./api.js?v=20261003-2";
 
 // Feature switch: set to false to remove the calendar module and let the dashboard refit automatically.
 const ENABLE_CALENDAR_MODULE = true;
@@ -637,6 +637,25 @@ function renderCalendarSettings() {
     ? `Loaded · ${new Date(state.calendar.updatedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`
     : "Calendar loaded";
 }
+function calendarDefaultDayWidth() {
+  if (window.matchMedia("(max-width: 900px)").matches) return 128;
+  if (window.matchMedia("(max-width: 1180px)").matches) return 122;
+  return 132;
+}
+function calendarFillDayCount() {
+  const width = els.calendarRanges?.clientWidth || els.calendarModule?.clientWidth || 0;
+  const dayWidth = calendarDefaultDayWidth();
+  const gap = 10;
+  if (!width) return 1;
+  return Math.max(1, Math.ceil((width + gap) / (dayWidth + gap)));
+}
+function calendarDayMarkup(date, items, today) {
+  const dense = items.length >= 5 ? " is-dense" : items.length >= 3 ? " is-compact" : "";
+  const listClass = items.length > 3 ? " calendar-event-list--scroll" : "";
+  const todayClass = dateKey(date) === dateKey(today) ? " is-today" : "";
+  const past = startOfDay(date) < startOfDay(today);
+  return `<article class="calendar-day${dense}${todayClass}${past ? " is-past" : ""}"><div class="calendar-date"><strong>${date.getDate()}</strong><span>${date.toLocaleDateString("en-AU", { weekday: "short" })}</span></div><div class="calendar-event-list${listClass}">${items.map((item) => `<div class="calendar-event${past ? " is-past" : ""}" title="${escapeHtml(item.location || item.summary)}"><span class="calendar-event-title">${escapeHtml(item.summary)}</span>${item.time ? `<span class="calendar-event-time">${escapeHtml(item.time)}</span>` : ""}</div>`).join("")}</div></article>`;
+}
 function renderCalendar() {
   if (!ENABLE_CALENDAR_MODULE) {
     els.calendarModule.hidden = true;
@@ -647,30 +666,66 @@ function renderCalendar() {
     els.calendarRanges.innerHTML = "";
     return;
   }
+
   els.calendarModule.hidden = false;
-  const week0 = calendarWeekStart();
-  const windowEnd = addDays(week0, 28);
-  const events = expandCalendarEvents(state.calendar?.content || "", week0, windowEnd);
-  const ranges = [
-    { label: "This Week", start: 0, days: 7 },
-    { label: "Next Week", start: 7, days: 7 },
-    { label: "Upcoming", start: 14, days: 14 },
-  ];
-  const html = ranges.map((range) => {
-    const dayEntries = [];
-    for (let i = 0; i < range.days; i++) {
-      const date = addDays(week0, range.start + i);
-      const items = events.get(dateKey(date)) || [];
-      if (!items.length) continue;
-      const dense = items.length >= 5 ? " is-dense" : items.length >= 3 ? " is-compact" : "";
-      const listClass = items.length > 3 ? " calendar-event-list--scroll" : "";
-      const todayClass = dateKey(date) === dateKey(new Date()) ? " is-today" : "";
-      dayEntries.push(`<article class="calendar-day${dense}${todayClass}"><div class="calendar-date"><strong>${date.getDate()}</strong><span>${date.toLocaleDateString("en-AU", { weekday: "short" })}</span></div><div class="calendar-event-list${listClass}">${items.map((item) => `<div class="calendar-event" title="${escapeHtml(item.location || item.summary)}"><span class="calendar-event-title">${escapeHtml(item.summary)}</span>${item.time ? `<span class="calendar-event-time">${escapeHtml(item.time)}</span>` : ""}</div>`).join("")}</div></article>`);
+  const today = startOfDay(new Date());
+  const week0 = calendarWeekStart(today);
+  const fourWeekEnd = addDays(week0, 28);
+  const content = state.calendar?.content || "";
+  const defaultEvents = expandCalendarEvents(content, week0, fourWeekEnd);
+  const defaultEventDays = [...defaultEvents.keys()].sort();
+  const fillDayCount = calendarFillDayCount();
+  const shouldExtend = defaultEventDays.length < fillDayCount;
+
+  let html = "";
+
+  if (!shouldExtend) {
+    const ranges = [
+      { label: "This Week", start: 0, days: 7 },
+      { label: "Next Week", start: 7, days: 7 },
+      { label: "Upcoming", start: 14, days: 14 },
+    ];
+    html = ranges.map((range) => {
+      const dayEntries = [];
+      for (let i = 0; i < range.days; i++) {
+        const date = addDays(week0, range.start + i);
+        const items = defaultEvents.get(dateKey(date)) || [];
+        if (!items.length) continue;
+        dayEntries.push(calendarDayMarkup(date, items, today));
+      }
+      if (!dayEntries.length) return "";
+      return `<section class="calendar-range" style="--event-days:${dayEntries.length}"><div class="calendar-range-label"><span></span><strong>${range.label}</strong><span></span></div><div class="calendar-days">${dayEntries.join("")}</div></section>`;
+    }).join("");
+  } else {
+    // Sparse four-week calendars keep walking forward until there are enough
+    // event-days to fill the visible row at the default card width.
+    let searchEnd = fourWeekEnd;
+    let events = defaultEvents;
+    let eventDays = defaultEventDays;
+    const maxSearchEnd = addDays(week0, 3660); // safety ceiling: ten years
+    while (eventDays.length < fillDayCount && searchEnd < maxSearchEnd) {
+      searchEnd = new Date(Math.min(addDays(searchEnd, 56).getTime(), maxSearchEnd.getTime()));
+      events = expandCalendarEvents(content, week0, searchEnd);
+      eventDays = [...events.keys()].sort();
     }
-    if (!dayEntries.length) return "";
-    return `<section class="calendar-range" style="--event-days:${dayEntries.length}"><div class="calendar-range-label"><span></span><strong>${range.label}</strong><span></span></div><div class="calendar-days">${dayEntries.join("")}</div></section>`;
-  }).join("");
+    const visibleKeys = eventDays.slice(0, fillDayCount);
+    const groups = new Map();
+    for (const key of visibleKeys) {
+      const [year, month, day] = key.split("-").map(Number);
+      const date = new Date(year, month - 1, day);
+      const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+      if (!groups.has(monthKey)) groups.set(monthKey, { date, days: [] });
+      groups.get(monthKey).days.push({ date, items: events.get(key) || [] });
+    }
+    html = [...groups.values()].map((group) => {
+      const label = group.date.toLocaleDateString("en-AU", { month: "long", year: "numeric" });
+      const dayEntries = group.days.map(({ date, items }) => calendarDayMarkup(date, items, today));
+      return `<section class="calendar-range calendar-range--month" style="--event-days:${dayEntries.length}"><div class="calendar-range-label"><span></span><strong>${escapeHtml(label)}</strong><span></span></div><div class="calendar-days">${dayEntries.join("")}</div></section>`;
+    }).join("");
+  }
+
   els.calendarRanges.innerHTML = html;
+  els.calendarRanges.classList.toggle("is-month-mode", shouldExtend && !!html);
   els.calendarEmpty.hidden = !!html || !state.calendar?.exists;
 }
 
@@ -2489,6 +2544,12 @@ async function init() {
   loadLocalTheme();
   updateToday();
   setInterval(() => { updateToday(); renderCalendar(); }, 30000);
+  let calendarResizeFrame = 0;
+  window.addEventListener("resize", () => {
+    if (!ENABLE_CALENDAR_MODULE || !state.calendar?.exists) return;
+    cancelAnimationFrame(calendarResizeFrame);
+    calendarResizeFrame = requestAnimationFrame(renderCalendar);
+  });
   applyTheme();
   renderAll();
   bindEvents();

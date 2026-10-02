@@ -4600,4 +4600,13 @@ body.is-tile-dragging, body.is-tile-dragging * {
 
 .calendar-day.is-today .calendar-date strong {
   color: var(--text);
+}
+
+/* v15 calendar sparse-fill + past-event states */
+.calendar-event.is-past {
+  opacity: 0.5;
+}
+
+.calendar-ranges.is-month-mode .calendar-range-label strong {
+  letter-spacing: 0.14em;
 }/*# sourceMappingURL=style.css.map */
