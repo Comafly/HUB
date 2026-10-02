@@ -391,3 +391,12 @@
     flex-basis: 38px;
   }
 }
+
+/* v10 viewer controls: all sidebar actions share the same hover colours */
+.viewer-sidebar-toolbar .viewer-action-button:hover,
+.viewer-sidebar-toolbar .viewer-edit:hover,
+.viewer-sidebar-toolbar .viewer-close:hover {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
