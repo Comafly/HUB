@@ -1,109 +1,109 @@
 {
-  "tiles": [
-    {
-      "id": "seed-1",
-      "section": "dashboard",
-      "type": "link",
-      "label": "COMMA Team Showcase",
-      "description": "Selected work, references, and current directions.",
-      "tags": [
-        "Design"
-      ],
-      "size": "large",
-      "orientation": "landscape",
-      "url": "https://example.com",
-      "thumbnail": "",
-      "createdAt": "2026-10-01T14:19:18+00:00"
-    },
-    {
-      "id": "seed-2",
-      "section": "dashboard",
-      "type": "text",
-      "label": "Today / 01",
-      "description": "Keep the board loose. Save references first and sort them later.",
-      "tags": [
-        "Typography"
-      ],
-      "size": "small",
-      "orientation": "portrait",
-      "text": "COLLECT\nFIRST.\nCURATE\nSECOND.",
-      "textStyle": {
-        "font": "Arial, sans-serif",
-        "fontSize": 31,
-        "bold": true,
-        "italic": false,
-        "underline": false,
-        "align": "left"
-      },
-      "createdAt": "2026-10-01T14:19:18+00:00"
-    },
-    {
-      "id": "seed-3",
-      "section": "dashboard",
-      "type": "link",
-      "label": "Motion reference",
-      "description": "Timing and transition notes for interface motion.",
-      "tags": [
-        "Animation"
-      ],
-      "size": "medium",
-      "orientation": "portrait",
-      "url": "https://www.awwwards.com",
-      "thumbnail": "",
-      "createdAt": "2026-10-01T14:19:18+00:00"
-    },
-    {
-      "id": "seed-4",
-      "section": "projects",
-      "type": "text",
-      "label": "Project board",
-      "description": "Working notes for active builds.",
-      "tags": [
-        "Design"
-      ],
-      "size": "medium",
-      "orientation": "landscape",
-      "text": "COMMA / PROJECTS",
-      "textStyle": {
-        "font": "Arial, sans-serif",
-        "fontSize": 36,
-        "bold": true,
-        "italic": false,
-        "underline": false,
-        "align": "left"
-      },
-      "createdAt": "2026-10-01T14:19:18+00:00"
-    },
-    {
-      "id": "seed-5",
-      "section": "resources",
-      "type": "text",
-      "label": "Type specimen notes",
-      "description": "Useful typography references and foundry links.",
-      "tags": [
-        "Typography"
-      ],
-      "size": "medium",
-      "orientation": "portrait",
-      "text": "Aa\nTYPE\nINDEX",
-      "textStyle": {
-        "font": "Georgia, serif",
-        "fontSize": 42,
-        "bold": true,
-        "italic": false,
-        "underline": false,
-        "align": "left"
-      },
-      "createdAt": "2026-10-01T14:19:18+00:00"
+    "tiles": [
+        {
+            "id": "seed-1",
+            "section": "dashboard",
+            "type": "link",
+            "label": "COMMA Team Showcase",
+            "description": "Selected work, references, and current directions.",
+            "tags": [
+                "Design"
+            ],
+            "size": "large",
+            "orientation": "landscape",
+            "url": "https://example.com",
+            "thumbnail": "",
+            "createdAt": "2026-10-01T14:19:18+00:00"
+        },
+        {
+            "id": "seed-2",
+            "section": "dashboard",
+            "type": "text",
+            "label": "Today / 01",
+            "description": "Keep the board loose. Save references first and sort them later.",
+            "tags": [
+                "Typography"
+            ],
+            "size": "small",
+            "orientation": "portrait",
+            "text": "COLLECT\nFIRST.\nCURATE\nSECOND.",
+            "textStyle": {
+                "font": "Arial, sans-serif",
+                "fontSize": 31,
+                "bold": true,
+                "italic": false,
+                "underline": false,
+                "align": "left"
+            },
+            "createdAt": "2026-10-01T14:19:18+00:00"
+        },
+        {
+            "id": "seed-3",
+            "section": "dashboard",
+            "type": "link",
+            "label": "Motion reference",
+            "description": "Timing and transition notes for interface motion.",
+            "tags": [
+                "Animation"
+            ],
+            "size": "medium",
+            "orientation": "portrait",
+            "url": "https://www.awwwards.com",
+            "thumbnail": "",
+            "createdAt": "2026-10-01T14:19:18+00:00"
+        },
+        {
+            "id": "seed-4",
+            "section": "projects",
+            "type": "text",
+            "label": "Project board",
+            "description": "Working notes for active builds.",
+            "tags": [
+                "Design"
+            ],
+            "size": "medium",
+            "orientation": "landscape",
+            "text": "COMMA / PROJECTS",
+            "textStyle": {
+                "font": "Arial, sans-serif",
+                "fontSize": 36,
+                "bold": true,
+                "italic": false,
+                "underline": false,
+                "align": "left"
+            },
+            "createdAt": "2026-10-01T14:19:18+00:00"
+        },
+        {
+            "id": "seed-5",
+            "section": "resources",
+            "type": "text",
+            "label": "Type specimen notes",
+            "description": "Useful typography references and foundry links.",
+            "tags": [
+                "Typography"
+            ],
+            "size": "medium",
+            "orientation": "portrait",
+            "text": "Aa\nTYPE\nINDEX",
+            "textStyle": {
+                "font": "Georgia, serif",
+                "fontSize": 42,
+                "bold": true,
+                "italic": false,
+                "underline": false,
+                "align": "left"
+            },
+            "createdAt": "2026-10-01T14:19:18+00:00"
+        }
+    ],
+    "topLinks": [],
+    "bookmarks": [
+        "seed-1",
+        "seed-3"
+    ],
+    "settings": {
+        "theme": "umber",
+        "mode": "dark"
     }
-  ],
-  "topLinks": [],
-  "bookmarks": [
-    "seed-1",
-    "seed-3"
-  ],
-  "settings": {
-    "theme": "umber",
-    "mode": "dark"
-  }
 }
