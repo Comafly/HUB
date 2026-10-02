@@ -1,0 +1,309 @@
+/* Added interaction layer: upload affordance, tag capsules, gallery picker, hover labels, and media viewer. */
+.section-heading-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 18px;
+    width: min(470px, 52%)
+}
+
+.section-heading-actions #sectionDescription {
+    width: auto;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.content-add-button {
+    flex: 0 0 auto;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: var(--panel);
+    color: var(--accent-2);
+    font-size: 21px;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform var(--speed-fast) var(--ease-pop), border-color var(--speed-fast) var(--ease), background var(--speed-fast) var(--ease)
+}
+
+.content-add-button:hover {
+    transform: translateY(-3px) scale(1.04);
+    border-color: var(--accent);
+    background: var(--panel-2)
+}
+
+.content-add-button:active {
+    transform: scale(.94)
+}
+
+.tag-editor {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+    transition: border-color var(--speed-fast) var(--ease), box-shadow var(--speed-fast) var(--ease)
+}
+
+.tag-editor:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft)
+}
+
+.tag-editor input {
+    flex: 1;
+    min-width: 130px;
+    border: 0 !important;
+    padding: 5px 4px !important;
+    background: transparent !important;
+    box-shadow: none !important
+}
+
+.tag-capsules {
+    display: contents
+}
+
+.tag-capsule {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 6px 5px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--panel-2);
+    font-size: 11px;
+    font-weight: 750
+}
+
+.capsule-x {
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    position: relative;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0;
+    line-height: 1;
+    transition: background var(--speed-fast) var(--ease), color var(--speed-fast) var(--ease), transform var(--speed-fast) var(--ease-pop)
+}
+
+.capsule-x::before,
+.capsule-x::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 1.5px;
+    border-radius: 999px;
+    background: currentColor;
+    transform-origin: center
+}
+
+.capsule-x::before {
+    transform: translate(-50%, -50%) rotate(45deg)
+}
+
+.capsule-x::after {
+    transform: translate(-50%, -50%) rotate(-45deg)
+}
+
+.capsule-x:hover {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+    transform: scale(1.05)
+}
+
+.capsule-x:active {
+    transform: scale(.9)
+}
+
+.preset-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 2px
+}
+
+.preset-tag {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    padding: 6px 10px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    cursor: pointer;
+    transition: all var(--speed-fast) var(--ease)
+}
+
+.preset-tag:hover,
+.preset-tag.is-added {
+    border-color: var(--accent);
+    color: var(--text);
+    background: var(--accent-soft);
+    transform: translateY(-1px)
+}
+
+.gallery-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 10px
+}
+
+.gallery-thumb,
+.gallery-add {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    background: var(--panel);
+    min-width: 0
+}
+
+.gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block
+}
+
+.gallery-remove {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    color: #fff;
+    background: rgba(15, 8, 4, .45);
+    backdrop-filter: blur(8px)
+}
+
+.gallery-add {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 3px;
+    color: var(--muted);
+    cursor: pointer;
+    border-style: dashed;
+    transition: transform var(--speed-fast) var(--ease-pop), border-color var(--speed-fast) var(--ease), color var(--speed-fast) var(--ease)
+}
+
+.gallery-add:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    color: var(--accent-2)
+}
+
+.gallery-add .image-placeholder {
+    font-size: 24px;
+    line-height: 1
+}
+
+.gallery-add b {
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 500
+}
+
+.selected-file {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: var(--panel)
+}
+
+.selected-file-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--panel-3);
+    font-weight: 900;
+    color: var(--accent-2)
+}
+
+.selected-file strong,
+.selected-file small {
+    display: block
+}
+
+.selected-file strong {
+    font-size: 12px
+}
+
+.selected-file small {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 10px
+}
+
+.selected-text-preview {
+    max-height: 92px;
+    overflow: auto;
+    white-space: pre-wrap;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5
+}
+
+/* Modal drag/drop and single-image thumbnail picker */
+.modal-card--wide.is-modal-drop-target {
+    outline: 2px dashed var(--accent);
+    outline-offset: -10px;
+    background: color-mix(in srgb, var(--bg-elevated) 92%, var(--accent) 8%)
+}
+
+.gallery-picker--single {
+    grid-template-columns: repeat(2, minmax(92px, 140px));
+    justify-content: start
+}
+
+.media-empty-drop {
+    min-height: 190px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 16px;
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 9px;
+    padding: 24px
+}
+
+.media-empty-drop strong {
+    font-size: 15px
+}
+
+.media-empty-drop small {
+    max-width: 380px;
+    color: var(--muted);
+    line-height: 1.45
+}
+
+.media-empty-drop .upload-button {
+    margin-top: 6px
+}

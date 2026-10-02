@@ -1,0 +1,4 @@
+Options -Indexes
+<FilesMatch "^app\.json$">
+  Require all denied
+</FilesMatch>

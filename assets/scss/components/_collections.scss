@@ -1,0 +1,161 @@
+/* Collections + tile dragging */
+.tile {
+  transform-origin: 50% 50%;
+  touch-action: none;
+}
+.tile, .tile * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.tile.is-source-dragging {
+  opacity: .4;
+  transform: none;
+  transition: none;
+}
+.tile.is-detach-jiggle { animation: tileDetachJiggle 160ms ease-out; }
+.tile.tile-ghost {
+  opacity: .94;
+  box-shadow: 0 16px 36px rgba(0,0,0,.26);
+  animation: none;
+  transition: none;
+  will-change: transform;
+  cursor: grabbing;
+}
+.tile-ghost *, .tile.is-source-dragging * { transition: none; }
+.tile-ghost .tile-content { opacity: 1; transform: none; }
+.tile-ghost .tile-gradient { opacity: 1; }
+.tile-ghost .tile-media > *, .tile.is-source-dragging .tile-media > * { transform: none; }
+@keyframes tileDetachJiggle {
+  0%, 100% { transform: rotate(0); }
+  30% { transform: rotate(-1deg); }
+  65% { transform: rotate(1deg); }
+}
+
+.collections-header-actions { display: flex; align-items: center; gap: 8px; }
+.collection-add-button {
+  width: 28px;
+  height: 28px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent-2);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform var(--speed-fast) var(--ease-pop), background var(--speed-fast) var(--ease), border-color var(--speed-fast) var(--ease);
+}
+.collection-add-button:hover { transform: scale(1.08) rotate(5deg); background: var(--accent-soft); border-color: var(--accent); }
+
+.bookmark-dropzone { gap: 10px; }
+.collection-folder {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 84%, transparent);
+  overflow: visible;
+  transition: transform 220ms var(--ease-pop), border-color 180ms var(--ease), background 180ms var(--ease), box-shadow 220ms var(--ease);
+}
+.collection-folder:hover { border-color: var(--line-strong); }
+.collection-folder.is-tile-hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 12px 30px rgba(0,0,0,.15);
+}
+.collection-folder.is-dragging { opacity: .35; transform: scale(.98); }
+.collection-folder.drop-before::before,
+.collection-folder.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 999px;
+  z-index: 3;
+}
+.collection-folder.drop-before::before { top: -6px; }
+.collection-folder.drop-after::after { bottom: -6px; }
+.collection-folder-head {
+  width: 100%;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 14px 14px 1fr auto;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.collection-folder-head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.collection-folder-grip { color: var(--faint); font-size: 10px; cursor: grab; }
+.collection-chevron { width:22px;height:22px;display:grid;place-items:center;border-radius:8px;background:color-mix(in srgb,var(--accent-soft) 70%,transparent);border:1px solid var(--line);color:var(--accent-2);transition:transform 260ms var(--ease-pop),background 180ms var(--ease),box-shadow 180ms var(--ease); }
+.collection-folder.is-collapsed .collection-chevron { transform: rotate(-90deg); }
+.collection-folder-count { min-width: 22px; height: 22px; display: grid; place-items: center; border-radius: 999px; background: var(--panel-3); color: var(--muted); font-size: 9px; font-weight: 900; }
+.collection-items { display: grid; gap: 7px; padding: 0 8px 8px; max-height: 1000px; opacity: 1; transform-origin: top; transition: max-height 360ms var(--ease), opacity 180ms var(--ease), padding 300ms var(--ease), transform 300ms var(--ease-pop); }
+.collection-folder.is-collapsed .collection-items { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; transform: scaleY(.94); overflow: hidden; }
+.collection-empty { min-height: 54px; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 10px; color: var(--faint); font-size: 10px; transition: background 180ms var(--ease), border-color 180ms var(--ease); }
+.collection-folder.is-tile-hover .collection-empty { border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 65%, transparent); }
+.collection-item { margin: 0; background: var(--panel-2); }
+.collection-item:hover { transform: translateX(2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.is-detach-jiggle, .tile-ghost { animation: none !important; }
+}
+
+
+/* v4 UI refinements: cleaner collection disclosure control and tooltip layering. */
+.bookmarks-panel { overflow: visible; }
+.collections-header-actions { position: relative; z-index: 20; }
+.collection-add-button { position: relative; z-index: 21; }
+.collection-add-button[data-tooltip]::after {
+  top: auto;
+  bottom: calc(100% + 10px);
+  z-index: 9999;
+}
+.collection-folder-head {
+  grid-template-columns: 14px 24px 1fr auto;
+  gap: 7px;
+}
+.collection-chevron {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  transform: none;
+  transition: background 160ms var(--ease), color 160ms var(--ease), transform 260ms var(--ease-pop);
+}
+.collection-chevron span {
+  width: 7px;
+  height: 7px;
+  display: block;
+  border-right: 1.75px solid currentColor;
+  border-bottom: 1.75px solid currentColor;
+  border-radius: 1px;
+  transform: translateY(-1.5px) rotate(45deg);
+  transform-origin: 55% 55%;
+  transition: transform 260ms var(--ease-pop);
+}
+.collection-chevron span::before,
+.collection-chevron span::after { content: none; }
+.collection-folder-head:hover .collection-chevron {
+  background: color-mix(in srgb, var(--accent-soft) 56%, transparent);
+  color: var(--accent-2);
+  box-shadow: none;
+  transform: none;
+}
+.collection-folder.is-collapsed .collection-chevron { transform: none; background: transparent; }
+.collection-folder.is-collapsed .collection-chevron span { transform: translateX(-1px) rotate(-45deg); }
+.collection-folder.is-collapsed .collection-folder-head:hover .collection-chevron {
+  background: color-mix(in srgb, var(--accent-soft) 56%, transparent);
+  transform: none;
+}

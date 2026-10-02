@@ -1,0 +1,2040 @@
+import { api } from "./api.js?v=20261002-4";
+
+const TAGS = [
+  "All",
+  "Photography",
+  "Film",
+  "Animation",
+  "Audio",
+  "Design",
+  "Typography",
+  "Concepts",
+  "History",
+  "Funny",
+];
+const PRESET_TAGS = TAGS.slice(1);
+const SECTION_TITLES = { dashboard: "Dashboard", projects: "Projects", resources: "Resources" };
+const MEDIA_TYPES = new Set([
+  "image",
+  "video",
+  "audio",
+  "text",
+  "file",
+  "font",
+]);
+const state = {
+  tiles: [],
+  topLinks: [],
+  bookmarks: [],
+  collections: [],
+  settings: { theme: "umber", mode: "dark" },
+  editingId: null,
+  editingTopLinkId: null,
+  savingContent: false,
+  section: "dashboard",
+  tag: "All",
+  query: "",
+  pendingDrop: null,
+  pendingThumbnail: null,
+  pendingTopLinkImage: null,
+  topLinkPreviewUrl: null,
+  pendingTags: [],
+  previewUrls: [],
+  fonts: [],
+};
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+const els = {
+  tileGrid: $("#tileGrid"),
+  tagList: $("#tagList"),
+  search: $("#searchInput"),
+  clearSearch: $("#clearSearch"),
+  topLinks: $("#topLinks"),
+  bookmarks: $("#bookmarkList"),
+  bookmarkCount: $("#bookmarkCount"),
+  contentModal: $("#contentModal"),
+  contentForm: $("#contentForm"),
+  dynamicFields: $("#dynamicFields"),
+  contentTypeEyebrow: $("#contentTypeEyebrow"),
+  contentModalTitle: $("#contentModalTitle"),
+  topLinkModal: $("#topLinkModal"),
+  topLinkForm: $("#topLinkForm"),
+  settingsModal: $("#settingsModal"),
+  settingsButton: $("#settingsButton"),
+  modeToggle: $("#modeToggle"),
+  modeLabel: $("#modeLabel"),
+  dragOverlay: $("#dragOverlay"),
+  emptyState: $("#emptyState"),
+  sectionTitle: $("#sectionTitle"),
+  toastRegion: $("#toastRegion"),
+  bookmarksPanel: $("#bookmarksPanel"),
+  contentAddButton: $("#contentAddButton"),
+  contentFilePicker: $("#contentFilePicker"),
+  contentTypeModal: $("#contentTypeModal"),
+  tagEditor: $("#tagEditor"),
+  tagCapsules: $("#tagCapsules"),
+  tagInput: $("#tagInput"),
+  presetTags: $("#presetTags"),
+  mediaViewer: $("#mediaViewer"),
+  viewerMedia: $("#viewerMedia"),
+  viewerMeta: $("#viewerMeta"),
+  collectionModal: $("#collectionModal"),
+  collectionForm: $("#collectionForm"),
+  collectionAddButton: $("#collectionAddButton"),
+};
+
+function escapeHtml(value = "") {
+  return String(value).replace(
+    /[&<>'"]/g,
+    (c) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#039;",
+        '"': "&quot;",
+      })[c],
+  );
+}
+// Keep notifications above native modal backdrops, which outrank page z-index.
+function raiseNotifications() {
+  const region = els.toastRegion;
+  const dialogs = [...document.querySelectorAll("dialog[open]")];
+  const focusedDialog = document.activeElement?.closest("dialog[open]");
+  const host = focusedDialog || dialogs.at(-1) || document.body;
+  if (region.parentElement !== host) host.appendChild(region);
+  if (typeof region.showPopover === "function" && region.children.length) {
+    region.setAttribute("popover", "manual");
+    // Reinsert into the top layer above any newly opened dialog.
+    if (region.matches(":popover-open")) region.hidePopover();
+    region.showPopover();
+  }
+}
+new MutationObserver(raiseNotifications).observe(document.body, {
+  subtree: true,
+  attributes: true,
+  attributeFilter: ["open"],
+});
+function toast(message, tone = "default") {
+  const el = document.createElement("div");
+  el.className = `toast toast--${tone}`;
+  el.textContent = message;
+  els.toastRegion.appendChild(el);
+  raiseNotifications();
+  requestAnimationFrame(() => el.classList.add("is-visible"));
+  setTimeout(() => {
+    el.classList.remove("is-visible");
+    setTimeout(() => {
+      el.remove();
+      if (
+        !els.toastRegion.children.length &&
+        typeof els.toastRegion.hidePopover === "function" &&
+        els.toastRegion.matches(":popover-open")
+      )
+        els.toastRegion.hidePopover();
+    }, 250);
+  }, 2600);
+}
+function favicon(url) {
+  try {
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(new URL(url).hostname)}&sz=128`;
+  } catch {
+    return "";
+  }
+}
+function normalizeUrl(value = "") {
+  const raw = String(value).trim();
+  if (!raw) return "";
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+}
+function safeHostname(url) {
+  try {
+    return new URL(normalizeUrl(url)).hostname.replace(/^www\./, "");
+  } catch {
+    return url || "";
+  }
+}
+function defaultTileLabel(tile) {
+  if (tile.type === "link") return safeHostname(tile.url);
+  if (tile.type === "text") return "Text note";
+  if (tile.files?.length) return tile.files[0].split("/").pop();
+  return "Untitled";
+}
+
+function renderTags() {
+  els.tagList.innerHTML = TAGS.map(
+    (tag) =>
+      `<button class="tag-btn ${state.tag === tag ? "is-active" : ""}" data-tag="${tag}">${tag}<span>↗</span></button>`,
+  ).join("");
+  const metadataTags = [...new Set(state.tiles.flatMap(tile => tile.metadataTags || []))]
+    .filter(tag => !PRESET_TAGS.some(preset => preset.toLowerCase() === tag.toLowerCase()));
+  if (metadataTags.length) els.tagList.innerHTML += `<div class="metadata-filter-row"><span class="metadata-label">File metadata</span>${metadataTags.map(tag => `<button type="button" class="tag-btn metadata-filter ${state.tag === tag ? "is-active" : ""}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span>↗</span></button>`).join("")}</div>`;
+}
+function tileMatches(tile) {
+  const section = tile.section === state.section;
+  const tag =
+    state.tag === "All" ||
+    [...(tile.tags || []), ...(tile.metadataTags || [])].some((x) => x.toLowerCase() === state.tag.toLowerCase());
+  const hay = [
+    tile.label,
+    tile.description,
+    tile.location,
+    tile.text,
+    tile.url,
+    ...(tile.tags || []),
+    ...(tile.metadataTags || []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return (
+    section && tag && (!state.query || hay.includes(state.query.toLowerCase()))
+  );
+}
+function displayText(tile) {
+  // Migrate only the shipped samples; literal escapes in user notes stay literal.
+  const text = String(tile.text || "");
+  const samples = {
+    "seed-2": "COLLECT\\nFIRST.\\nCURATE\\nSECOND.",
+    "seed-5": "Aa\\nTYPE\\nINDEX",
+  };
+  return samples[tile.id] === text ? text.replace(/\\n/g, "\n") : text;
+}
+function tileMedia(tile) {
+  if (tile.type === "text") {
+    const s = tile.textStyle || {};
+    const over = !!tile.thumbnail;
+    const textHtml = `<div class="text-tile${over ? " text-tile--over" : ""}" style="font-family:${escapeHtml(s.font || "inherit")};font-size:${Number(s.fontSize || 28)}px;font-weight:${s.bold ? 700 : 500};font-style:${s.italic ? "italic" : "normal"};text-decoration:${s.underline ? "underline" : "none"};text-align:${escapeHtml(s.align || "left")}"><span class="text-content">${escapeHtml(displayText(tile))}</span></div>`;
+    return over
+      ? `<div class="text-thumb"><img class="cover" src="${escapeHtml(tile.thumbnail)}" alt="" />${textHtml}</div>`
+      : textHtml;
+  }
+  if (tile.type === "image" && tile.files?.length) {
+    const imgs = tile.files
+      .slice(0, 4)
+      .map(
+        (src, i) =>
+          `<img src="${escapeHtml(src)}" alt="${escapeHtml(tile.label || `Image ${i + 1}`)}" />`,
+      )
+      .join("");
+    return `<div class="gallery gallery--${Math.min(tile.files.length, 4)}">${imgs}</div>`;
+  }
+  if (tile.type === "video" && tile.files?.[0])
+    return `<video src="${escapeHtml(tile.files[0])}" muted loop playsinline preload="metadata"></video>`;
+  if (
+    (tile.type === "audio" || tile.type === "file" || tile.type === "font") &&
+    tile.thumbnail
+  )
+    return `<img class="cover" src="${escapeHtml(tile.thumbnail)}" alt="" />`;
+  if (tile.type === "link") {
+    const thumb = tile.thumbnail || favicon(tile.url);
+    return `<div class="link-preview">${thumb ? `<img src="${escapeHtml(thumb)}" alt="" />` : ""}<div class="link-domain">${escapeHtml(safeHostname(tile.url))}</div></div>`;
+  }
+  return `<div class="file-symbol">${tile.type === "audio" ? "♪" : tile.type === "font" ? "Aa" : "↗"}</div>`;
+}
+function renderTiles() {
+  const items =
+    state.section === "dashboard" ? state.tiles.filter(tileMatches) : [];
+  els.tileGrid.innerHTML = items
+    .map(
+      (tile) =>
+        `<article draggable="false" class="tile tile--${escapeHtml(tile.size || "medium")} tile--${escapeHtml(tile.orientation || "landscape")}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0"><div class="tile-media">${tileMedia(tile)}</div><div class="tile-gradient"></div><div class="tile-actions"><button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit tile" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button></div><div class="tile-content"><h3>${escapeHtml(tile.label || defaultTileLabel(tile))}</h3></div></article>`,
+    )
+    .join("");
+  els.emptyState.hidden = state.section !== "dashboard" || items.length > 0;
+  layoutTiles();
+}
+// Pack independent rectangles densely so portrait tiles span neighboring rows.
+function layoutTiles() {
+  if (state.section !== "dashboard" || !els.tileGrid.clientWidth) return;
+  const columns = getComputedStyle(els.tileGrid).gridTemplateColumns.split(
+    " ",
+  ).length;
+  const tiles = new Map(state.tiles.map((tile) => [tile.id, tile]));
+  const cells = [],
+    placed = [];
+  const free = (x, y, w, h) =>
+    x >= 0 &&
+    y >= 0 &&
+    x + w <= columns &&
+    Array.from({ length: h }, (_, j) =>
+      Array.from({ length: w }, (_, i) => !cells[y + j]?.[x + i]).every(
+        Boolean,
+      ),
+    ).every(Boolean);
+  const occupy = (item) => {
+    for (let y = item.y; y < item.y + item.h; y++) {
+      cells[y] ||= Array(columns).fill(false);
+      for (let x = item.x; x < item.x + item.w; x++) cells[y][x] = true;
+    }
+  };
+  [...els.tileGrid.children].forEach((el) => {
+    const tile = tiles.get(el.dataset.tileId),
+      size = tile.size || "medium";
+    const portrait = tile.orientation === "portrait";
+    let w = portrait
+      ? size === "large" && columns === 6
+        ? 3
+        : 2
+      : { small: 2, medium: 3, large: 4 }[size] || 3;
+    if (columns === 2) w = size === "small" && portrait ? 1 : 2;
+    w = Math.min(columns, w);
+    const h = portrait
+      ? { small: 3, medium: 4, large: 6 }[size] || 4
+      : { small: 2, medium: 3, large: 4 }[size] || 3;
+    let x = 0,
+      y = 0;
+    while (!free(x, y, w, h)) {
+      if (++x + w > columns) {
+        x = 0;
+        y++;
+      }
+    }
+    const titleMatch =
+      state.query &&
+      (tile.label || "").toLowerCase().includes(state.query.toLowerCase());
+    const item = {
+      el,
+      x,
+      y,
+      w,
+      h,
+      score:
+        (titleMatch ? 10 : 0) + ({ small: 1, medium: 2, large: 3 }[size] || 2),
+    };
+    occupy(item);
+    placed.push(item);
+  });
+  // Fill adjacent rectangular gaps without displacing or covering another tile.
+  const bottom = cells.length;
+  [...placed]
+    .sort((a, b) => b.score - a.score)
+    .forEach((item) => {
+      let changed = true;
+      while (changed) {
+        changed = false;
+        if (free(item.x + item.w, item.y, 1, item.h)) {
+          item.w++;
+          changed = true;
+        } else if (free(item.x - 1, item.y, 1, item.h)) {
+          item.x--;
+          item.w++;
+          changed = true;
+        } else if (
+          item.y + item.h < bottom &&
+          free(item.x, item.y + item.h, item.w, 1)
+        ) {
+          item.h++;
+          changed = true;
+        } else if (free(item.x, item.y - 1, item.w, 1)) {
+          item.y--;
+          item.h++;
+          changed = true;
+        }
+        if (changed) occupy(item);
+      }
+    });
+  placed.forEach((item) => {
+    item.el.style.gridColumn = `${item.x + 1} / span ${item.w}`;
+    item.el.style.gridRow = `${item.y + 1} / span ${item.h}`;
+  });
+}
+let layoutFrame;
+new ResizeObserver(() => {
+  cancelAnimationFrame(layoutFrame);
+  layoutFrame = requestAnimationFrame(layoutTiles);
+}).observe(els.tileGrid);
+
+function beginSubmission(message = "Adding...") {
+  const dialog = $("#submissionModal");
+  if (dialog.open) return false;
+  $("#submissionMessage").textContent = message;
+  dialog.showModal();
+  return true;
+}
+function endSubmission() {
+  $("#submissionModal").close();
+}
+$("#submissionModal").addEventListener("cancel", (event) =>
+  event.preventDefault(),
+);
+
+function renderTopLinks() {
+  els.topLinks.innerHTML =
+    state.topLinks
+      .map((link) => {
+        const image = link.image || favicon(link.url);
+        return `<div class="top-link"><a class="circle-link" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer" data-tooltip="${escapeHtml(link.label)}" data-tooltip-url="${escapeHtml(link.url)}" aria-label="${escapeHtml(link.label)}">${image ? `<img src="${escapeHtml(image)}" alt="" />` : "<span>↗</span>"}</a><button type="button" class="capsule-x top-link-edit" data-edit-top-link="${escapeHtml(link.id)}" aria-label="Edit ${escapeHtml(link.label || "top link")}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button><button type="button" class="capsule-x top-link-remove" data-delete-top-link="${escapeHtml(link.id)}" aria-label="Delete ${escapeHtml(link.label || "top link")}">×</button></div>`;
+      })
+      .join("") +
+    `<button class="circle-link circle-link--add" id="addTopLink" data-tooltip="Add top link" aria-label="Add top link">+</button>`;
+}
+function ensureCollections() {
+  if (Array.isArray(state.collections) && state.collections.length) return;
+  const legacy = (state.bookmarks || []).filter((id) =>
+    state.tiles.some((t) => t.id === id),
+  );
+  state.collections = [
+    {
+      id: "collection-default",
+      name: "Saved",
+      collapsed: false,
+      items: legacy,
+    },
+  ];
+}
+function collectionItemCount() {
+  return state.collections.reduce((n, c) => n + (c.items?.length || 0), 0);
+}
+function renderBookmarks() {
+  ensureCollections();
+  const byId = new Map(state.tiles.map((t) => [t.id, t]));
+  state.collections = state.collections.map((c) => ({
+    ...c,
+    items: (c.items || []).filter((id) => byId.has(id)),
+  }));
+  els.bookmarkCount.textContent = collectionItemCount();
+  els.bookmarks.innerHTML =
+    state.collections
+      .map((collection, index) => {
+        const items = (collection.items || [])
+          .map((id, itemIndex) => {
+            const tile = byId.get(id);
+            return `<div class="bookmark-item collection-item" draggable="true" tabindex="0" role="button" aria-label="Open ${escapeHtml(tile.label || defaultTileLabel(tile))}" data-bookmark-id="${escapeHtml(id)}" data-collection-id="${escapeHtml(collection.id)}" data-item-index="${itemIndex}"><span class="bookmark-grip">⋮⋮</span><div><strong>${escapeHtml(tile.label || defaultTileLabel(tile))}</strong><small>${escapeHtml(tile.type)}</small></div><button class="bookmark-remove" data-remove-bookmark="${escapeHtml(id)}" data-from-collection="${escapeHtml(collection.id)}" aria-label="Remove from collection">×</button></div>`;
+          })
+          .join("");
+        return `<section class="collection-folder ${collection.collapsed ? "is-collapsed" : ""}" draggable="true" data-collection-id="${escapeHtml(collection.id)}" data-collection-index="${index}"><button class="collection-folder-head" type="button" data-toggle-collection="${escapeHtml(collection.id)}"><span class="collection-folder-grip" aria-hidden="true">⋮⋮</span><span class="collection-chevron" aria-hidden="true"><span></span></span><strong>${escapeHtml(collection.name)}</strong><span class="collection-folder-count">${collection.items?.length || 0}</span></button><div class="collection-items" data-collection-drop="${escapeHtml(collection.id)}">${items || '<div class="collection-empty">Drop tiles here</div>'}</div></section>`;
+      })
+      .join("") ||
+    `<div class="bookmark-empty"><span>＋</span><p>Create a collection folder</p></div>`;
+}
+function renderAll() {
+  ensureCollections();
+  renderTags();
+  renderTiles();
+  renderTopLinks();
+  renderBookmarks();
+}
+const THEME_KEY = "comma-hub-appearance";
+function saveLocalTheme() {
+  try { localStorage.setItem(THEME_KEY, JSON.stringify(state.settings)); }
+  catch { toast("Browser storage is unavailable; this theme will last for this session.", "error"); }
+}
+function loadLocalTheme() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(THEME_KEY) || "null");
+    if (!saved) return;
+    if (["umber", "midnight-blue", "bubblegum", "caramel", "marble"].includes(saved.theme)) state.settings.theme = saved.theme;
+    if (["dark", "light"].includes(saved.mode)) state.settings.mode = saved.mode;
+  } catch { /* Use the default when browser storage is unavailable. */ }
+}
+function updateToday() {
+  const date = new Date(), day = date.getDate();
+  const suffix = day % 100 >= 11 && day % 100 <= 13 ? "th" : ({1:"st",2:"nd",3:"rd"}[day % 10] || "th");
+  const el = $("#todayDate");
+  el.dateTime = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+  el.textContent = `${date.toLocaleDateString("en-AU", {weekday:"long"})}, ${day}${suffix} of ${date.toLocaleDateString("en-AU", {month:"long"})} (${date.toLocaleDateString("en-GB")})`;
+}
+function applyTheme() {
+  const theme = state.settings.theme || "umber";
+  const mode = state.settings.mode || "dark";
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.dataset.mode = mode;
+  const dark = mode !== "light";
+  els.modeToggle.checked = dark;
+  els.modeLabel.textContent = dark ? "Dark mode" : "Light mode";
+  $$("[data-theme-choice]").forEach((card) => {
+    const active = card.dataset.themeChoice === theme;
+    card.classList.toggle("is-active", active);
+    card.setAttribute("aria-pressed", String(active));
+  });
+}
+function setSection(section) {
+  state.section = section;
+  const dashboard = section === "dashboard";
+  $(".workspace").hidden = !dashboard;
+  $("#developmentPanel").hidden = dashboard;
+  $("#developmentTitle").textContent = SECTION_TITLES[section];
+  $$(".nav-tab").forEach((btn) =>
+    btn.classList.toggle("is-active", btn.dataset.section === section),
+  );
+  renderTiles();
+}
+
+function revokePreviewUrls() {
+  state.previewUrls.forEach(URL.revokeObjectURL);
+  state.previewUrls = [];
+}
+function filePreviewUrl(file) {
+  if (typeof file === "string") return escapeHtml(file);
+  const u = URL.createObjectURL(file);
+  state.previewUrls.push(u);
+  return u;
+}
+function pendingFiles() {
+  return state.pendingDrop?.files || [];
+}
+function detectFileType(file) {
+  if (file.type.startsWith("image/")) return "image";
+  if (file.type.startsWith("video/")) return "video";
+  if (file.type.startsWith("audio/")) return "audio";
+  if (/\.(ttf|otf|woff2?)$/i.test(file.name)) return "font";
+  return "file";
+}
+function detectFiles(files) {
+  const arr = [...files];
+  if (!arr.length) return null;
+  const types = arr.map(detectFileType);
+  return {
+    type: types.every((t) => t === "image") ? "image" : types[0],
+    files: arr,
+  };
+}
+function detectDrop(dt) {
+  const fileDrop = detectFiles(dt.files || []);
+  if (fileDrop) return fileDrop;
+  const uri = dt.getData("text/uri-list") || "";
+  const plain = dt.getData("text/plain") || "";
+  const candidate = uri || plain;
+  if (
+    /^(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[\/:?#].*)?$/i.test(
+      candidate.trim(),
+    )
+  )
+    return { type: "link", url: normalizeUrl(candidate.trim()) };
+  if (plain.trim()) return { type: "text", text: plain };
+  return null;
+}
+
+const metadataCache = new WeakMap();
+let metadataRevision = 0;
+async function refreshMetadataTags() {
+  const revision = ++metadataRevision;
+  const files = [...pendingFiles()];
+  const row = $("#metadataTags");
+  row.textContent = files.some(f => typeof f !== "string") ? "Reading file metadata…" : "";
+  const results = await Promise.all(files.map(async file => {
+    if (typeof file === "string") return state.pendingDrop?.fileMetadata?.[file] || {};
+    if (!metadataCache.has(file)) metadataCache.set(file, api.inspectMetadata(file).catch(() => ({unavailable: true})));
+    return metadataCache.get(file);
+  }));
+  if (revision !== metadataRevision) return;
+  const tags = [...new Set(results.flatMap(m => m.tags || []))];
+  row.innerHTML = tags.length ? `<span class="metadata-label">File metadata</span>${tags.map(t => `<span class="metadata-tag">${escapeHtml(t)}</span>`).join("")}` : (results.some(m => m.unavailable) ? "Metadata preview unavailable; extraction will be retried when saved." : "");
+}
+function renderTagEditor() {
+  els.tagCapsules.innerHTML = state.pendingTags
+    .map(
+      (tag) =>
+        `<span class="tag-capsule">${escapeHtml(tag)}<button class="capsule-x" type="button" data-remove-form-tag="${escapeHtml(tag)}" aria-label="Remove ${escapeHtml(tag)}">×</button></span>`,
+    )
+    .join("");
+  els.contentForm.elements.tags.value = state.pendingTags.join(",");
+  els.presetTags.innerHTML = PRESET_TAGS.map(
+    (tag) =>
+      `<button type="button" class="preset-tag ${state.pendingTags.some((t) => t.toLowerCase() === tag.toLowerCase()) ? "is-added" : ""}" data-preset-tag="${tag}">${tag}</button>`,
+  ).join("");
+}
+function normalizeTag(raw) {
+  return raw
+    .trim()
+    .replace(/^,+|,+$/g, "")
+    .replace(/\s+/g, " ");
+}
+function addTag(raw) {
+  const tag = normalizeTag(raw);
+  if (!tag) return;
+  if (!state.pendingTags.some((t) => t.toLowerCase() === tag.toLowerCase()))
+    state.pendingTags.push(tag);
+  renderTagEditor();
+}
+function commitTagInput() {
+  const raw = els.tagInput.value;
+  if (raw.trim()) addTag(raw);
+  els.tagInput.value = "";
+}
+
+function customUploadMarkup({
+  id,
+  name = "",
+  accept = "",
+  label = "Choose file",
+  multiple = false,
+  helper = "",
+}) {
+  return `<div class="custom-upload"><input id="${id}" ${name ? `name="${name}"` : ""} type="file" ${accept ? `accept="${accept}"` : ""} ${multiple ? "multiple" : ""} hidden><button class="upload-button" type="button" data-file-trigger="${id}"><span class="upload-button-icon">＋</span><span>${label}</span></button><span class="upload-file-name" data-file-name="${id}">No file selected</span></div>${helper ? `<small>${helper}</small>` : ""}`;
+}
+function singleImagePickerMarkup(
+  file = state.pendingThumbnail,
+  topLink = false,
+) {
+  const thumb = file
+    ? `<div class="gallery-thumb"><img src="${topLink ? escapeHtml(state.topLinkPreviewUrl) : filePreviewUrl(file)}" alt="${escapeHtml(file.name || "Thumbnail")}"><button type="button" class="capsule-x gallery-remove" ${topLink ? "data-remove-top-link-image" : "data-remove-thumbnail"} aria-label="Remove thumbnail">×</button></div>`
+    : "";
+  return `<div class="gallery-picker gallery-picker--single">${thumb}<button type="button" class="gallery-add" id="${topLink ? "topLinkImageAdd" : "thumbnailAdd"}" aria-label="Add thumbnail"><span class="image-placeholder">▧</span><b>+</b></button></div><input id="${topLink ? "topLinkImageInput" : "thumbnailPickerInput"}" type="file" accept="image/*" hidden>`;
+}
+function setTopLinkImage(file = null) {
+  if (state.topLinkPreviewUrl) URL.revokeObjectURL(state.topLinkPreviewUrl);
+  state.pendingTopLinkImage = file;
+  state.topLinkPreviewUrl =
+    typeof file === "string" ? file : file ? URL.createObjectURL(file) : null;
+  $("#topLinkImagePicker").innerHTML = singleImagePickerMarkup(file, true);
+}
+function selectedMediaMarkup(type) {
+  if (!["image", "video", "audio", "font", "file"].includes(type)) return "";
+  const accept = {image: "image/*", video: "video/*", audio: "audio/*", font: ".ttf,.otf,.woff,.woff2"}[type] || "";
+  const thumbs = pendingFiles().map((file, i) => {
+    const name = typeof file === "string" ? file.split("/").pop() : file.name;
+    const fileType = typeof file === "string" ? type : detectFileType(file);
+    const symbol = {video: "▶", audio: "♪", font: "Aa", file: "↗"}[fileType] || "↗";
+    const preview = fileType === "image" ? `<img src="${filePreviewUrl(file)}" alt="">`
+      : fileType === "video" ? `<video src="${filePreviewUrl(file)}" muted playsinline preload="metadata"></video>`
+      : `<span class="file-preview-symbol" aria-hidden="true">${symbol}</span>`;
+    return `<div class="gallery-thumb" title="${escapeHtml(name)}">${preview}<span class="file-preview-name">${escapeHtml(name)}</span><button type="button" class="capsule-x gallery-remove" data-remove-pending-file="${i}" aria-label="Remove ${escapeHtml(name)}">×</button></div>`;
+  }).join("");
+  return `<div class="gallery-picker" id="galleryPicker">${thumbs}<button type="button" class="gallery-add" id="galleryAdd" aria-label="Add files"><span class="image-placeholder">▧</span><b>+</b></button></div><input id="galleryFileInput" type="file" ${accept ? `accept="${accept}"` : ""} multiple hidden>`;
+}
+const BUILTIN_FONT_OPTIONS = `<option value="Arial, sans-serif">Arial</option><option value="Helvetica, Arial, sans-serif">Helvetica</option><option value="Georgia, serif">Georgia</option><option value="'Times New Roman', serif">Times New Roman</option><option value="Verdana, sans-serif">Verdana</option><option value="Tahoma, sans-serif">Tahoma</option><option value="'Trebuchet MS', sans-serif">Trebuchet MS</option><option value="'Courier New', monospace">Courier New</option><option value="Impact, sans-serif">Impact</option><option value="system-ui, sans-serif">System UI</option>`;
+const FONT_UPLOAD_ICON =
+  '<svg viewBox="0 0 24 20" width="22" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h8M3 3v13M3 9.5h6"/><path d="M18 17V6M14.5 9.5 18 6l3.5 3.5"/></svg>';
+function fontOptionsMarkup() {
+  const custom = state.fonts
+    .map(
+      (f) =>
+        `<option value="${escapeHtml(f.family)}">${escapeHtml(f.name)}</option>`,
+    )
+    .join("");
+  return (
+    BUILTIN_FONT_OPTIONS +
+    (custom ? `<optgroup label="Uploaded fonts">${custom}</optgroup>` : "")
+  );
+}
+// Register uploaded fonts so previews, tiles and the viewer can render them.
+function registerFontFaces() {
+  let style = document.getElementById("customFontFaces");
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "customFontFaces";
+    document.head.append(style);
+  }
+  style.textContent = state.fonts
+    .map((f) => {
+      const family = String(f.name).replace(/[^\p{L}\p{N} _.-]/gu, "");
+      return `@font-face{font-family:'${family}';src:url('${encodeURI(f.file)}') format('${f.format || "truetype"}');font-display:swap}`;
+    })
+    .join("\n");
+}
+function fontForTile(tile) {
+  const family = tile?.textStyle?.font;
+  return family ? state.fonts.find((f) => f.family === family) : null;
+}
+function refreshFontSelect(selected) {
+  const select = els.contentForm.elements.font;
+  if (!select || select.tagName !== "SELECT") return;
+  const current = selected ?? select.value;
+  // Keep any previously saved font that is no longer in either list.
+  const builtin = new Set(
+    [...BUILTIN_FONT_OPTIONS.matchAll(/value="([^"]*)"/g)].map((m) => m[1].replace(/&#39;/g, "'")),
+  );
+  const legacy = [...select.options].filter(
+    (o) => !builtin.has(o.value) && !state.fonts.some((f) => f.family === o.value),
+  );
+  select.innerHTML = fontOptionsMarkup();
+  select.append(...legacy);
+  select.value = current;
+}
+function fieldMarkup(type, pending = {}) {
+  const media = selectedMediaMarkup(type);
+  if (type === "media")
+    return `<div class="field field--wide"><span>Media</span><div class="media-empty-drop"><strong>Drop media here</strong><small>Drag files into this modal, paste an image, or choose files manually.</small><button class="upload-button" type="button" id="chooseMediaButton"><span class="upload-button-icon">＋</span><span>Choose media</span></button></div></div>`;
+  if (type === "link")
+    return `<label class="field field--wide"><span>URL</span><input name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(pending.url || "")}" /></label><div class="field field--wide"><span>Thumbnail image</span>${singleImagePickerMarkup()}</div>`;
+  if (type === "text")
+    return `<label class="field field--wide"><span>Text</span><textarea class="text-live-preview-input" name="text" rows="1" required placeholder="Type text for your tile preview...">${escapeHtml(pending.text || "")}</textarea></label><div class="field"><span>Font</span><div class="font-picker-row"><select name="font">${fontOptionsMarkup()}</select><button type="button" class="font-upload-btn" id="fontUploadButton" aria-label="Upload a font file" data-tooltip="Upload font">${FONT_UPLOAD_ICON}</button></div><input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2,.ttc,.otc,.eot" hidden /></div><label class="field"><span>Size</span><input name="fontSize" class="scrub-input" type="number" min="12" max="96" value="28" /></label><div class="field field--wide"><span>Style</span><div class="format-row"><label class="format-toggle"><input name="bold" type="checkbox" /><span>B</span></label><label class="format-toggle"><input name="italic" type="checkbox" /><span><i>I</i></span></label><label class="format-toggle"><input name="underline" type="checkbox" /><span><u>U</u></span></label><input name="align" type="hidden" value="left" /><button type="button" class="align-toggle" id="alignToggle" data-align-cycle aria-label="Text alignment: left" data-tooltip="Align: left"></button></div></div><div class="field field--wide"><span>Thumbnail image</span>${singleImagePickerMarkup()}</div>`;
+  if (type === "image")
+    return `<div class="field field--wide"><span>Gallery images</span>${media}<small>Drop or paste images anywhere in this modal to add them to the gallery.</small></div>`;
+  const mediaLabel = {video: "Video", audio: "Audio", font: "Font files", file: "Files"}[type] || "Files";
+  return `<div class="field field--wide"><span>${mediaLabel}</span>${media}</div><div class="field field--wide"><span>Tile image</span>${singleImagePickerMarkup()}</div>`;
+}
+function filesRequired(type) {
+  return (
+    !pendingFiles().length && ["video", "audio", "font", "file"].includes(type)
+  );
+}
+function refreshDynamicFields() {
+  refreshMetadataTags();
+  const draft = new FormData(els.contentForm);
+  const preserve =
+    els.contentForm.elements.type.value === state.pendingDrop.type;
+  revokePreviewUrls();
+  els.dynamicFields.innerHTML = fieldMarkup(
+    state.pendingDrop.type,
+    state.pendingDrop,
+  );
+  els.contentForm.elements.type.value = state.pendingDrop.type;
+  if (preserve) {
+    for (const field of els.dynamicFields.querySelectorAll("[name]")) {
+      if (field.type === "file") continue;
+      if (field.type === "checkbox") field.checked = draft.has(field.name);
+      else if (draft.has(field.name)) {
+        const value = draft.get(field.name);
+        if (
+          field.name === "font" &&
+          ![...field.options].some((option) => option.value === value)
+        ) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = value;
+          field.append(option);
+        }
+        field.value = value;
+      }
+    }
+  }
+  if (state.pendingDrop.type === "text") updateTextPreview();
+}
+
+// Number fields: click to select + type; click-and-drag left/right to decrease/increase.
+function initScrubInputs() {
+  const PX_PER_STEP = 4;
+  const DRAG_THRESHOLD = 3;
+  let drag = null;
+  const clamp = (input, v) => {
+    const min = input.min !== "" ? Number(input.min) : -Infinity;
+    const max = input.max !== "" ? Number(input.max) : Infinity;
+    return Math.min(max, Math.max(min, v));
+  };
+  document.addEventListener("pointerdown", (e) => {
+    const input = e.target.closest?.(".scrub-input");
+    if (!input || e.button > 0) return;
+    drag = {
+      input,
+      id: e.pointerId,
+      startX: e.clientX,
+      startValue: Number(input.value) || Number(input.min) || 0,
+      moved: false,
+    };
+    input.setPointerCapture?.(e.pointerId);
+  });
+  // Stop the native caret placement / text selection so a drag never highlights anything.
+  document.addEventListener("mousedown", (e) => {
+    if (e.target.closest?.(".scrub-input")) e.preventDefault();
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.startX;
+    if (!drag.moved && Math.abs(dx) < DRAG_THRESHOLD) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      document.body.classList.add("is-scrubbing");
+      drag.input.blur();
+    }
+    const next = clamp(
+      drag.input,
+      drag.startValue + Math.round(dx / PX_PER_STEP),
+    );
+    if (String(next) !== drag.input.value) {
+      drag.input.value = next;
+      drag.input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+  const end = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const { input, moved } = drag;
+    drag = null;
+    input.releasePointerCapture?.(e.pointerId);
+    document.body.classList.remove("is-scrubbing");
+    if (moved) input.dispatchEvent(new Event("change", { bubbles: true }));
+    else if (e.type === "pointerup") {
+      input.focus();
+      input.select();
+    }
+  };
+  document.addEventListener("pointerup", end);
+  document.addEventListener("pointercancel", end);
+  // Typed values get clamped when the field is committed.
+  document.addEventListener("focusout", (e) => {
+    const input = e.target.closest?.(".scrub-input");
+    if (!input) return;
+    const v = input.value === "" ? Number(input.min) || 0 : Number(input.value);
+    const next = clamp(input, Math.round(v));
+    if (String(next) !== input.value) {
+      input.value = next;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+}
+
+function updateTextPreview() {
+  if (state.pendingDrop?.type !== "text") return;
+  const f = els.contentForm.elements;
+  const preview = f.text;
+  if (!preview) return;
+  preview.style.fontFamily = f.font?.value || "Arial, sans-serif";
+  preview.style.fontSize = `${Number(f.fontSize?.value || 28)}px`;
+  preview.style.fontWeight = f.bold?.checked ? "700" : "500";
+  preview.style.fontStyle = f.italic?.checked ? "italic" : "normal";
+  preview.style.textDecoration = f.underline?.checked ? "underline" : "none";
+  preview.style.textAlign = f.align?.value || "left";
+  syncAlignToggle();
+  autosizeTextPreview();
+}
+const ALIGN_ORDER = ["left", "center", "right"];
+const ALIGN_ICONS = {
+  left: '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M3 10h9M3 15h12"/></svg>',
+  center:
+    '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M5.5 10h9M4 15h12"/></svg>',
+  right:
+    '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 5h14M8 10h9M5 15h12"/></svg>',
+};
+function syncAlignToggle() {
+  const btn = $("#alignToggle");
+  const input = els.contentForm.elements.align;
+  if (!btn || !input) return;
+  const value = ALIGN_ORDER.includes(input.value) ? input.value : "left";
+  if (btn.dataset.state === value) return;
+  btn.dataset.state = value;
+  btn.innerHTML = ALIGN_ICONS[value];
+  btn.setAttribute("aria-label", `Text alignment: ${value}`);
+  btn.dataset.tooltip = `Align: ${value}`;
+}
+// Grow the textarea to fit its content; it starts at the minimum height.
+function autosizeTextPreview() {
+  const ta = els.contentForm.elements.text;
+  if (!ta || ta.tagName !== "TEXTAREA" || !ta.offsetParent) return;
+  ta.style.height = "auto";
+  const cs = getComputedStyle(ta);
+  const border =
+    parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+  ta.style.height = `${ta.scrollHeight + border}px`;
+}
+function openContentModal(pending) {
+  if (state.section !== "dashboard" || $("#submissionModal").open) return;
+  state.editingId = null;
+  $("#deleteContentButton").hidden = true;
+  $("#saveContentButton").textContent = "Add content";
+  revokePreviewUrls();
+  state.pendingDrop = { ...pending, files: [...(pending.files || [])] };
+  state.pendingThumbnail = null;
+  state.pendingTags = [];
+  els.contentForm.reset();
+  els.dynamicFields.replaceChildren();
+  els.contentForm.elements.type.value = pending.type;
+  els.contentTypeEyebrow.textContent = `${pending.type} content`;
+  els.contentModalTitle.textContent = `Add ${pending.type}`;
+  refreshDynamicFields();
+  renderTagEditor();
+  els.contentModal.showModal();
+  if (pending.type === "text") updateTextPreview();
+}
+
+function openEditModal(tileId) {
+  const tile = state.tiles.find((t) => t.id === tileId);
+  if (!tile) return;
+  openContentModal({ ...tile, text: displayText(tile) });
+  state.editingId = tile.id;
+  state.pendingThumbnail = tile.thumbnail || null;
+  state.pendingTags = [...(tile.tags || [])];
+  const f = els.contentForm.elements;
+  for (const name of ["label", "description", "location", "size", "orientation"])
+    if (tile[name] != null) f[name].value = tile[name];
+  refreshDynamicFields();
+  if (tile.type === "text") {
+    const style = tile.textStyle || {};
+    for (const name of ["font", "fontSize", "align"])
+      if (style[name] != null) f[name].value = style[name];
+    // Preserve previously saved custom fonts in the editor as well.
+    if (style.font && !f.font.value) {
+      const option = document.createElement("option");
+      option.value = style.font;
+      option.textContent = style.font;
+      f.font.append(option);
+      f.font.value = style.font;
+    }
+    for (const name of ["bold", "italic", "underline"])
+      f[name].checked = !!style[name];
+    updateTextPreview();
+  }
+  renderTagEditor();
+  els.contentModalTitle.textContent = `Edit ${tile.type}`;
+  $("#deleteContentButton").hidden = false;
+  $("#saveContentButton").textContent = "Save changes";
+}
+function setContentBusy(busy) {
+  state.savingContent = busy;
+  $("#saveContentButton").disabled = busy;
+  $("#deleteContentButton").disabled = busy;
+}
+async function handleContentSubmit(event) {
+  event.preventDefault();
+  if (state.savingContent) return;
+  const type = state.pendingDrop?.type;
+  if (type === "media") {
+    toast("Choose, drop, or paste media first", "error");
+    return;
+  }
+  if (
+    ["image", "video", "audio", "font", "file"].includes(type) &&
+    !pendingFiles().length
+  ) {
+    toast("Choose at least one file", "error");
+    return;
+  }
+  commitTagInput();
+  const form = new FormData(els.contentForm),
+    editingId = state.editingId;
+  form.set("section", state.tiles.find((tile) => tile.id === editingId)?.section || state.section);
+  if (type === "link") form.set("url", normalizeUrl(form.get("url")));
+  form.set(
+    "existingFiles",
+    JSON.stringify(pendingFiles().filter((file) => typeof file === "string")),
+  );
+  pendingFiles()
+    .filter((file) => typeof file !== "string")
+    .forEach((file) => form.append("draggedFiles[]", file));
+  form.set(
+    "existingThumbnail",
+    typeof state.pendingThumbnail === "string" ? state.pendingThumbnail : "",
+  );
+  if (state.pendingThumbnail && typeof state.pendingThumbnail !== "string")
+    form.set(
+      "thumbnail",
+      state.pendingThumbnail,
+      state.pendingThumbnail.name || "thumbnail.png",
+    );
+  form.set("tags", state.pendingTags.join(","));
+  if (editingId) form.set("id", editingId);
+  if (!beginSubmission(editingId ? "Saving..." : "Adding...")) return;
+  setContentBusy(true);
+  try {
+    const tile = await (editingId
+      ? api.updateTile(form)
+      : api.createTile(form));
+    if (editingId)
+      state.tiles = state.tiles.map((t) => (t.id === editingId ? tile : t));
+    else state.tiles.unshift(tile);
+    els.contentModal.close();
+    state.pendingDrop = null;
+    revokePreviewUrls();
+    renderTiles();
+    renderBookmarks();
+    toast(editingId ? "Content updated" : "Content added");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    setContentBusy(false);
+    endSubmission();
+  }
+}
+async function deleteEditingContent() {
+  const id = state.editingId;
+  if (
+    !id ||
+    state.savingContent ||
+    !confirm("Delete this content and remove it from all collections?")
+  )
+    return;
+  setContentBusy(true);
+  try {
+    await api.deleteTile(id);
+    state.tiles = state.tiles.filter((t) => t.id !== id);
+    state.collections.forEach(
+      (c) => (c.items = c.items.filter((item) => item !== id)),
+    );
+    els.contentModal.close();
+    renderTiles();
+    renderBookmarks();
+    toast("Content deleted");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    setContentBusy(false);
+  }
+}
+async function downloadContent() {
+  const button = $("#downloadContentButton");
+  button.disabled = true;
+  button.textContent = "Preparing download…";
+  try {
+    const blob = await api.downloadContent();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `hub-content-${new Date().toISOString().slice(0, 10)}.zip`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Download Content";
+  }
+}
+async function persistCollections() {
+  try {
+    await api.saveCollections(state.collections);
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function viewerMediaMarkup(tile) {
+  if (tile.type === "image")
+    return `<div class="viewer-gallery">${(tile.files || []).map((src) => `<img src="${escapeHtml(src)}" alt="${escapeHtml(tile.label || "Image")}" />`).join("")}</div>`;
+  if (tile.type === "video" && tile.files?.[0])
+    return `<video src="${escapeHtml(tile.files[0])}" controls autoplay playsinline></video>`;
+  if (tile.type === "audio" && tile.files?.[0])
+    return `<div class="viewer-audio">${tile.thumbnail ? `<img src="${escapeHtml(tile.thumbnail)}" alt="">` : ""}<audio src="${escapeHtml(tile.files[0])}" controls autoplay></audio></div>`;
+  if (tile.type === "text") {
+    const s = tile.textStyle || {};
+    return `<div class="viewer-text" style="font-family:${escapeHtml(s.font || "inherit")};font-size:${Number(s.fontSize || 28)}px;font-weight:${s.bold ? 700 : 500};font-style:${s.italic ? "italic" : "normal"};text-decoration:${s.underline ? "underline" : "none"};text-align:${escapeHtml(s.align || "left")}"><span class="text-content">${escapeHtml(displayText(tile))}</span></div>`;
+  }
+  if (tile.files?.[0])
+    return `<div class="viewer-file"><div class="file-symbol">${tile.type === "font" ? "Aa" : "↗"}</div><a class="btn btn--primary" href="${escapeHtml(tile.files[0])}" target="_blank" rel="noreferrer">Open file</a></div>`;
+  return "";
+}
+function viewerPropertiesMarkup(tile) {
+  const date = tile.dateAdded || tile.createdAt;
+  let html = `<dl class="viewer-properties"><dt>Date added</dt><dd>${escapeHtml(date ? new Date(date).toLocaleString("en-AU") : "Unavailable")}</dd>${tile.location ? `<dt>Location</dt><dd>${escapeHtml(tile.location)}</dd>` : ""}</dl>`;
+  if (["image", "video"].includes(tile.type)) html += (tile.files || []).map((file, i) => {
+    const m = tile.fileMetadata?.[file] || {};
+    return `<div class="media-properties" data-media-index="${i}">${tile.files.length > 1 ? `<h3>File ${i + 1}</h3>` : ""}<dl class="viewer-properties"><dt>Dimensions</dt><dd data-dimensions>${m.width && m.height ? `${m.width} × ${m.height} px` : "Unavailable"}</dd><dt>DPI</dt><dd>${escapeHtml(m.dpi || (tile.type === "video" ? "Not applicable" : "Unavailable"))}</dd><dt>Date taken</dt><dd>${escapeHtml(m.dateTaken || "Unavailable")}</dd></dl></div>`;
+  }).join("");
+  return html;
+}
+function viewerFontLinkMarkup(tile) {
+  const font = tile.type === "text" ? fontForTile(tile) : null;
+  if (!font) return "";
+  const download = font.originalName || `${font.name}.${font.ext}`;
+  return `<div class="viewer-font"><div class="eyebrow">Font used</div><a class="viewer-font-link" href="${escapeHtml(encodeURI(font.file))}" download="${escapeHtml(download)}"><span>${escapeHtml(font.name)}</span><small>Download .${escapeHtml(font.ext)}</small></a></div>`;
+}
+function viewerDownloadMarkup(tile) {
+  if (!tile.files?.length || ["text", "link"].includes(tile.type)) return "";
+  const zipped = tile.files.length > 1 || /\.(?:[cm]?js|jsx)$/i.test(tile.files[0]);
+  return `<a class="btn btn--primary viewer-download" href="api.php?action=tiles.download&amp;id=${encodeURIComponent(tile.id)}" download>${zipped ? "Download ZIP" : "Download"}</a>`;
+}
+function openViewer(tile) {
+  els.viewerMedia.innerHTML = viewerMediaMarkup(tile);
+  els.viewerMedia.classList.toggle("viewer-media--text-background", tile.type === "text" && !!tile.thumbnail);
+  if (tile.type === "text" && tile.thumbnail) {
+    const background = document.createElement("img");
+    background.className = "viewer-text-background";
+    background.src = tile.thumbnail;
+    background.alt = "";
+    els.viewerMedia.prepend(background);
+  }
+  els.viewerMeta.innerHTML = `<div class="eyebrow">${escapeHtml(tile.type)}</div><h2>${escapeHtml(tile.label || defaultTileLabel(tile))}</h2>${tile.description ? `<p>${escapeHtml(tile.description)}</p>` : ""}${tile.tags?.length ? `<div class="viewer-tags">${tile.tags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${tile.metadataTags?.length ? `<div class="viewer-tags metadata-tags">${tile.metadataTags.map(t => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${viewerPropertiesMarkup(tile)}${viewerFontLinkMarkup(tile)}${viewerDownloadMarkup(tile)}`;
+  $$("img, video", els.viewerMedia).forEach((media, i) => {
+    const update = () => {
+      const value = els.viewerMeta.querySelector(`[data-media-index="${i}"] [data-dimensions]`);
+      const w = media.naturalWidth || media.videoWidth, h = media.naturalHeight || media.videoHeight;
+      if (value && w && h) value.textContent = `${w} × ${h} px`;
+    };
+    media.addEventListener(media.tagName === "VIDEO" ? "loadedmetadata" : "load", update);
+    update();
+  });
+  els.mediaViewer.showModal();
+}
+function activateTile(tileId) {
+  const tile = state.tiles.find((t) => t.id === tileId);
+  if (!tile) return;
+  if (tile.type === "link" && tile.url) {
+    window.open(tile.url, "_blank", "noopener,noreferrer");
+    return;
+  }
+  if (MEDIA_TYPES.has(tile.type)) openViewer(tile);
+}
+
+function handleModalImages(images) {
+  if (!images.length) return;
+  if (
+    state.pendingDrop.type === "text" ||
+    ["video", "audio", "font", "file", "link"].includes(state.pendingDrop.type)
+  ) {
+    state.pendingThumbnail = images[0];
+    refreshDynamicFields();
+    return;
+  }
+  if (state.pendingDrop.type === "media")
+    state.pendingDrop = { type: "image", files: [] };
+  if (state.pendingDrop.type === "image") {
+    state.pendingDrop.files.push(...images);
+    refreshDynamicFields();
+  }
+}
+function handleModalFiles(files) {
+  const images = files.filter((f) => f.type.startsWith("image/"));
+  if (state.pendingDrop.type === "text") {
+    if (images[0]) {
+      state.pendingThumbnail = images[0];
+      refreshDynamicFields();
+    }
+    return;
+  }
+  if (state.pendingDrop.type === "image") {
+    if (images.length) {
+      state.pendingDrop.files.push(...images);
+      refreshDynamicFields();
+    } else toast("Only images can be added to this gallery", "error");
+    return;
+  }
+  if (state.pendingDrop.type === "media") {
+    const detected = detectFiles(files);
+    if (detected) {
+      state.pendingDrop = detected;
+      refreshDynamicFields();
+    }
+    return;
+  }
+  if (images.length) {
+    state.pendingThumbnail = images[0];
+    refreshDynamicFields();
+    return;
+  }
+  const matching = files.filter(
+    (f) => detectFileType(f) === state.pendingDrop.type,
+  );
+  if (matching.length) {
+    state.pendingDrop.files.push(...matching);
+    refreshDynamicFields();
+  } else toast("Choose a file matching this content type", "error");
+}
+
+function folderAtPoint(x, y) {
+  const el = document
+    .elementFromPoint(x, y)
+    ?.closest?.("[data-collection-drop],.collection-folder");
+  if (!el) return null;
+  return el.dataset.collectionDrop || el.dataset.collectionId || null;
+}
+async function addTileToCollection(tileId, collectionId) {
+  const target = state.collections.find((c) => c.id === collectionId);
+  if (!target) return;
+  target.items ||= [];
+  if (!target.items.includes(tileId)) target.items.push(tileId);
+  target.collapsed = false;
+  renderBookmarks();
+  await persistCollections();
+  toast(`Added to ${target.name}`);
+}
+function clearCollectionHighlights() {
+  $$(".collection-folder").forEach((el) =>
+    el.classList.remove("is-tile-hover"),
+  );
+}
+function setupTileDrag() {
+  let drag = null;
+  let suppressClick = false;
+  let clickResetTimer;
+  const DETACH = 8;
+  const cleanup = () => {
+    if (!drag) return;
+    const current = drag;
+    drag = null;
+    clearCollectionHighlights();
+    current.ghost?.remove();
+    current.source.classList.remove("is-source-dragging", "is-detach-jiggle");
+    document.body.classList.remove("is-tile-dragging");
+    if (current.source.hasPointerCapture?.(current.pointerId))
+      current.source.releasePointerCapture(current.pointerId);
+  };
+  const resetClickSoon = () => {
+    clearTimeout(clickResetTimer);
+    // The pointerup click follows synchronously; don't swallow the next real click.
+    clickResetTimer = setTimeout(() => {
+      suppressClick = false;
+    }, 0);
+  };
+  document.addEventListener("pointerdown", (e) => {
+    const source = e.target.closest?.("[data-tile-id]");
+    if (
+      state.section !== "dashboard" ||
+      drag ||
+      !source ||
+      e.button !== 0 ||
+      e.isPrimary === false ||
+      e.target.closest("button,a,input,textarea,select")
+    )
+      return;
+    clearTimeout(clickResetTimer);
+    suppressClick = false;
+    const rect = source.getBoundingClientRect();
+    drag = {
+      source,
+      id: source.dataset.tileId,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      w: rect.width,
+      h: rect.height,
+      detached: false,
+      hoverId: null,
+    };
+    source.setPointerCapture?.(e.pointerId);
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (!drag.detached) {
+      if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < DETACH)
+        return;
+      drag.detached = true;
+      document.body.classList.add("is-tile-dragging");
+      suppressClick = true;
+      const ghost = drag.source.cloneNode(true);
+      ghost.classList.add("tile-ghost");
+      ghost.removeAttribute("data-tile-id");
+      ghost.removeAttribute("tabindex");
+      ghost.setAttribute("aria-hidden", "true");
+      ghost.inert = true;
+      ghost.querySelector(".tile-actions")?.remove();
+      Object.assign(ghost.style, {
+        position: "fixed",
+        left: "0",
+        top: "0",
+        width: "80px",
+        height: "80px",
+        margin: "0",
+        zIndex: "220",
+        pointerEvents: "none",
+        // Position before insertion: never paint a frame at the viewport origin.
+        transform: `translate3d(${e.clientX}px,${e.clientY}px,0)`,
+      });
+      drag.ghost = ghost;
+      document.body.appendChild(ghost);
+      ghost.animate(
+        [
+          {
+            width: `${drag.w}px`,
+            height: `${drag.h}px`,
+            left: `${-drag.offsetX}px`,
+            top: `${-drag.offsetY}px`,
+          },
+          { width: "80px", height: "80px", left: "-40px", top: "-40px" },
+        ],
+        {
+          duration: matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? 0
+            : 220,
+          easing: "cubic-bezier(.2,.8,.2,1)",
+          fill: "forwards",
+        },
+      );
+      drag.source.classList.add("is-source-dragging", "is-detach-jiggle");
+    }
+    e.preventDefault();
+    drag.ghost.style.transform = `translate3d(${e.clientX}px,${e.clientY}px,0)`;
+    const cid = folderAtPoint(e.clientX, e.clientY);
+    if (cid !== drag.hoverId) {
+      clearCollectionHighlights();
+      if (cid)
+        document
+          .querySelector(`[data-collection-id="${CSS.escape(cid)}"]`)
+          ?.classList.add("is-tile-hover");
+      drag.hoverId = cid;
+    }
+  });
+  document.addEventListener("pointerup", async (e) => {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const id = drag.id;
+    const cid = drag.detached ? folderAtPoint(e.clientX, e.clientY) : null;
+    cleanup();
+    resetClickSoon();
+    if (cid) {
+      try {
+        await addTileToCollection(id, cid);
+      } catch (error) {
+        toast(error.message || "Could not save collection", "error");
+      }
+    }
+  });
+  const cancel = (e) => {
+    if (!drag || (e.pointerId != null && e.pointerId !== drag.pointerId))
+      return;
+    cleanup();
+    resetClickSoon();
+  };
+  document.addEventListener("pointercancel", cancel);
+  document.addEventListener("lostpointercapture", cancel);
+  window.addEventListener("blur", cancel);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") cancel(e);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) cancel({});
+  });
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (!suppressClick || e.detail === 0) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      suppressClick = false;
+    },
+    true,
+  );
+}
+function setupDragAndDrop() {
+  let dragDepth = 0;
+  let nativeInternalDrag = false;
+  const isInternalDrag = (e) =>
+    state.section !== "dashboard" ||
+    $("#submissionModal").open ||
+    nativeInternalDrag ||
+    document.body.classList.contains("is-tile-dragging") ||
+    [...(e.dataTransfer?.types || [])].some(
+      (type) =>
+        type === "application/x-comma-collection" ||
+        type === "application/x-comma-collection-item",
+    );
+  const hideImportOverlay = () => {
+    dragDepth = 0;
+    els.dragOverlay.classList.remove("is-visible");
+  };
+  // Capture native image/link/selection drags before any import listeners run.
+  document.addEventListener(
+    "dragstart",
+    (e) => {
+      hideImportOverlay();
+      if (e.target.closest?.("[data-tile-id],.tile-ghost")) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
+      nativeInternalDrag = true;
+    },
+    true,
+  );
+  window.addEventListener("dragend", () => {
+    nativeInternalDrag = false;
+    hideImportOverlay();
+  });
+  window.addEventListener("blur", () => {
+    nativeInternalDrag = false;
+    hideImportOverlay();
+  });
+  // Keep internal drags out of modal import handlers as well as the page overlay.
+  for (const type of ["dragenter", "dragover", "drop"]) {
+    window.addEventListener(
+      type,
+      (e) => {
+        if (!isInternalDrag(e)) return;
+        e.preventDefault();
+        hideImportOverlay();
+        if (!els.bookmarks.contains(e.target)) e.stopPropagation();
+      },
+      true,
+    );
+  }
+  window.addEventListener("dragenter", (e) => {
+    if (
+      isInternalDrag(e) ||
+      els.contentModal.open ||
+      els.topLinkModal.open ||
+      $(".collection-folder.is-dragging") ||
+      $(".bookmark-item.is-dragging")
+    )
+      return;
+    e.preventDefault();
+    dragDepth++;
+    els.dragOverlay.classList.add("is-visible");
+  });
+  window.addEventListener("dragover", (e) => {
+    if (
+      isInternalDrag(e) ||
+      els.contentModal.open ||
+      els.topLinkModal.open ||
+      $(".collection-folder.is-dragging") ||
+      $(".bookmark-item.is-dragging")
+    )
+      return;
+    e.preventDefault();
+  });
+  window.addEventListener("dragleave", () => {
+    dragDepth--;
+    if (dragDepth <= 0) {
+      dragDepth = 0;
+      els.dragOverlay.classList.remove("is-visible");
+    }
+  });
+  window.addEventListener("drop", (e) => {
+    if (
+      isInternalDrag(e) ||
+      els.contentModal.open ||
+      els.topLinkModal.open ||
+      $(".collection-folder.is-dragging") ||
+      $(".bookmark-item.is-dragging")
+    )
+      return;
+    e.preventDefault();
+    dragDepth = 0;
+    els.dragOverlay.classList.remove("is-visible");
+    const pending = detectDrop(e.dataTransfer);
+    pending
+      ? openContentModal(pending)
+      : toast("That drop type is not supported", "error");
+  });
+  document.addEventListener("dragstart", (e) => {
+    const item = e.target.closest(".bookmark-item");
+    const folder = e.target.closest(".collection-folder");
+    if (item) {
+      e.stopPropagation();
+      item.classList.add("is-dragging");
+      e.dataTransfer.setData(
+        "application/x-comma-collection-item",
+        JSON.stringify({
+          tileId: item.dataset.bookmarkId,
+          collectionId: item.dataset.collectionId,
+        }),
+      );
+    } else if (folder) {
+      folder.classList.add("is-dragging");
+      e.dataTransfer.setData(
+        "application/x-comma-collection",
+        folder.dataset.collectionId,
+      );
+    }
+  });
+  document.addEventListener("dragend", (e) => {
+    e.target.closest(".is-dragging")?.classList.remove("is-dragging");
+    $$(".drop-before,.drop-after").forEach((x) =>
+      x.classList.remove("drop-before", "drop-after"),
+    );
+    clearCollectionHighlights();
+  });
+  els.bookmarks.addEventListener("dragover", (e) => {
+    const folderId = e.dataTransfer.getData("application/x-comma-collection");
+    const itemRaw = e.dataTransfer.getData(
+      "application/x-comma-collection-item",
+    );
+    if (!folderId && !itemRaw) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const folder = e.target.closest(".collection-folder");
+    const item = e.target.closest(".bookmark-item");
+    $$(".drop-before,.drop-after").forEach((x) =>
+      x.classList.remove("drop-before", "drop-after"),
+    );
+    if (folderId && folder && folder.dataset.collectionId !== folderId) {
+      const r = folder.getBoundingClientRect();
+      folder.classList.add(
+        e.clientY < r.top + r.height / 2 ? "drop-before" : "drop-after",
+      );
+    } else if (itemRaw && item) {
+      const data = JSON.parse(itemRaw);
+      if (item.dataset.bookmarkId !== data.tileId) {
+        const r = item.getBoundingClientRect();
+        item.classList.add(
+          e.clientY < r.top + r.height / 2 ? "drop-before" : "drop-after",
+        );
+      }
+    }
+    folder?.classList.add("is-tile-hover");
+  });
+  els.bookmarks.addEventListener("dragleave", (e) => {
+    if (!els.bookmarks.contains(e.relatedTarget)) clearCollectionHighlights();
+  });
+  els.bookmarks.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearCollectionHighlights();
+    const folderId = e.dataTransfer.getData("application/x-comma-collection");
+    const itemRaw = e.dataTransfer.getData(
+      "application/x-comma-collection-item",
+    );
+    const targetFolder = e.target.closest(".collection-folder");
+    const targetItem = e.target.closest(".bookmark-item");
+    if (folderId) {
+      const from = state.collections.findIndex((c) => c.id === folderId);
+      if (from < 0) return;
+      const [moved] = state.collections.splice(from, 1);
+      let to = targetFolder
+        ? state.collections.findIndex(
+            (c) => c.id === targetFolder.dataset.collectionId,
+          )
+        : state.collections.length;
+      if (targetFolder?.classList.contains("drop-after")) to++;
+      state.collections.splice(Math.max(0, to), 0, moved);
+      renderBookmarks();
+      await persistCollections();
+      return;
+    }
+    if (itemRaw) {
+      const data = JSON.parse(itemRaw);
+      const source = state.collections.find((c) => c.id === data.collectionId);
+      const target = state.collections.find(
+        (c) =>
+          c.id ===
+          (targetFolder?.dataset.collectionId ||
+            targetItem?.dataset.collectionId),
+      );
+      if (!source || !target) return;
+      if (targetItem?.dataset.bookmarkId === data.tileId) return;
+      target.items = target.items.filter((id) => id !== data.tileId);
+      let to = targetItem
+        ? target.items.indexOf(targetItem.dataset.bookmarkId)
+        : target.items.length;
+      if (targetItem?.classList.contains("drop-after")) to++;
+      target.items.splice(Math.max(0, to), 0, data.tileId);
+      target.collapsed = false;
+      renderBookmarks();
+      await persistCollections();
+    }
+  });
+  setupTileDrag();
+}
+
+function bindEvents() {
+  $("#deleteContentButton").addEventListener("click", deleteEditingContent);
+  $("#downloadContentButton").addEventListener("click", downloadContent);
+  els.topLinkModal.addEventListener("close", () => setTopLinkImage());
+  els.topLinkModal.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  els.topLinkModal.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const file = [...e.dataTransfer.files].find((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (file) setTopLinkImage(file);
+  });
+  els.topLinkModal.addEventListener("paste", (e) => {
+    const file = [...e.clipboardData.files].find((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (file) {
+      e.preventDefault();
+      setTopLinkImage(file);
+    }
+  });
+
+  document.addEventListener("click", async (e) => {
+    const tag = e.target.closest("[data-tag]");
+    if (tag) {
+      state.tag = tag.dataset.tag;
+      renderTags();
+      renderTiles();
+      return;
+    }
+    const themeChoice = e.target.closest("[data-theme-choice]");
+    if (themeChoice) {
+      state.settings.theme = themeChoice.dataset.themeChoice;
+      applyTheme();
+      try {
+        saveLocalTheme();
+      } catch (err) {
+        toast(err.message, "error");
+      }
+      return;
+    }
+    const nav = e.target.closest("[data-section]");
+    if (nav?.classList.contains("nav-tab")) {
+      setSection(nav.dataset.section);
+      return;
+    }
+    const deleteTopLink = e.target.closest("[data-delete-top-link]");
+    if (deleteTopLink) {
+      e.preventDefault();
+      if (deleteTopLink.disabled) return;
+      deleteTopLink.disabled = true;
+      try {
+        const id = deleteTopLink.dataset.deleteTopLink;
+        await api.deleteTopLink(id);
+        state.topLinks = state.topLinks.filter((link) => link.id !== id);
+        renderTopLinks();
+        toast("Top link deleted");
+      } catch (err) {
+        deleteTopLink.disabled = false;
+        toast(err.message, "error");
+      }
+      return;
+    }
+    const editTopLink = e.target.closest("[data-edit-top-link]");
+    if (editTopLink || e.target.closest("#addTopLink")) {
+      const link = editTopLink
+        ? state.topLinks.find(
+            (link) => link.id === editTopLink.dataset.editTopLink,
+          )
+        : null;
+      if (editTopLink && !link) return;
+      state.editingTopLinkId = link?.id || null;
+      els.topLinkForm.reset();
+      els.topLinkForm.elements.label.value = link?.label || "";
+      els.topLinkForm.elements.url.value = link?.url || "";
+      $("h2", els.topLinkModal).textContent = link
+        ? "Edit top link"
+        : "Add top link";
+      $('[type="submit"]', els.topLinkForm).textContent = link
+        ? "Save changes"
+        : "Add link";
+      setTopLinkImage(link?.image || null);
+      els.topLinkModal.showModal();
+      return;
+    }
+    if (e.target.closest("#collectionAddButton")) {
+      els.collectionForm.reset();
+      els.collectionModal.showModal();
+      return;
+    }
+    const toggleCollection = e.target.closest("[data-toggle-collection]");
+    if (toggleCollection && !e.target.closest(".bookmark-remove")) {
+      const c = state.collections.find(
+        (x) => x.id === toggleCollection.dataset.toggleCollection,
+      );
+      if (c) {
+        c.collapsed = !c.collapsed;
+        renderBookmarks();
+        await persistCollections();
+      }
+      return;
+    }
+    const close = e.target.closest("[data-close]");
+    if (close) {
+      document.getElementById(close.dataset.close)?.close();
+      return;
+    }
+    const preset = e.target.closest("[data-preset-tag]");
+    if (preset) {
+      addTag(preset.dataset.presetTag);
+      return;
+    }
+    const removeFormTag = e.target.closest("[data-remove-form-tag]");
+    if (removeFormTag) {
+      state.pendingTags = state.pendingTags.filter(
+        (t) => t !== removeFormTag.dataset.removeFormTag,
+      );
+      renderTagEditor();
+      return;
+    }
+    const trigger = e.target.closest("[data-file-trigger]");
+    if (trigger) {
+      document.getElementById(trigger.dataset.fileTrigger)?.click();
+      return;
+    }
+    const galleryAdd = e.target.closest("#galleryAdd");
+    if (galleryAdd) {
+      $("#galleryFileInput")?.click();
+      return;
+    }
+    if (e.target.closest("#topLinkImageAdd")) {
+      $("#topLinkImageInput")?.click();
+      return;
+    }
+    if (e.target.closest("[data-remove-top-link-image]")) {
+      setTopLinkImage();
+      return;
+    }
+    if (e.target.closest("#thumbnailAdd")) {
+      $("#thumbnailPickerInput")?.click();
+      return;
+    }
+    if (e.target.closest("#chooseMediaButton")) {
+      els.contentFilePicker.value = "";
+      els.contentFilePicker.click();
+      return;
+    }
+    const choice = e.target.closest("[data-content-choice]");
+    if (choice) {
+      els.contentTypeModal.close();
+      if (choice.dataset.contentChoice === "media") {
+        openContentModal({ type: "media", files: [] });
+      } else if (choice.dataset.contentChoice === "link") {
+        openContentModal({ type: "link", url: "" });
+      } else {
+        openContentModal({ type: "text", text: "" });
+      }
+      return;
+    }
+    const removePending = e.target.closest("[data-remove-pending-file]");
+    if (removePending) {
+      state.pendingDrop.files.splice(
+        Number(removePending.dataset.removePendingFile),
+        1,
+      );
+      refreshDynamicFields();
+      return;
+    }
+    if (e.target.closest("[data-remove-thumbnail]")) {
+      state.pendingThumbnail = null;
+      refreshDynamicFields();
+      return;
+    }
+    const removeBookmark = e.target.closest("[data-remove-bookmark]");
+    if (removeBookmark) {
+      const c = state.collections.find(
+        (x) => x.id === removeBookmark.dataset.fromCollection,
+      );
+      if (c)
+        c.items = c.items.filter(
+          (id) => id !== removeBookmark.dataset.removeBookmark,
+        );
+      renderBookmarks();
+      await persistCollections();
+      return;
+    }
+    const editTile = e.target.closest("[data-edit-tile]");
+    if (editTile) {
+      e.preventDefault();
+      e.stopPropagation();
+      openEditModal(editTile.dataset.editTile);
+      return;
+    }
+    const saved = e.target.closest("[data-bookmark-id]");
+    if (saved) {
+      activateTile(saved.dataset.bookmarkId);
+      return;
+    }
+    const tile = e.target.closest("[data-tile-id]");
+    if (tile) {
+      activateTile(tile.dataset.tileId);
+    }
+  });
+  document.addEventListener("click", (e) => {
+    if (e.target.closest?.("#fontUploadButton")) {
+      $("#fontFileInput")?.click();
+      return;
+    }
+    const toggle = e.target.closest?.("[data-align-cycle]");
+    if (!toggle) return;
+    const input = els.contentForm.elements.align;
+    if (!input) return;
+    const next =
+      ALIGN_ORDER[(ALIGN_ORDER.indexOf(input.value) + 1) % ALIGN_ORDER.length];
+    input.value = next;
+    updateTextPreview();
+  });
+  initScrubInputs();
+  window.addEventListener("resize", autosizeTextPreview);
+  document.addEventListener("keydown", (e) => {
+    if (
+      e.target === els.tagInput &&
+      (e.key === "Enter" || e.key === "," || e.key === " ")
+    ) {
+      e.preventDefault();
+      commitTagInput();
+    } else if (
+      e.target === els.tagInput &&
+      e.key === "Tab" &&
+      !e.shiftKey &&
+      els.tagInput.value.trim()
+    ) {
+      // Only intercept Tab when there is a tag to complete; otherwise move focus normally.
+      e.preventDefault();
+      commitTagInput();
+    }
+    const tile = e.target.closest?.("[data-tile-id],[data-bookmark-id]");
+    if (tile && e.target === tile && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      activateTile(tile.dataset.tileId || tile.dataset.bookmarkId);
+    }
+  });
+  document.addEventListener("change", async (e) => {
+    if (e.target?.id === "fontFileInput") {
+      const input = e.target;
+      const file = input.files?.[0];
+      input.value = "";
+      if (!file) return;
+      const button = $("#fontUploadButton");
+      button?.setAttribute("disabled", "");
+      try {
+        const font = await api.uploadFont(file);
+        state.fonts.push(font);
+        registerFontFaces();
+        refreshFontSelect(font.family);
+        if (document.fonts?.load) await document.fonts.load(`16px '${font.name}'`).catch(() => {});
+        updateTextPreview();
+        toast(`Font "${font.name}" added`);
+      } catch (error) {
+        toast(error.message, "error");
+      } finally {
+        button?.removeAttribute("disabled");
+      }
+      return;
+    }
+    if (e.target?.id === "topLinkImageInput") {
+      const file = e.target.files?.[0];
+      if (file?.type.startsWith("image/")) setTopLinkImage(file);
+      return;
+    }
+    if (e.target?.id === "galleryFileInput") {
+      state.pendingDrop.files.push(
+        ...[...e.target.files].filter((f) => state.pendingDrop.type === "file" || detectFileType(f) === state.pendingDrop.type),
+      );
+      refreshDynamicFields();
+      return;
+    }
+    if (e.target?.id === "thumbnailPickerInput" && e.target.files?.[0]) {
+      state.pendingThumbnail = e.target.files[0];
+      refreshDynamicFields();
+      return;
+    }
+    if (e.target?.id === "replacementFileInput" && e.target.files?.length) {
+      state.pendingDrop.files = [...e.target.files];
+      refreshDynamicFields();
+      return;
+    }
+    if (e.target?.type === "file") {
+      const label = document.querySelector(`[data-file-name="${e.target.id}"]`);
+      if (label)
+        label.textContent = e.target.files?.length
+          ? [...e.target.files].map((f) => f.name).join(", ")
+          : "No file selected";
+    }
+    if (state.pendingDrop?.type === "text" && e.target.closest("#contentForm"))
+      updateTextPreview();
+  });
+  els.contentForm.addEventListener("input", (e) => {
+    if (
+      state.pendingDrop?.type === "text" &&
+      e.target.matches('[name="text"],[name="fontSize"]')
+    )
+      updateTextPreview();
+  });
+  els.search.addEventListener("input", () => {
+    state.query = els.search.value.trim();
+    els.clearSearch.classList.toggle("is-visible", !!state.query);
+    renderTiles();
+  });
+  els.clearSearch.addEventListener("click", () => {
+    els.search.value = "";
+    state.query = "";
+    els.clearSearch.classList.remove("is-visible");
+    els.search.focus();
+    renderTiles();
+  });
+  els.settingsButton.addEventListener("click", () =>
+    els.settingsModal.showModal(),
+  );
+  els.modeToggle.addEventListener("change", async () => {
+    state.settings.mode = els.modeToggle.checked ? "dark" : "light";
+    applyTheme();
+    try {
+      saveLocalTheme();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  });
+  els.contentAddButton.addEventListener("click", () =>
+    els.contentTypeModal.showModal(),
+  );
+  els.contentFilePicker.addEventListener("change", () => {
+    const pending = detectFiles(els.contentFilePicker.files);
+    if (!pending) return;
+    if (els.contentModal.open && state.pendingDrop?.type === "media") {
+      state.pendingDrop = pending;
+      refreshDynamicFields();
+    } else openContentModal(pending);
+  });
+  els.contentForm.addEventListener("submit", handleContentSubmit);
+  els.topLinkForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const editingId = state.editingTopLinkId;
+    if (!beginSubmission(editingId ? "Saving..." : "Adding...")) return;
+    try {
+      const form = new FormData(els.topLinkForm);
+      form.set("url", normalizeUrl(form.get("url")));
+      form.set(
+        "existingImage",
+        typeof state.pendingTopLinkImage === "string"
+          ? state.pendingTopLinkImage
+          : "",
+      );
+      if (
+        state.pendingTopLinkImage &&
+        typeof state.pendingTopLinkImage !== "string"
+      )
+        form.set("image", state.pendingTopLinkImage);
+      if (editingId) form.set("id", editingId);
+      const link = await (editingId
+        ? api.updateTopLink(form)
+        : api.createTopLink(form));
+      if (editingId)
+        state.topLinks = state.topLinks.map((item) =>
+          item.id === editingId ? link : item,
+        );
+      else state.topLinks.push(link);
+      renderTopLinks();
+      els.topLinkModal.close();
+      toast(editingId ? "Top link updated" : "Top link added");
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      endSubmission();
+    }
+  });
+
+  els.collectionForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = String(
+      new FormData(els.collectionForm).get("name") || "",
+    ).trim();
+    if (!name) return;
+    if (!beginSubmission()) return;
+    try {
+      const collections = [
+        ...state.collections,
+        {
+          id: `collection-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          name,
+          collapsed: false,
+          items: [],
+        },
+      ];
+      await api.saveCollections(collections);
+      state.collections = collections;
+      renderBookmarks();
+      els.collectionModal.close();
+      toast("Collection created");
+    } catch (error) {
+      toast(error.message, "error");
+    } finally {
+      endSubmission();
+    }
+  });
+  [
+    els.contentTypeModal,
+    els.contentModal,
+    els.topLinkModal,
+    els.settingsModal,
+    els.collectionModal,
+    els.mediaViewer,
+  ].forEach((dialog) =>
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) dialog.close();
+    }),
+  );
+  els.contentModal.addEventListener("dragover", (e) => {
+    if (!state.pendingDrop) return;
+    e.preventDefault();
+    e.stopPropagation();
+    els.contentModal
+      .querySelector(".modal-card")
+      ?.classList.add("is-modal-drop-target");
+  });
+  els.contentModal.addEventListener("dragleave", (e) => {
+    if (!els.contentModal.contains(e.relatedTarget))
+      els.contentModal
+        .querySelector(".modal-card")
+        ?.classList.remove("is-modal-drop-target");
+  });
+  els.contentModal.addEventListener("drop", (e) => {
+    if (!state.pendingDrop) return;
+    e.preventDefault();
+    e.stopPropagation();
+    els.contentModal
+      .querySelector(".modal-card")
+      ?.classList.remove("is-modal-drop-target");
+    const files = [...(e.dataTransfer?.files || [])];
+    if (!files.length) return;
+    handleModalFiles(files);
+  });
+  document.addEventListener("paste", (e) => {
+    if (
+      !els.contentModal.open ||
+      !state.pendingDrop ||
+      !["media", "image", "video", "audio", "font", "file", "text"].includes(
+        state.pendingDrop.type,
+      )
+    )
+      return;
+    const images = [...(e.clipboardData?.files || [])].filter((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (!images.length) return;
+    e.preventDefault();
+    handleModalImages(images);
+  });
+  els.contentModal.addEventListener("close", () => {
+    revokePreviewUrls();
+    state.pendingTags = [];
+    state.pendingThumbnail = null;
+  });
+}
+
+function setupTooltips() {
+  const tip = document.createElement("div");
+  tip.id = "appTooltip";
+  tip.className = "app-tooltip";
+  tip.setAttribute("role", "tooltip");
+  tip.setAttribute("popover", "manual");
+  tip.hidden = true;
+  document.body.append(tip);
+  let owner = null;
+  function hide() {
+    if (owner) {
+      const ids = (owner.getAttribute("aria-describedby") || "")
+        .split(" ")
+        .filter((id) => id && id !== tip.id);
+      if (ids.length) owner.setAttribute("aria-describedby", ids.join(" "));
+      else owner.removeAttribute("aria-describedby");
+    }
+    if (tip.matches(":popover-open")) tip.hidePopover();
+    tip.hidden = true;
+    owner = null;
+  }
+  function show(target) {
+    if (!target) return;
+    hide();
+    owner = target;
+    tip.textContent = target.dataset.tooltip;
+    if (target.dataset.tooltipUrl) {
+      const url = document.createElement("span");
+      url.className = "tooltip-url";
+      url.textContent = target.dataset.tooltipUrl;
+      tip.append(url);
+    }
+    target.setAttribute(
+      "aria-describedby",
+      `${target.getAttribute("aria-describedby") || ""} ${tip.id}`.trim(),
+    );
+    tip.hidden = false;
+    if (tip.showPopover) tip.showPopover();
+    else (target.closest("dialog[open]") || document.body).append(tip);
+    const r = target.getBoundingClientRect(),
+      t = tip.getBoundingClientRect();
+    tip.style.left = `${Math.max(8, Math.min(innerWidth - t.width - 8, r.left + (r.width - t.width) / 2))}px`;
+    tip.style.top = `${Math.max(8, r.bottom + t.height + 10 < innerHeight ? r.bottom + 8 : r.top - t.height - 8)}px`;
+  }
+  document.addEventListener("pointerover", (e) => {
+    const target = e.target.closest("[data-tooltip]");
+    if (target !== owner) show(target);
+  });
+  document.addEventListener("pointerout", (e) => {
+    if (owner && !owner.contains(e.relatedTarget)) hide();
+  });
+  document.addEventListener("focusin", (e) =>
+    show(e.target.closest("[data-tooltip]")),
+  );
+  document.addEventListener("focusout", hide);
+  document.addEventListener("pointerdown", hide);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hide();
+  });
+  document.addEventListener("scroll", hide, true);
+  window.addEventListener("resize", hide);
+}
+
+async function init() {
+  try {
+    Object.assign(state, await api.bootstrap());
+    state.fonts = Array.isArray(state.fonts) ? state.fonts : [];
+    registerFontFaces();
+    ensureCollections();
+  } catch (error) {
+    toast("Could not load PHP data. Serve this folder through PHP.", "error");
+  }
+  loadLocalTheme();
+  updateToday();
+  setInterval(updateToday, 30000);
+  applyTheme();
+  renderAll();
+  bindEvents();
+  setupDragAndDrop();
+  setupTooltips();
+}
+init();

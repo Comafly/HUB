@@ -1,0 +1,11 @@
+.toast-region { position: fixed; right: 20px; bottom: 20px; z-index: 200; display: grid; gap: 8px; pointer-events: none; }
+.toast { min-width: 220px; max-width: 360px; padding: 13px 15px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--text); color: var(--bg); font-size: 12px; font-weight: 800; box-shadow: var(--shadow-soft); opacity: 0; transform: translateY(12px) scale(.96); transition: all var(--speed-med) var(--ease-pop); }.toast.is-visible { opacity: 1; transform: none; }.toast--error { background: var(--danger); color: white; }
+.empty-state { min-height: 320px; border: 1px dashed var(--line-strong); border-radius: var(--radius-md); place-items: center; align-content: center; text-align: center; color: var(--muted); }.empty-state:not([hidden]) { display: grid; }.empty-mark { width: 58px; height: 58px; border: 1px solid var(--line-strong); border-radius: 50%; display:grid;place-items:center;font-size:30px;color:var(--accent-2);}.empty-state h2{color:var(--text);margin:15px 0 4px;font-size:18px}.empty-state p{margin:0;max-width:360px;font-size:12px;line-height:1.5}
+
+/* Shared floating tooltip escapes clipped panes and stacking contexts. */
+[data-tooltip]::after { content: none !important; }
+.app-tooltip { position: fixed; inset: auto; margin: 0; width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 7px 9px; border: 0; border-radius: 8px; background: var(--text); color: var(--bg); font: 700 11px/1.4 Arial, sans-serif; letter-spacing: .04em; pointer-events: none; z-index: 2147483647; box-shadow: var(--shadow-soft); }
+.app-tooltip[hidden] { display: none; }
+.text-content { display: block; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.collection-item { cursor: pointer; }
+.collection-item:focus-visible { outline: 2px solid var(--accent-2); outline-offset: -2px; }
