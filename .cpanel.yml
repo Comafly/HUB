@@ -1,7 +1,11 @@
-index.html
-assets/
-data/
-api.php
-backup.php
-metadata.php
-user.ini
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/brendanjb/public_html/
+    - /bin/cp index.html $DEPLOYPATH
+    - /bin/cp api.php $DEPLOYPATH
+    - /bin/cp backup.php $DEPLOYPATH
+    - /bin/cp metadata.php $DEPLOYPATH
+    - /bin/cp user.ini $DEPLOYPATH
+    - /bin/cp -R assets $DEPLOYPATH
+    - /bin/cp -R data $DEPLOYPATH
