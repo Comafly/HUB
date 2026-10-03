@@ -12,7 +12,7 @@ const CALENDAR_DIR = __DIR__ . '/data';
 require_once __DIR__ . '/metadata.php';
 // Remote media helpers are bundled so a missing optional file cannot break the API.
 /** Fetch only public HTTP(S) addresses, pin DNS, and revalidate each redirect. */
-function fetchPublicMedia(string $url, int $limit = 2097152, bool $headOnly = false): array {
+function fetchPublicMedia(string $url, int $limit = 2097152, bool $headOnly = false, int $timeout = 45): array {
     if (!function_exists('curl_init')) throw new RuntimeException('Remote media requires the PHP cURL extension.');
     for ($redirect = 0; $redirect < 6; $redirect++) {
         $parts = parse_url($url);
@@ -29,7 +29,7 @@ function fetchPublicMedia(string $url, int $limit = 2097152, bool $headOnly = fa
         if (!$ips) throw new RuntimeException('Unable to resolve the media host.');
         $port = $parts['port'] ?? ($parts['scheme'] === 'https' ? 443 : 80);
         $curl = curl_init($url); $body = ''; $headers = []; $tooLarge = false;
-        curl_setopt_array($curl, [CURLOPT_PROXY=>'', CURLOPT_FOLLOWLOCATION=>false, CURLOPT_NOBODY=>$headOnly, CURLOPT_CONNECTTIMEOUT=>10, CURLOPT_TIMEOUT=>45,
+        curl_setopt_array($curl, [CURLOPT_PROXY=>'', CURLOPT_FOLLOWLOCATION=>false, CURLOPT_NOBODY=>$headOnly, CURLOPT_CONNECTTIMEOUT=>10, CURLOPT_TIMEOUT=>$timeout,
             CURLOPT_PROTOCOLS=>CURLPROTO_HTTP | CURLPROTO_HTTPS, CURLOPT_USERAGENT=>'HUB Media/1.0',
             CURLOPT_RESOLVE=>[$host.':'.$port.':'.(str_contains($ips[0], ':') ? '['.$ips[0].']' : $ips[0])],
             CURLOPT_HEADERFUNCTION=>static function($ch, $line) use (&$headers) { $pair = explode(':', $line, 2); if (count($pair) === 2) $headers[strtolower(trim($pair[0]))] = trim($pair[1]); return strlen($line); },
@@ -68,31 +68,105 @@ function socialMediaInfo(string $url): ?array {
     return null;
 }
 
+function publicHttpUrl(string $value): string {
+    $value = trim($value);
+    $parts = parse_url($value);
+    return $parts && in_array(strtolower($parts['scheme'] ?? ''), ['http','https'], true) && !isset($parts['user']) && !isset($parts['pass']) && filter_var($value, FILTER_VALIDATE_URL) ? $value : '';
+}
+
+function absolutePageUrl(string $base, string $value): string {
+    $value = html_entity_decode(trim($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    if ($value === '') return '';
+    if (preg_match('~^[a-z][a-z0-9+.-]*:~i', $value)) return publicHttpUrl($value);
+    $parts = parse_url($base);
+    if (!$parts || empty($parts['host'])) return '';
+    if (str_starts_with($value, '//')) return publicHttpUrl($parts['scheme'].':'.$value);
+    $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+    $path = str_starts_with($value, '/') ? $value : rtrim(dirname($parts['path'] ?? '/'), '/').'/'.$value;
+    // Resolve relative path segments without changing query-string bytes.
+    $pair = explode('?', $path, 2); $segments = [];
+    foreach (explode('/', $pair[0]) as $segment) {
+        if ($segment === '..') array_pop($segments);
+        elseif ($segment !== '' && $segment !== '.') $segments[] = $segment;
+    }
+    return publicHttpUrl($origin.'/'.implode('/', $segments).(isset($pair[1]) ? '?'.$pair[1] : ''));
+}
+
+function cleanPageTitle(string $title): string {
+    $title = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($title), ENT_QUOTES | ENT_HTML5, 'UTF-8')) ?? '');
+    return function_exists('mb_substr') ? mb_substr($title, 0, 500) : substr($title, 0, 500);
+}
+
+function parsePageMetadata(string $html, string $url): array {
+    $title = ''; $poster = ''; $icon = ''; $ogTitle = '';
+    // Read attributes without executing any page scripts or remote XML entities.
+    preg_match_all('~<(meta|link)\b[^>]*>~i', $html, $elements, PREG_SET_ORDER);
+    foreach ($elements as $element) {
+        preg_match_all('~([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))~', $element[0], $matches, PREG_SET_ORDER);
+        $attributes = [];
+        foreach ($matches as $match) $attributes[strtolower($match[1])] = html_entity_decode(($match[2] ?? '') !== '' ? $match[2] : (($match[3] ?? '') !== '' ? $match[3] : ($match[4] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if (strtolower($element[1]) === 'meta') {
+            $key = strtolower($attributes['property'] ?? $attributes['name'] ?? '');
+            if ($key === 'og:title') $ogTitle = $attributes['content'] ?? '';
+            if (in_array($key, ['og:image','twitter:image'], true) && !$poster) $poster = absolutePageUrl($url, $attributes['content'] ?? '');
+        } elseif (!$icon && preg_match('/(?:^|\s)icon(?:\s|$)/i', $attributes['rel'] ?? '')) $icon = absolutePageUrl($url, $attributes['href'] ?? '');
+    }
+    if (preg_match('~<title\b[^>]*>(.*?)</title>~is', $html, $match)) $title = $match[1];
+    return ['title'=>cleanPageTitle($ogTitle ?: $title), 'thumbnail'=>$poster, 'faviconUrl'=>$icon ?: absolutePageUrl($url, '/favicon.ico')];
+}
+
+function urlBackgrounds(): array {
+    $files = glob(__DIR__.'/assets/url-bgs/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE) ?: [];
+    natsort($files);
+    return array_values(array_map(static fn($path) => 'assets/url-bgs/'.basename($path), array_filter($files, 'is_file')));
+}
+
 function resolveSocialMedia(string $url): array {
     if (preg_match('~^https?://(?:vm|vt)\.tiktok\.com/~i', $url)) $url = fetchPublicMedia($url)['url'];
     $info = socialMediaInfo($url);
-    if (!$info) throw new RuntimeException('Use a YouTube, TikTok, or Instagram post URL.');
-    try {
-        if ($info['provider'] === 'tiktok') {
-            $data = json_decode(fetchPublicMedia('https://www.tiktok.com/oembed?url='.rawurlencode($url))['body'], true) ?: [];
-            $info['thumbnail'] = $data['thumbnail_url'] ?? '';
-        } elseif ($info['provider'] === 'instagram') {
-            $token = getenv('HUB_INSTAGRAM_OEMBED_TOKEN');
-            if ($token) {
-                $data = json_decode(fetchPublicMedia('https://graph.facebook.com/instagram_oembed?url='.rawurlencode($info['url']).'&access_token='.rawurlencode($token))['body'], true) ?: [];
-                $info['thumbnail'] = $data['thumbnail_url'] ?? '';
-            }
-            if (!$info['thumbnail']) {
-                $html = fetchPublicMedia($info['url'])['body'];
-                if (class_exists('DOMDocument')) {
-                    $dom = new DOMDocument(); @$dom->loadHTML($html);
-                    foreach ($dom->getElementsByTagName('meta') as $meta) if ($meta->getAttribute('property') === 'og:image') { $info['thumbnail'] = html_entity_decode($meta->getAttribute('content'), ENT_QUOTES); break; }
-                }
-            }
+    if (!$info) throw new RuntimeException('This URL does not provide a supported media embed.');
+    $data = []; $page = null;
+    if ($info['provider'] === 'youtube') {
+        $data = json_decode(fetchPublicMedia('https://www.youtube.com/oembed?format=json&url='.rawurlencode($info['url']))['body'], true) ?: [];
+    } elseif ($info['provider'] === 'tiktok') {
+        $data = json_decode(fetchPublicMedia('https://www.tiktok.com/oembed?url='.rawurlencode($url))['body'], true) ?: [];
+    } else {
+        $token = getenv('HUB_INSTAGRAM_OEMBED_TOKEN');
+        if ($token) $data = json_decode(fetchPublicMedia('https://graph.facebook.com/instagram_oembed?url='.rawurlencode($info['url']).'&access_token='.rawurlencode($token))['body'], true) ?: [];
+        // Public embed pages can supply a poster when oEmbed omits it.
+        $page = fetchPublicMedia($info['embedUrl']);
+        $meta = parsePageMetadata($page['body'], $page['url']);
+        $framePolicy = strtolower($page['headers']['x-frame-options'] ?? '');
+        if (str_contains($page['url'], '/accounts/') || in_array($framePolicy, ['deny','sameorigin'], true) || preg_match("~frame-ancestors\s+'none'~i", $page['headers']['content-security-policy'] ?? '')) throw new RuntimeException('The owner or provider does not allow embedding.');
+        if (!$meta['thumbnail']) {
+            $post = fetchPublicMedia($info['url']);
+            $meta = parsePageMetadata($post['body'], $post['url']);
         }
-    } catch (Throwable $error) { $info['warning'] = 'The provider did not supply a poster. The embed is still available.'; }
-    if (!$info['thumbnail']) $info['warning'] = 'The provider did not supply a poster. Add a thumbnail manually or configure Instagram oEmbed access.';
+        if (!$data) $data = ['html'=>$meta['thumbnail'] ? 'public-embed' : '', 'thumbnail_url'=>$meta['thumbnail'], 'title'=>$meta['title']];
+        if (empty($data['thumbnail_url'])) $data['thumbnail_url'] = $meta['thumbnail'];
+    }
+    if (empty($data['html']) || !empty($data['error']) || !empty($data['error_code'])) throw new RuntimeException('The owner or provider does not allow embedding.');
+    $info['thumbnail'] = publicHttpUrl((string)($data['thumbnail_url'] ?? ''));
+    $info['title'] = cleanPageTitle((string)($data['title'] ?? ''));
+    $info['faviconUrl'] = absolutePageUrl($info['url'], '/favicon.ico');
+    if (!$info['thumbnail']) throw new RuntimeException('The provider did not supply a poster.');
     return $info;
+}
+
+function inspectLinkMetadata(string $url): array {
+    $url = publicHttpUrl($url);
+    if (!$url) throw new RuntimeException('Enter a valid HTTP or HTTPS URL.');
+    $info = socialMediaInfo($url);
+    if ($info && in_array($info['provider'], ['youtube','tiktok'], true)) {
+        try {
+            $endpoint = $info['provider'] === 'youtube' ? 'https://www.youtube.com/oembed?format=json&url=' : 'https://www.tiktok.com/oembed?url=';
+            $data = json_decode(fetchPublicMedia($endpoint.rawurlencode($info['url']), 2097152, false, 12)['body'], true) ?: [];
+            if (!empty($data['title'])) return ['title'=>cleanPageTitle((string)$data['title']), 'faviconUrl'=>absolutePageUrl($info['url'], '/favicon.ico')];
+        } catch (Throwable $error) { /* Fall back to ordinary page metadata. */ }
+    }
+    $page = fetchPublicMedia($url, 2097152, false, 12);
+    $meta = parsePageMetadata($page['body'], $page['url']);
+    return ['title'=>$meta['title'], 'faviconUrl'=>$meta['faviconUrl']];
 }
 
 
@@ -312,6 +386,7 @@ try {
                 return $data;
             });
             $data['calendar'] = calendarPayload();
+            $data['urlBackgrounds'] = urlBackgrounds();
             response($data);
 
         case 'metadata.inspect':
@@ -393,6 +468,9 @@ try {
             mutateData(function (&$data) use ($settings) { $data['settings'] = $settings; });
             response($settings);
 
+        case 'links.inspect':
+            response(inspectLinkMetadata(normalizeUrl((string)(bodyJson()['url'] ?? ''))));
+
         case 'media.inspect':
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('POST required', 405);
             $remote = fetchPublicMedia(normalizeUrl((string)(bodyJson()['url'] ?? '')), 2097152, true);
@@ -458,11 +536,23 @@ try {
             }
             $tile['metadataTags'] = array_values(array_unique($metadataTags));
             if ($thumbPath || $retainedThumbnail) $tile['thumbnail'] = $thumbPath ?: $retainedThumbnail;
-            if (in_array($type, ['text','link'], true)) {
+            if ($type === 'text') {
                 $color = filter_var($input['backgroundColor'] ?? null, FILTER_VALIDATE_INT);
                 $tile['backgroundColor'] = ($color !== false && $color !== null && $color >= 0 && $color <= 8) ? $color : random_int(0, 8);
             }
-            if ($type === 'link') { $tile['url'] = normalizeUrl((string)($input['url'] ?? '')); if (!$tile['url']) fail('A valid URL is required'); }
+            if ($type === 'link') {
+                $tile['url'] = normalizeUrl((string)($input['url'] ?? ''));
+                if (!publicHttpUrl($tile['url'])) fail('A valid HTTP or HTTPS URL is required');
+                $backgrounds = urlBackgrounds();
+                $background = (string)($input['urlBackground'] ?? '');
+                if ($background !== '' && !in_array($background, $backgrounds, true)) fail('Invalid URL background');
+                if (!$background && $backgrounds) $background = $backgrounds[array_rand($backgrounds)];
+                if ($background) $tile['urlBackground'] = $background;
+                $tile['faviconUrl'] = publicHttpUrl((string)($input['faviconUrl'] ?? '')) ?: absolutePageUrl($tile['url'], '/favicon.ico');
+                $tile['linkTitle'] = cleanPageTitle((string)($input['linkTitle'] ?? ''));
+                if (!$tile['label']) $tile['label'] = $tile['linkTitle'] ?: (parse_url($tile['url'], PHP_URL_HOST) ?: $tile['url']);
+                if (!$tile['description']) $tile['description'] = $tile['url'];
+            }
             if ($type === 'link' && !empty($input['embedUrl'])) {
                 $social = socialMediaInfo($tile['url']);
                 if (!$social || $social['embedUrl'] !== $input['embedUrl']) fail('Invalid media embed URL');

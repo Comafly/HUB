@@ -1,14 +1,14 @@
 const API_URL = 'api.php';
 
 async function request(action, options = {}) {
-  const { method = 'GET', body, params = {} } = options;
+  const { method = 'GET', body, params = {}, signal } = options;
   const url = new URL(API_URL, window.location.href);
   url.searchParams.set('action', action);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
   const headers = { Accept: 'application/json' };
   if (typeof body === 'string') headers['Content-Type'] = 'application/json; charset=utf-8';
-  const response = await fetch(url, { method, body, headers, credentials: 'same-origin' });
+  const response = await fetch(url, { method, body, headers, credentials: 'same-origin', signal });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.ok === false) {
     throw new Error(payload.error || (response.status === 403
@@ -79,6 +79,12 @@ function tileRequest(action, form, options = {}) {
 }
 
 export const api = {
+  inspectLink: async (url) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 14000);
+    try { return await request('links.inspect', { method: 'POST', body: JSON.stringify({ url }), signal: controller.signal }); }
+    finally { clearTimeout(timer); }
+  },
   inspectMediaUrl: (url) => request('media.inspect', { method: 'POST', body: JSON.stringify({ url }) }),
   resolveMedia: (url) => request('media.resolve', { method: 'POST', body: JSON.stringify({ url }) }),
   downloadMedia: async (url) => {

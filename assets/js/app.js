@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261003-12";
+import { api } from "./api.js?v=20261003-13";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -128,6 +128,7 @@ const MEDIA_TYPES = new Set([
 ]);
 const state = {
   tiles: [],
+  urlBackgrounds: [],
   topLinks: [],
   bookmarks: [],
   collections: [],
@@ -348,6 +349,22 @@ function tileColor(tile) {
     [...String(tile.id || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TILE_COLOR_COUNT;
   return `var(--tile-color-${Math.max(0, Math.min(TILE_COLOR_COUNT - 1, choice))})`;
 }
+const GLOBE_ICON = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/></svg>';
+function siteFaviconUrl(value) {
+  try { const url = new URL(normalizeUrl(value)); return ['http:', 'https:'].includes(url.protocol) ? `${url.origin}/favicon.ico` : ''; } catch { return ''; }
+}
+function defaultUrlBackground(tile = {}) {
+  const backgrounds = state.urlBackgrounds || [];
+  if (!backgrounds.length) return '';
+  const index = [...String(tile.id || '')].reduce((sum, char) => sum + char.charCodeAt(0), 0) % backgrounds.length;
+  return backgrounds[index];
+}
+function urlBackgroundPickerMarkup() {
+  const selected = state.pendingDrop.urlBackground || defaultUrlBackground(state.pendingDrop);
+  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<div class="url-background-options" role="group" aria-label="URL backgrounds">${(state.urlBackgrounds || []).map((src, i) => `<button type="button" class="tile-color-option url-background-option" data-url-background="${escapeHtml(src)}" aria-label="URL background ${i + 1}" aria-pressed="${!state.pendingThumbnail && selected === src}"><img src="${escapeHtml(src)}" alt="" /></button>`).join('')}</div></div><small>Choose one thumbnail or a background image.</small>`;
+}
+const EMBED_BUTTON_ICON = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4H4v16h16v-8M11 13 21 3M14 3h7v7"/></svg>';
+
 function tileMedia(tile) {
   if (tile.type === "text") {
     const s = tile.textStyle || {};
@@ -376,7 +393,9 @@ function tileMedia(tile) {
   )
     return `<img class="cover" src="${escapeHtml(tile.thumbnail)}" alt="" />`;
   if (tile.type === "link") {
-    return `<div class="link-preview" style="background-color:${tileColor(tile)}">${tile.thumbnail ? `<img class="link-thumbnail" src="${escapeHtml(tile.thumbnail)}" alt="" />` : ""}<div class="link-domain"><img class="link-favicon" src="${escapeHtml(favicon(tile.url))}" alt="" /><span>${escapeHtml(tile.url || "")}</span></div></div>`;
+    const background = tile.thumbnail || tile.urlBackground || defaultUrlBackground(tile);
+    const icon = tile.faviconUrl || siteFaviconUrl(tile.url);
+    return `<div class="link-preview link-preview--site">${background ? `<img class="link-thumbnail" src="${escapeHtml(background)}" alt="" />` : ""}<span class="link-site-icon" aria-label="Website"><span class="link-globe">${GLOBE_ICON}</span>${icon ? `<img class="link-favicon" data-link-favicon src="${escapeHtml(icon)}" alt="" referrerpolicy="no-referrer" />` : ""}</span></div>`;
   }
   return `<div class="file-symbol">${tile.type === "audio" ? "♪" : tile.type === "font" ? "Aa" : "↗"}</div>`;
 }
@@ -386,7 +405,7 @@ function renderTiles() {
   els.tileGrid.innerHTML = items
     .map(
       (tile) =>
-        `<article draggable="false" class="tile tile--${escapeHtml(tile.size || "medium")} tile--${escapeHtml(tile.orientation || "landscape")}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0"><div class="tile-media">${tileMedia(tile)}</div><div class="tile-gradient"></div><div class="tile-actions"><button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit tile" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button></div><div class="tile-content"><h3>${escapeHtml(tile.label || defaultTileLabel(tile))}</h3>${tile.description ? `<p>${escapeHtml(tile.description)}</p>` : ""}</div></article>`,
+        `<article draggable="false" class="tile tile--${escapeHtml(tile.size || "medium")} tile--${escapeHtml(tile.orientation || "landscape")}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0"><div class="tile-media">${tileMedia(tile)}</div><div class="tile-gradient"></div><div class="tile-actions"><button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit tile" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button></div><div class="tile-content"><h3>${escapeHtml(tile.label || defaultTileLabel(tile))}</h3>${(tile.description || (tile.type === "link" ? tile.url : "")) ? `<p>${escapeHtml(tile.description || tile.url)}</p>` : ""}</div></article>`,
     )
     .join("");
   els.emptyState.hidden = state.section !== "dashboard" || items.length > 0;
@@ -524,7 +543,12 @@ function updateSubmissionProgress({ loaded = 0, total = 0, ratio = 0 } = {}) {
   const progress = $("#submissionProgress");
   if (!progress) return;
   progress.hidden = total <= 0;
+  const track = progress.querySelector(".submission-progress-track");
   const pct = Math.max(0, Math.min(100, Math.round((ratio || (total ? loaded / total : 0)) * 100)));
+  if (track) {
+    track.setAttribute("role", "progressbar"); track.setAttribute("aria-label", "Upload progress");
+    track.setAttribute("aria-valuemin", "0"); track.setAttribute("aria-valuemax", "100"); track.setAttribute("aria-valuenow", String(pct));
+  }
   $("#submissionProgressBar").style.width = `${pct}%`;
   $("#submissionProgressAmount").textContent = `${formatUploadBytes(loaded)} / ${formatUploadBytes(total)}`;
   $("#submissionProgressPercent").textContent = `${pct}%`;
@@ -1085,7 +1109,7 @@ function fieldMarkup(type, pending = {}) {
   if (type === "media")
     return `<div class="field field--wide"><span>Media</span><div class="media-empty-drop"><strong>Drop media here</strong><small>Drag files into this modal, paste an image, or choose files manually.</small><button class="upload-button" type="button" id="chooseMediaButton"><span class="upload-button-icon">＋</span><span>Choose media</span></button></div></div>`;
   if (type === "link")
-    return `<label class="field field--wide"><span>URL</span><input name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(pending.url || "")}" /></label><div class="field field--wide"><span>Thumbnail image / colour</span>${tileBackgroundPickerMarkup()}</div>`;
+    return `<div class="field field--wide"><label for="contentUrlInput">URL</label><div class="url-input-row"><input id="contentUrlInput" name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(pending.url || "")}" /><button type="button" id="embedUrlButton" class="icon-btn embed-url-button" aria-label="Embed media and fetch thumbnail" data-tooltip="Embed media / fetch thumbnail" ${!pending.url?.trim() || state.savingContent ? 'disabled' : ''}>${EMBED_BUTTON_ICON}</button></div></div><div class="field field--wide"><span>Thumbnail image / background</span>${urlBackgroundPickerMarkup()}</div>`;
   if (type === "text")
     return `<div class="text-format-row"><div class="field text-font-field"><span>Font</span><div class="font-picker-row"><select name="font">${fontOptionsMarkup()}</select><button type="button" class="font-upload-btn" id="fontUploadButton" aria-label="Upload a font file" data-tooltip="Upload font">${FONT_UPLOAD_ICON}</button></div><input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2,.ttc,.otc,.eot" hidden /></div><label class="field text-size-field"><span>Size</span><input name="fontSize" class="scrub-input" type="number" min="12" max="96" value="28" /></label><div class="field text-style-field"><span>Style</span><div class="format-row"><label class="format-toggle"><input name="bold" type="checkbox" /><span>B</span></label><label class="format-toggle"><input name="italic" type="checkbox" /><span><i>I</i></span></label><label class="format-toggle"><input name="underline" type="checkbox" /><span><u>U</u></span></label><input name="align" type="hidden" value="left" /><button type="button" class="align-toggle" id="alignToggle" data-align-cycle aria-label="Text alignment: left" data-tooltip="Align: left"></button></div></div></div><label class="field field--wide"><span>Text</span><textarea class="text-live-preview-input" name="text" rows="1" required placeholder="Type text for your tile preview...">${escapeHtml(pending.text || "")}</textarea></label><div class="field field--wide"><span>Thumbnail image / colour</span>${tileBackgroundPickerMarkup()}</div>`;
   if (type === "image")
@@ -1133,6 +1157,7 @@ function refreshDynamicFields() {
     }
   }
   if (state.pendingDrop.type === "text") updateTextPreview();
+  syncEmbedButton();
 }
 
 // Number fields: click to select + type; click-and-drag left/right to decrease/increase.
@@ -1215,7 +1240,7 @@ function updateTextPreviewBackground() {
 }
 
 function selectTileBackground(index) {
-  if (!["text", "link"].includes(state.pendingDrop?.type) ||
+  if (state.pendingDrop?.type !== "text" ||
       !Number.isInteger(index) || index < 0 || index >= TILE_COLOR_COUNT) return;
   const scrollTop = els.contentForm.scrollTop;
   state.pendingDrop.backgroundColor = state.pendingDrop.backgroundColor === index ? null : index;
@@ -1283,7 +1308,7 @@ async function openContentModal(pending, editing = false) {
   $("#deleteContentButton").hidden = true;
   $("#saveContentButton").textContent = "Add content";
   revokePreviewUrls();
-  state.pendingDrop = { ...pending, checkedUrl: editing ? pending.url : undefined, files: [...(pending.files || [])] };
+  state.pendingDrop = { ...pending, autoLabel: !editing || !pending.label || pending.label === pending.linkTitle || pending.label === safeHostname(pending.url), autoDescription: !editing || !pending.description || pending.description === pending.url, checkedUrl: editing ? pending.url : undefined, files: [...(pending.files || [])] };
   state.pendingThumbnail = null;
   state.pendingTags = [];
   els.contentForm.reset();
@@ -1295,7 +1320,7 @@ async function openContentModal(pending, editing = false) {
   renderTagEditor();
   els.contentModal.showModal();
   if (pending.type === "text") updateTextPreview();
-  if (pending.type === "link" && pending.url && !editing) await processContentUrl();
+  if (pending.type === "link" && !editing) { contentUrlChanged(); if (pending.url) await processContentUrl(); }
 }
 
 async function openEditModal(tileId) {
@@ -1329,48 +1354,132 @@ async function openEditModal(tileId) {
   els.contentModalTitle.textContent = `Edit ${tile.type}`;
   $("#deleteContentButton").hidden = false;
   $("#saveContentButton").textContent = "Save changes";
+  if (tile.type === "link") contentUrlChanged();
 }
 let urlProcessing = null;
+let linkMetadataTimer;
+const EMBED_FAILURE_MESSAGE = "We couldn't get the poster, or the user does not allow embedding. This is now a regular URL link.";
+function currentContentUrl() { return normalizeUrl(els.contentForm.elements.url?.value || ''); }
+function syncEmbedButton() {
+  const button = $('#embedUrlButton');
+  if (button) button.disabled = !els.contentForm.elements.url?.value.trim() || state.savingContent;
+}
+function applyLinkDetails(draft, info) {
+  if (info.title) {
+    draft.linkTitle = info.title;
+    if (draft.autoLabel || !els.contentForm.elements.label.value.trim()) els.contentForm.elements.label.value = info.title;
+  }
+  if (info.faviconUrl) draft.faviconUrl = info.faviconUrl;
+}
+function fetchLinkDetails(draft = state.pendingDrop) {
+  if (!draft || draft.type !== 'link') return Promise.resolve();
+  const url = currentContentUrl();
+  if (!url) return Promise.resolve();
+  if (draft.detailsUrl === url) return draft.detailsPromise || Promise.resolve();
+  draft.detailsUrl = url;
+  const revision = (draft.detailsRevision || 0) + 1; draft.detailsRevision = revision;
+  draft.detailsPromise = api.inspectLink(url).then(info => {
+    if (state.pendingDrop === draft && els.contentModal.open && currentContentUrl() === url && draft.detailsRevision === revision) applyLinkDetails(draft, info);
+  }).catch(() => { /* Title discovery is optional; a regular URL remains saveable. */ });
+  return draft.detailsPromise;
+}
+function contentUrlChanged() {
+  if (state.pendingDrop?.type !== 'link') return;
+  const draft = state.pendingDrop, url = currentContentUrl();
+  if (draft.url !== url) {
+    draft.embedUrl = ''; draft.provider = ''; draft.linkTitle = ''; draft.faviconUrl = '';
+    draft.checkedUrl = undefined; draft.detailsUrl = undefined;
+  }
+  draft.url = url;
+  if (draft.autoDescription || !els.contentForm.elements.description.value.trim()) els.contentForm.elements.description.value = url;
+  if (!url && draft.autoLabel) els.contentForm.elements.label.value = '';
+  syncEmbedButton();
+  clearTimeout(linkMetadataTimer);
+  if (url) linkMetadataTimer = setTimeout(() => fetchLinkDetails(draft), 450);
+}
+function setEmbedProgress(ratio, message) {
+  $('#submissionMessage').textContent = message;
+  $('#submissionProgress').hidden = false;
+  $('#submissionProgressBar').style.width = `${Math.round(ratio * 100)}%`;
+  $('#submissionProgressAmount').textContent = message;
+  $('#submissionProgressPercent').textContent = `${Math.round(ratio * 100)}%`;
+  const track = $('#submissionProgress .submission-progress-track');
+  track.setAttribute('role', 'progressbar'); track.setAttribute('aria-label', 'Embedding progress');
+  track.setAttribute('aria-valuemin', '0'); track.setAttribute('aria-valuemax', '100'); track.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+}
+async function embedContentUrl() {
+  const draft = state.pendingDrop, url = currentContentUrl();
+  if (!draft || draft.type !== 'link' || !url || state.savingContent) return;
+  clearTimeout(linkMetadataTimer);
+  if (!beginSubmission('Fetching embed data...')) return;
+  const started = performance.now();
+  setContentBusy(true);
+  draft.embedUrl = ''; draft.provider = '';
+  draft.detailsRevision = (draft.detailsRevision || 0) + 1; draft.detailsUrl = undefined;
+  let succeeded = false;
+  try {
+    setEmbedProgress(.15, 'Fetching embed data...');
+    const info = await api.resolveMedia(url);
+    if (!info.embedUrl || !info.thumbnail || info.warning) throw new Error('No supported embed or poster was returned.');
+    setEmbedProgress(.5, 'Downloading poster...');
+    let file = await api.downloadMedia(info.thumbnail);
+    if (file.size > IMAGE_LIMIT) file = await compressImage(file, ratio => setEmbedProgress(.55 + .4 * ratio, 'Preparing poster...'));
+    if (!file.type.startsWith('image/')) throw new Error('The poster is not an image.');
+    // Decode before committing, so an invalid or blocked poster rolls back the embed.
+    const posterUrl = URL.createObjectURL(file);
+    try { const image = new Image(); image.src = posterUrl; await image.decode(); }
+    finally { URL.revokeObjectURL(posterUrl); }
+    if (state.pendingDrop !== draft || !els.contentModal.open || currentContentUrl() !== url) throw new Error('The URL changed while embedding.');
+    draft.url = info.url || url; draft.embedUrl = info.embedUrl; draft.provider = info.provider || '';
+    draft.checkedUrl = draft.url;
+    if (info.title) { draft.detailsUrl = draft.url; draft.detailsPromise = Promise.resolve(); }
+    els.contentForm.elements.url.value = draft.url;
+    if (draft.autoDescription) els.contentForm.elements.description.value = draft.url;
+    applyLinkDetails(draft, info);
+    state.pendingThumbnail = file;
+    refreshDynamicFields();
+    succeeded = true;
+    setEmbedProgress(1, 'Embed and poster ready');
+  } catch (error) {
+    if (state.pendingDrop === draft) {
+      draft.embedUrl = ''; draft.provider = '';
+      state.pendingThumbnail = null;
+      refreshDynamicFields();
+    }
+    setEmbedProgress(1, 'Keeping a regular URL link');
+  } finally {
+    const remaining = 2000 - (performance.now() - started);
+    if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining));
+    endSubmission(); setContentBusy(false);
+    if (!succeeded) toast(EMBED_FAILURE_MESSAGE, 'error');
+  }
+}
+// Direct-media conversion retains its own confirmation; embedding is button-only.
 async function processContentUrl() {
   if (urlProcessing) return urlProcessing;
-  if (state.pendingDrop?.type !== "link") return;
-  const draft = state.pendingDrop;
-  const url = normalizeUrl(els.contentForm.elements.url?.value || draft.url || "");
-  if (draft.checkedUrl === url) return;
+  if (state.pendingDrop?.type !== 'link') return;
+  const draft = state.pendingDrop, url = currentContentUrl();
+  if (draft.checkedUrl === url || !url) return;
   const run = async () => {
     let kind = mediaUrlKind(url);
-    if (!kind && /^https?:\/\//i.test(url)) {
-      try { if ((await api.inspectMediaUrl(url)).direct) kind = "direct"; } catch {}
+    if (kind === 'social') { draft.checkedUrl = url; return; }
+    if (!kind) {
+      try { if ((await api.inspectMediaUrl(url)).direct) kind = 'direct'; } catch {}
     }
-    if (!kind) { draft.embedUrl = ""; draft.url = url; draft.checkedUrl = url; return; }
-    if (state.pendingDrop !== draft || !els.contentModal.open || normalizeUrl(els.contentForm.elements.url?.value || "") !== url) return;
-    const yes = await askMedia(kind === "direct" ? "You're directly linking media. Download and convert to media post?" : "Would you like to embed this media?");
-    if (state.pendingDrop !== draft || !els.contentModal.open) return;
-    draft.checkedUrl = url; draft.url = url; draft.embedUrl = "";
-    if (!yes) return;
-    beginSubmission(kind === "direct" ? "Downloading media..." : "Fetching embedded media...");
+    if (state.pendingDrop !== draft || !els.contentModal.open || currentContentUrl() !== url) return;
+    draft.checkedUrl = url;
+    if (kind !== 'direct') return;
+    if (!await askMedia("You're directly linking media. Download and convert to media post?")) return;
+    beginSubmission('Downloading media...');
     try {
-      if (kind === "direct") {
-        const file = await api.downloadMedia(url);
-        endSubmission();
-        const [converted] = await prepareImages([file]);
-        if (state.pendingDrop !== draft || !els.contentModal.open) return;
-        state.pendingDrop = { ...draft, type: detectFileType(converted), files: [converted], embedUrl: "" };
-        state.pendingThumbnail = null;
-        refreshDynamicFields();
-        els.contentTypeEyebrow.textContent = `${state.pendingDrop.type} content`;
-        els.contentModalTitle.textContent = `Add ${state.pendingDrop.type}`;
-      } else {
-        const info = await api.resolveMedia(url);
-        draft.url = info.url; draft.checkedUrl = info.url; draft.embedUrl = info.embedUrl;
-        els.contentForm.elements.url.value = info.url;
-        if (info.thumbnail && !state.pendingThumbnail) {
-          try { const file = await api.downloadMedia(info.thumbnail); endSubmission(); [state.pendingThumbnail] = await prepareImages([file]); refreshDynamicFields(); }
-          catch { toast("Poster could not be downloaded. Add a thumbnail manually.", "error"); }
-        }
-        if (info.warning) toast(info.warning);
-      }
-    } catch (error) { draft.checkedUrl = null; toast(error.message, "error"); return false; }
+      const file = await api.downloadMedia(url); endSubmission();
+      const [converted] = await prepareImages([file]);
+      if (state.pendingDrop !== draft || !els.contentModal.open) return;
+      state.pendingDrop = { ...draft, type: detectFileType(converted), files: [converted], embedUrl: '' };
+      state.pendingThumbnail = null; refreshDynamicFields();
+      els.contentTypeEyebrow.textContent = `${state.pendingDrop.type} content`;
+      els.contentModalTitle.textContent = `Add ${state.pendingDrop.type}`;
+    } catch (error) { draft.checkedUrl = undefined; toast(error.message, 'error'); return false; }
     finally { endSubmission(); }
   };
   urlProcessing = run();
@@ -1379,6 +1488,7 @@ async function processContentUrl() {
 
 function setContentBusy(busy) {
   state.savingContent = busy;
+  syncEmbedButton();
   $("#saveContentButton").disabled = busy;
   $("#deleteContentButton").disabled = busy;
 }
@@ -1386,7 +1496,10 @@ async function handleContentSubmit(event) {
   event.preventDefault();
   if (state.savingContent) return;
   setContentBusy(true);
-  try { if (await processContentUrl() === false) return; } finally { setContentBusy(false); }
+  try {
+    if (await processContentUrl() === false) return;
+    if (state.pendingDrop?.type === "link") { clearTimeout(linkMetadataTimer); await fetchLinkDetails(); }
+  } finally { setContentBusy(false); }
   const type = state.pendingDrop?.type;
   if (type === "media") {
     toast("Choose, drop, or paste media first", "error");
@@ -1403,8 +1516,12 @@ async function handleContentSubmit(event) {
   const form = new FormData(els.contentForm),
     editingId = state.editingId;
   form.set("section", state.tiles.find((tile) => tile.id === editingId)?.section || state.section);
-  if (type === "link") { form.set("url", normalizeUrl(form.get("url"))); form.set("embedUrl", state.pendingDrop.embedUrl || ""); }
-  if (["text", "link"].includes(type)) {
+  if (type === "link") {
+    form.set("url", normalizeUrl(form.get("url"))); form.set("embedUrl", state.pendingDrop.embedUrl || "");
+    form.set("urlBackground", state.pendingDrop.urlBackground || defaultUrlBackground(state.pendingDrop));
+    form.set("faviconUrl", state.pendingDrop.faviconUrl || ''); form.set("linkTitle", state.pendingDrop.linkTitle || '');
+  }
+  if (type === "text") {
     form.set("backgroundColor", String(Number.isInteger(state.pendingDrop.backgroundColor)
       ? state.pendingDrop.backgroundColor : Math.floor(Math.random() * TILE_COLOR_COUNT)));
     form.set("location", "");
@@ -2130,6 +2247,14 @@ function setupDragAndDrop() {
 }
 
 function bindEvents() {
+  document.addEventListener('load', event => {
+    if (event.target.matches?.('[data-link-favicon]')) event.target.parentElement.classList.add('has-favicon');
+  }, true);
+  document.addEventListener('error', event => {
+    if (event.target.matches?.('[data-link-favicon]')) {
+      event.target.hidden = true; event.target.parentElement.classList.remove('has-favicon');
+    }
+  }, true);
   $("#deleteContentButton").addEventListener("click", deleteEditingContent);
   els.collectionFilterClear.addEventListener("click", () => setActiveCollection(null));
   els.confirmDeleteCollection.addEventListener("click", deletePendingCollection);
@@ -2275,6 +2400,12 @@ function bindEvents() {
       renderTagEditor();
       return;
     }
+    if (e.target.closest('#embedUrlButton')) { await embedContentUrl(); return; }
+    const background = e.target.closest('[data-url-background]');
+    if (background && state.pendingDrop?.type === 'link') {
+      state.pendingDrop.urlBackground = background.dataset.urlBackground;
+      state.pendingThumbnail = null; refreshDynamicFields(); return;
+    }
     const color = e.target.closest("[data-tile-color]");
     if (color) {
       selectTileBackground(Number(color.dataset.tileColor));
@@ -2404,7 +2535,7 @@ function bindEvents() {
     }
   });
   document.addEventListener("change", async (e) => {
-    if (e.target.matches('#contentForm [name="url"]')) { await processContentUrl(); return; }
+    if (e.target.matches('#contentForm [name="url"]')) { contentUrlChanged(); await processContentUrl(); return; }
     let selectedFiles = [...(e.target.files || [])];
     if (["galleryFileInput", "thumbnailPickerInput", "replacementFileInput"].includes(e.target.id)) {
       try { selectedFiles = await prepareImages(selectedFiles); } catch (error) { toast(error.message, "error"); return; }
@@ -2465,6 +2596,11 @@ function bindEvents() {
       updateTextPreview();
   });
   els.contentForm.addEventListener("input", (e) => {
+    if (state.pendingDrop?.type === 'link') {
+      if (e.target.name === 'url') contentUrlChanged();
+      if (e.target.name === 'label') state.pendingDrop.autoLabel = !e.target.value.trim();
+      if (e.target.name === 'description') state.pendingDrop.autoDescription = !e.target.value.trim();
+    }
     if (
       state.pendingDrop?.type === "text" &&
       e.target.matches('[name="text"],[name="fontSize"]')
@@ -2643,7 +2779,7 @@ function bindEvents() {
     handleModalFiles(files);
   });
   document.addEventListener("paste", (e) => {
-    if (e.target.matches?.('#contentForm [name="url"]')) { setTimeout(() => processContentUrl(), 0); return; }
+    if (e.target.matches?.('#contentForm [name="url"]')) { setTimeout(() => { contentUrlChanged(); processContentUrl(); }, 0); return; }
     if (!document.querySelector('dialog[open]') && !e.target.closest?.('input,textarea,[contenteditable]')) {
       const value = (e.clipboardData?.getData('text/plain') || '').trim();
       if (/^https?:\/\//i.test(value)) { e.preventDefault(); openContentModal({ type: "link", url: value }); return; }
@@ -2708,6 +2844,7 @@ function bindEvents() {
     resetViewerTransform();
   });
   els.contentModal.addEventListener("close", () => {
+    clearTimeout(linkMetadataTimer);
     revokePreviewUrls();
     state.pendingTags = [];
     state.pendingThumbnail = null;
