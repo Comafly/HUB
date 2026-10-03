@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261003-13";
+import { api } from "./api.js?v=20261003-14";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -133,7 +133,7 @@ const state = {
   bookmarks: [],
   collections: [],
   collectionsInitialized: false,
-  settings: { theme: "umber", mode: "dark" },
+  settings: { theme: "umber", mode: "dark", alwaysShowTileDetails: false, gridLayout: "asymmetric" },
   calendar: { exists: false, fileName: "", updatedAt: null, content: "" },
   editingId: null,
   editingTopLinkId: null,
@@ -178,6 +178,8 @@ const els = {
   settingsModal: $("#settingsModal"),
   settingsButton: $("#settingsButton"),
   modeToggle: $("#modeToggle"),
+  tileDetailsToggle: $("#tileDetailsToggle"),
+  gridLayoutToggle: $("#gridLayoutToggle"),
   modeLabel: $("#modeLabel"),
   dragOverlay: $("#dragOverlay"),
   emptyState: $("#emptyState"),
@@ -361,7 +363,7 @@ function defaultUrlBackground(tile = {}) {
 }
 function urlBackgroundPickerMarkup() {
   const selected = state.pendingDrop.urlBackground || defaultUrlBackground(state.pendingDrop);
-  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<div class="url-background-options" role="group" aria-label="URL backgrounds">${(state.urlBackgrounds || []).map((src, i) => `<button type="button" class="tile-color-option url-background-option" data-url-background="${escapeHtml(src)}" aria-label="URL background ${i + 1}" aria-pressed="${!state.pendingThumbnail && selected === src}"><img src="${escapeHtml(src)}" alt="" /></button>`).join('')}</div></div><small>Choose one thumbnail or a background image.</small>`;
+  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<div class="url-background-options" role="group" aria-label="Link backgrounds">${(state.urlBackgrounds || []).map((src, i) => `<button type="button" class="tile-color-option url-background-option" data-url-background="${escapeHtml(src)}" aria-label="Link background ${i + 1}" aria-pressed="${!state.pendingThumbnail && selected === src}"><img src="${escapeHtml(src)}" alt="" /></button>`).join('')}</div></div><small>Choose one thumbnail or a background image.</small>`;
 }
 const EMBED_BUTTON_ICON = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4H4v16h16v-8M11 13 21 3M14 3h7v7"/></svg>';
 
@@ -414,6 +416,11 @@ function renderTiles() {
 // Pack independent rectangles densely so portrait tiles span neighboring rows.
 function layoutTiles() {
   if (state.section !== "dashboard" || !els.tileGrid.clientWidth) return;
+  if (state.settings.gridLayout === "equal") {
+    [...els.tileGrid.children].forEach(el => { el.style.gridColumn = "auto"; el.style.gridRow = "auto"; });
+    fitTextTiles();
+    return;
+  }
   const columns = getComputedStyle(els.tileGrid).gridTemplateColumns.split(
     " ",
   ).length;
@@ -640,7 +647,7 @@ function renderAll() {
 const THEME_KEY = "comma-hub-appearance";
 function saveLocalTheme() {
   try { localStorage.setItem(THEME_KEY, JSON.stringify(state.settings)); }
-  catch { toast("Browser storage is unavailable; this theme will last for this session.", "error"); }
+  catch { toast("Browser storage is unavailable; these preferences will last for this session.", "error"); }
 }
 function loadLocalTheme() {
   try {
@@ -648,6 +655,8 @@ function loadLocalTheme() {
     if (!saved) return;
     if (["umber", "midnight-blue", "bubblegum", "caramel", "marble", "carbon-lavender"].includes(saved.theme)) state.settings.theme = saved.theme;
     if (["dark", "light"].includes(saved.mode)) state.settings.mode = saved.mode;
+    if (typeof saved.alwaysShowTileDetails === "boolean") state.settings.alwaysShowTileDetails = saved.alwaysShowTileDetails;
+    if (["asymmetric", "equal"].includes(saved.gridLayout)) state.settings.gridLayout = saved.gridLayout;
   } catch { /* Use the default when browser storage is unavailable. */ }
 }
 function updateToday() {
@@ -891,6 +900,21 @@ function renderCalendar() {
   els.calendarEmpty.hidden = !!html || !state.calendar?.exists;
 }
 
+const EQUAL_GRID_ICON = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M2 2h5v5H2zm7 0h5v5H9zm7 0h5v5h-5zM2 9h5v5H2zm7 0h5v5H9zm7 0h5v5h-5zM2 16h5v5H2zm7 0h5v5H9zm7 0h5v5h-5z"/></svg>';
+const ASYMMETRIC_GRID_ICON = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M2 2h8v12H2zm10 0h10v6H12zm0 8h10v12H12zM2 16h8v6H2z"/></svg>';
+function applyDisplayPreferences() {
+  const always = state.settings.alwaysShowTileDetails === true;
+  const equal = state.settings.gridLayout === "equal";
+  document.documentElement.dataset.tileDetails = always ? "always" : "hover";
+  els.tileDetailsToggle.checked = always;
+  els.tileGrid.classList.toggle("tile-grid--equal", equal);
+  const button = els.gridLayoutToggle;
+  button.innerHTML = equal ? ASYMMETRIC_GRID_ICON : EQUAL_GRID_ICON;
+  button.setAttribute("aria-pressed", String(equal));
+  button.setAttribute("aria-label", equal ? "Switch to asymmetrical grid" : "Switch to equal grid");
+  button.dataset.tooltip = equal ? "Switch to asymmetrical grid" : "Switch to equal grid";
+  layoutTiles();
+}
 function applyTheme() {
   const theme = state.settings.theme || "umber";
   const mode = state.settings.mode || "dark";
@@ -899,6 +923,7 @@ function applyTheme() {
   const dark = mode !== "light";
   els.modeToggle.checked = dark;
   els.modeLabel.textContent = dark ? "Dark mode" : "Light mode";
+  applyDisplayPreferences();
   $$("[data-theme-choice]").forEach((card) => {
     const active = card.dataset.themeChoice === theme;
     card.classList.toggle("is-active", active);
@@ -1109,7 +1134,7 @@ function fieldMarkup(type, pending = {}) {
   if (type === "media")
     return `<div class="field field--wide"><span>Media</span><div class="media-empty-drop"><strong>Drop media here</strong><small>Drag files into this modal, paste an image, or choose files manually.</small><button class="upload-button" type="button" id="chooseMediaButton"><span class="upload-button-icon">＋</span><span>Choose media</span></button></div></div>`;
   if (type === "link")
-    return `<div class="field field--wide"><label for="contentUrlInput">URL</label><div class="url-input-row"><input id="contentUrlInput" name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(pending.url || "")}" /><button type="button" id="embedUrlButton" class="icon-btn embed-url-button" aria-label="Embed media and fetch thumbnail" data-tooltip="Embed media / fetch thumbnail" ${!pending.url?.trim() || state.savingContent ? 'disabled' : ''}>${EMBED_BUTTON_ICON}</button></div></div><div class="field field--wide"><span>Thumbnail image / background</span>${urlBackgroundPickerMarkup()}</div>`;
+    return `<div class="field field--wide"><label for="contentUrlInput">Link</label><div class="url-input-row"><input id="contentUrlInput" name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(pending.url || "")}" /><button type="button" id="embedUrlButton" class="icon-btn embed-url-button" aria-label="Embed media and fetch thumbnail" data-tooltip="Embed media / fetch thumbnail" ${!pending.url?.trim() || state.savingContent ? 'disabled' : ''}>${EMBED_BUTTON_ICON}</button></div></div><div class="field field--wide"><span>Thumbnail image / background</span>${urlBackgroundPickerMarkup()}</div>`;
   if (type === "text")
     return `<div class="text-format-row"><div class="field text-font-field"><span>Font</span><div class="font-picker-row"><select name="font">${fontOptionsMarkup()}</select><button type="button" class="font-upload-btn" id="fontUploadButton" aria-label="Upload a font file" data-tooltip="Upload font">${FONT_UPLOAD_ICON}</button></div><input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2,.ttc,.otc,.eot" hidden /></div><label class="field text-size-field"><span>Size</span><input name="fontSize" class="scrub-input" type="number" min="12" max="96" value="28" /></label><div class="field text-style-field"><span>Style</span><div class="format-row"><label class="format-toggle"><input name="bold" type="checkbox" /><span>B</span></label><label class="format-toggle"><input name="italic" type="checkbox" /><span><i>I</i></span></label><label class="format-toggle"><input name="underline" type="checkbox" /><span><u>U</u></span></label><input name="align" type="hidden" value="left" /><button type="button" class="align-toggle" id="alignToggle" data-align-cycle aria-label="Text alignment: left" data-tooltip="Align: left"></button></div></div></div><label class="field field--wide"><span>Text</span><textarea class="text-live-preview-input" name="text" rows="1" required placeholder="Type text for your tile preview...">${escapeHtml(pending.text || "")}</textarea></label><div class="field field--wide"><span>Thumbnail image / colour</span>${tileBackgroundPickerMarkup()}</div>`;
   if (type === "image")
@@ -2247,6 +2272,14 @@ function setupDragAndDrop() {
 }
 
 function bindEvents() {
+  els.tileDetailsToggle.addEventListener("change", () => {
+    state.settings.alwaysShowTileDetails = els.tileDetailsToggle.checked;
+    applyDisplayPreferences(); saveLocalTheme();
+  });
+  els.gridLayoutToggle.addEventListener("click", () => {
+    state.settings.gridLayout = state.settings.gridLayout === "equal" ? "asymmetric" : "equal";
+    applyDisplayPreferences(); saveLocalTheme();
+  });
   document.addEventListener('load', event => {
     if (event.target.matches?.('[data-link-favicon]')) event.target.parentElement.classList.add('has-favicon');
   }, true);

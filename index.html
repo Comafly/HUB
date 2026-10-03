@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1a0f0a" />
   <title>COMMA HUB</title>
   <!-- build: collections-ui-v4-chevron -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261003-13" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20261003-14" />
 </head>
 <body>
   <div class="app-shell" id="app">
@@ -40,6 +40,7 @@
         </section>
 
         <div class="content-toolbar">
+        <button class="icon-btn grid-layout-button" id="gridLayoutToggle" type="button" aria-label="Switch to equal grid" aria-pressed="false" data-tooltip="Switch to equal grid"></button>
         <div class="search-wrap">
           <span class="search-icon" aria-hidden="true">⌕</span>
           <input id="searchInput" class="search-input" type="search" autocomplete="off" placeholder="Search the hub" aria-label="Search content" />
@@ -95,7 +96,7 @@
       </div>
       <div class="content-type-grid">
         <button class="content-type-choice" type="button" data-content-choice="media"><span class="content-type-icon">▧</span><strong>Media</strong><small>Image, video, audio, font, or file</small></button>
-        <button class="content-type-choice" type="button" data-content-choice="link"><span class="content-type-icon">↗</span><strong>URL</strong><small>Add a web link</small></button>
+        <button class="content-type-choice" type="button" data-content-choice="link"><span class="content-type-icon">↗</span><strong>Link</strong><small>Add a web link</small></button>
         <button class="content-type-choice" type="button" data-content-choice="text"><span class="content-type-icon">Aa</span><strong>Text</strong><small>Create a formatted text tile</small></button>
       </div>
     </div>
@@ -214,9 +215,16 @@
             <span class="theme-meta"><strong>Carbon Lavender</strong><span>Washed carbon and muted purple</span></span>
           </button>
         </div>
-        <div class="mode-row">
-          <div class="theme-meta"><strong>Appearance</strong><span id="modeLabel">Dark mode</span></div>
+      </section>
+      <section class="settings-section appearance-settings">
+        <div class="settings-copy"><h3>Appearance</h3></div>
+        <div class="mode-row appearance-row">
+          <label class="appearance-label" for="modeToggle">Dark / Light Mode<span id="modeLabel">Dark mode</span></label>
           <label class="switch" aria-label="Toggle dark or light mode"><input id="modeToggle" type="checkbox" checked /><span></span></label>
+        </div>
+        <div class="mode-row appearance-row">
+          <label class="appearance-label" for="tileDetailsToggle">Always Show Tile Details<span>Keep labels and descriptions visible.</span></label>
+          <label class="switch" aria-label="Always Show Tile Details"><input id="tileDetailsToggle" type="checkbox" /><span></span></label>
         </div>
       </section>
       <section class="settings-section">
@@ -306,6 +314,6 @@
 
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script type="module" src="assets/js/app.js?v=20261003-13"></script>
+  <script type="module" src="assets/js/app.js?v=20261003-14"></script>
 </body>
 </html>

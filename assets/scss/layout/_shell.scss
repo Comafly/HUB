@@ -378,5 +378,7 @@ display: block; margin-top: 4px; font-size: 10px; font-weight: 400; opacity: .7;
 }
 
 .topbar::before {
-content: ""; position: absolute; inset: 0 calc((100% - 100vw) / 2); background: var(--bg); z-index: -1; pointer-events: none;
+content: ""; position: absolute; inset: 0;
+  box-shadow: 0 0 0 100vmax var(--bg);
+  clip-path: inset(0 -100vmax); background: var(--bg); z-index: -1; pointer-events: none;
 }
