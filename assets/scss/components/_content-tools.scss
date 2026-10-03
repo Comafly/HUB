@@ -1,5 +1,5 @@
 .section-heading-actions {
-display: flex;
+    display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 18px;
@@ -7,7 +7,7 @@ display: flex;
 }
 
 .section-heading-actions #sectionDescription {
-width: auto;
+    width: auto;
     flex: 1;
     display: flex;
     align-items: center;
@@ -15,7 +15,7 @@ width: auto;
 }
 
 .content-add-button {
-flex: 0 0 auto;
+    flex: 0 0 auto;
     width: 45px;
     height: 45px;
     border-radius: 50%;
@@ -29,17 +29,17 @@ flex: 0 0 auto;
 }
 
 .content-add-button:hover {
-transform: translateY(-3px) scale(1.04);
+    transform: translateY(-3px) scale(1.04);
     border-color: var(--accent);
     background: var(--panel-2)
 }
 
 .content-add-button:active {
-transform: scale(.94)
+    transform: scale(.94)
 }
 
 .tag-editor {
-min-height: 48px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -52,12 +52,12 @@ min-height: 48px;
 }
 
 .tag-editor:focus-within {
-border-color: var(--accent);
+    border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-soft)
 }
 
 .tag-editor input {
-flex: 1;
+    flex: 1;
     min-width: 130px;
     border: 0 !important;
     padding: 5px 4px !important;
@@ -66,11 +66,11 @@ flex: 1;
 }
 
 .tag-capsules {
-display: contents
+    display: contents
 }
 
 .tag-capsule {
-display: inline-flex;
+    display: inline-flex;
     align-items: center;
     gap: 7px;
     padding: 5px 6px 5px 10px;
@@ -82,7 +82,7 @@ display: inline-flex;
 }
 
 .capsule-x {
-width: 22px;
+    width: 22px;
     height: 22px;
     display: grid;
     place-items: center;
@@ -99,7 +99,7 @@ width: 22px;
 
 .capsule-x::before,
 .capsule-x::after {
-content: "";
+    content: "";
     position: absolute;
     left: 50%;
     top: 50%;
@@ -111,33 +111,33 @@ content: "";
 }
 
 .capsule-x::before {
-transform: translate(-50%, -50%) rotate(45deg)
+    transform: translate(-50%, -50%) rotate(45deg)
 }
 
 .capsule-x::after {
-transform: translate(-50%, -50%) rotate(-45deg)
+    transform: translate(-50%, -50%) rotate(-45deg)
 }
 
 .capsule-x:hover {
-background: var(--text);
+    background: var(--text);
     color: var(--bg);
     border-color: var(--text);
     transform: scale(1.05)
 }
 
 .capsule-x:active {
-transform: scale(.9)
+    transform: scale(.9)
 }
 
 .preset-tags {
-display: flex;
+    display: flex;
     flex-wrap: wrap;
     gap: 7px;
     margin-top: 2px
 }
 
 .preset-tag {
-border: 1px solid var(--line);
+    border: 1px solid var(--line);
     border-radius: 999px;
     background: transparent;
     color: var(--muted);
@@ -151,21 +151,21 @@ border: 1px solid var(--line);
 
 .preset-tag:hover,
 .preset-tag.is-added {
-border-color: var(--accent);
+    border-color: var(--accent);
     color: var(--text);
     background: var(--accent-soft);
     transform: translateY(-1px)
 }
 
 .gallery-picker {
-display: grid;
+    display: grid;
     grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
     gap: 10px
 }
 
 .gallery-thumb,
 .gallery-add {
-position: relative;
+    position: relative;
     aspect-ratio: 1;
     border-radius: 14px;
     overflow: hidden;
@@ -175,14 +175,14 @@ position: relative;
 }
 
 .gallery-thumb img {
-width: 100%;
+    width: 100%;
     height: 100%;
     object-fit: cover;
     display: block
 }
 
 .gallery-remove {
-position: absolute;
+    position: absolute;
     top: 7px;
     right: 7px;
     color: #fff;
@@ -191,7 +191,7 @@ position: absolute;
 }
 
 .gallery-add {
-display: grid;
+    display: grid;
     place-items: center;
     align-content: center;
     gap: 3px;
@@ -202,24 +202,24 @@ display: grid;
 }
 
 .gallery-add:hover {
-transform: translateY(-2px);
+    transform: translateY(-2px);
     border-color: var(--accent);
     color: var(--accent-2)
 }
 
 .gallery-add .image-placeholder {
-font-size: 24px;
+    font-size: 24px;
     line-height: 1
 }
 
 .gallery-add b {
-font-size: 22px;
+    font-size: 22px;
     line-height: 1;
     font-weight: 500
 }
 
 .selected-file {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px;
@@ -229,7 +229,7 @@ display: flex;
 }
 
 .selected-file-icon {
-width: 44px;
+    width: 44px;
     height: 44px;
     display: grid;
     place-items: center;
@@ -241,21 +241,21 @@ width: 44px;
 
 .selected-file strong,
 .selected-file small {
-display: block
+    display: block
 }
 
 .selected-file strong {
-font-size: 12px
+    font-size: 12px
 }
 
 .selected-file small {
-margin-top: 4px;
+    margin-top: 4px;
     color: var(--muted);
     font-size: 10px
 }
 
 .selected-text-preview {
-max-height: 92px;
+    max-height: 92px;
     overflow: auto;
     white-space: pre-wrap;
     padding: 12px;
@@ -268,18 +268,18 @@ max-height: 92px;
 }
 
 .modal-card--wide.is-modal-drop-target {
-outline: 2px dashed var(--accent);
+    outline: 2px dashed var(--accent);
     outline-offset: -10px;
     background: color-mix(in srgb, var(--bg-elevated) 92%, var(--accent) 8%)
 }
 
 .gallery-picker--single {
-  grid-template-columns: minmax(0, 96px);
-  justify-content: start;
+    grid-template-columns: minmax(0, 96px);
+    justify-content: start;
 }
 
 .media-empty-drop {
-min-height: 190px;
+    min-height: 190px;
     border: 1px dashed var(--line-strong);
     border-radius: 16px;
     background: var(--panel);
@@ -293,33 +293,33 @@ min-height: 190px;
 }
 
 .media-empty-drop strong {
-font-size: 15px
+    font-size: 15px
 }
 
 .media-empty-drop small {
-max-width: 380px;
+    max-width: 380px;
     color: var(--muted);
     line-height: 1.45
 }
 
 .media-empty-drop .upload-button {
-margin-top: 6px
+    margin-top: 6px
 }
 
 .content-toolbar {
-display: flex;
+    display: flex;
     align-items: center;
     gap: 14px;
     margin-bottom: 24px;
 }
 
 .content-toolbar .search-wrap {
-flex: 1;
+    flex: 1;
     min-width: 0;
 }
 
 .content-toolbar .content-add-button {
-width: auto;
+    width: auto;
     height: 55px;
     padding: 0 20px;
     border-radius: 999px;
@@ -327,14 +327,14 @@ width: auto;
 }
 
 .gallery-thumb video {
-display: block;
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
 .file-preview-symbol {
-display: grid;
+    display: grid;
     place-items: center;
     height: 100%;
     padding-bottom: 22px;
@@ -343,7 +343,7 @@ display: grid;
 }
 
 .file-preview-name {
-position: absolute;
+    position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
@@ -357,30 +357,59 @@ position: absolute;
 }
 
 .tile-background-picker {
-display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 18px;
 }
 
 .tile-color-options {
-  display: grid;
-  grid-template-columns: repeat(3, 64px);
-  gap: 14px 10px;
-  max-width: 100%;
+    display: grid;
+    grid-template-columns:
+        minmax(0, 3fr) minmax(0, 3fr) minmax(0, 2fr) minmax(0, 1fr);
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+    gap: 12px;
+    padding: 3px;
 }
 
-.tile-color-group:nth-child(-n + 2) { grid-column: 1 / -1; }
-.tile-color-group:nth-child(3) { grid-column: span 2; }
-.tile-color-label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
-.tile-color-swatches { display: flex; gap: 10px; }
+.tile-color-group {
+    min-width: 0;
+}
 
+.tile-color-label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.tile-color-swatches {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+}
 
 .tile-color-option {
-width: 64px; height: 64px; border: 2px solid var(--line-strong); border-radius: 14px; color: var(--text); cursor: pointer;
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    height: auto;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 2px solid var(--line-strong);
+    border-radius: 14px;
+    color: var(--text);
+    cursor: pointer;
 }
 
 .tile-color-option[aria-pressed="true"] {
-border-color: var(--text); box-shadow: 0 0 0 3px var(--accent-soft);
+    border-color: var(--text);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .gallery-picker--single:has(.gallery-thumb) .gallery-add {
-display: none;
+    display: none;
 }

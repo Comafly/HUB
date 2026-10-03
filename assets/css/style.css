@@ -2731,17 +2731,16 @@ body.is-scrubbing * {
 
 .tile-color-options {
   display: grid;
-  grid-template-columns: repeat(3, 64px);
-  gap: 14px 10px;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 3fr) minmax(0, 2fr) minmax(0, 1fr);
+  flex: 1 1 0;
+  min-width: 0;
   max-width: 100%;
+  gap: 12px;
+  padding: 3px;
 }
 
-.tile-color-group:nth-child(-n+2) {
-  grid-column: 1/-1;
-}
-
-.tile-color-group:nth-child(3) {
-  grid-column: span 2;
+.tile-color-group {
+  min-width: 0;
 }
 
 .tile-color-label {
@@ -2749,16 +2748,22 @@ body.is-scrubbing * {
   margin-bottom: 7px;
   color: var(--muted);
   font-size: 11px;
+  overflow-wrap: anywhere;
 }
 
 .tile-color-swatches {
   display: flex;
-  gap: 10px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .tile-color-option {
-  width: 64px;
-  height: 64px;
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 0;
   border: 2px solid var(--line-strong);
   border-radius: 14px;
   color: var(--text);
