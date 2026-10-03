@@ -79,6 +79,15 @@ function tileRequest(action, form, options = {}) {
 }
 
 export const api = {
+  inspectMediaUrl: (url) => request('media.inspect', { method: 'POST', body: JSON.stringify({ url }) }),
+  resolveMedia: (url) => request('media.resolve', { method: 'POST', body: JSON.stringify({ url }) }),
+  downloadMedia: async (url) => {
+    const response = await fetch(new URL('api.php?action=media.download', window.location.href), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }), credentials: 'same-origin' });
+    if (!response.ok) { const payload = await response.json().catch(() => ({})); throw new Error(payload.error || 'Media download failed.'); }
+    const blob = await response.blob();
+    const name = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') || '')?.[1] || 'linked-media';
+    return new File([blob], name, { type: blob.type });
+  },
   inspectMetadata: (file) => {
     const form = new FormData(); form.append('file', file);
     return request('metadata.inspect', {method: 'POST', body: form});

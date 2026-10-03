@@ -1,4 +1,6 @@
-import { api } from "./api.js?v=20261003-2";
+import { api } from "./api.js?v=20261003-10";
+
+import { prepareImages, mediaUrlKind, askMedia } from "./media.js?v=20261003-10";
 
 // Feature switch: set to false to remove the calendar module and let the dashboard refit automatically.
 const ENABLE_CALENDAR_MODULE = true;
@@ -257,14 +259,15 @@ function tileMedia(tile) {
       : textHtml;
   }
   if (tile.type === "image" && tile.files?.length) {
-    const imgs = tile.files
+    const previewFiles = tile.files.length > 1 ? Array.from({ length: 4 }, (_, i) => tile.files[i % tile.files.length]) : tile.files;
+    const imgs = previewFiles
       .slice(0, 4)
       .map(
         (src, i) =>
           `<img src="${escapeHtml(src)}" alt="${escapeHtml(tile.label || `Image ${i + 1}`)}" />`,
       )
       .join("");
-    return `<div class="gallery gallery--${Math.min(tile.files.length, 4)}">${imgs}</div>`;
+    return `<div class="gallery gallery--${tile.files.length > 1 ? 4 : 1}">${imgs}</div>${tile.files.length > 1 ? `<span class="gallery-count" aria-label="${tile.files.length} images">+${tile.files.length}</span>` : ""}`;
   }
   if (tile.type === "video" && tile.files?.[0])
     return `<video src="${escapeHtml(tile.files[0])}" muted loop playsinline preload="metadata"></video>`;
@@ -903,7 +906,8 @@ function singleImagePickerMarkup(
     : "";
   return `<div class="gallery-picker gallery-picker--single">${thumb}<button type="button" class="gallery-add" id="${topLink ? "topLinkImageAdd" : "thumbnailAdd"}" aria-label="Add thumbnail"><span class="image-placeholder">▧</span><b>+</b></button></div><input id="${topLink ? "topLinkImageInput" : "thumbnailPickerInput"}" type="file" accept="image/*" hidden>`;
 }
-function setTopLinkImage(file = null) {
+async function setTopLinkImage(file = null) {
+  try { if (file instanceof File) [file] = await prepareImages([file]); } catch (error) { toast(error.message, "error"); return; }
   if (state.topLinkPreviewUrl) URL.revokeObjectURL(state.topLinkPreviewUrl);
   state.pendingTopLinkImage = file;
   state.topLinkPreviewUrl =
@@ -1173,13 +1177,14 @@ function autosizeTextPreview() {
     parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
   ta.style.height = `${ta.scrollHeight + border}px`;
 }
-function openContentModal(pending) {
+async function openContentModal(pending, editing = false) {
   if (state.section !== "dashboard" || $("#submissionModal").open) return;
+  try { pending = { ...pending, files: await prepareImages([...(pending.files || [])]) }; } catch (error) { toast(error.message, "error"); return; }
   state.editingId = null;
   $("#deleteContentButton").hidden = true;
   $("#saveContentButton").textContent = "Add content";
   revokePreviewUrls();
-  state.pendingDrop = { ...pending, files: [...(pending.files || [])] };
+  state.pendingDrop = { ...pending, checkedUrl: editing ? pending.url : undefined, files: [...(pending.files || [])] };
   state.pendingThumbnail = null;
   state.pendingTags = [];
   els.contentForm.reset();
@@ -1191,12 +1196,13 @@ function openContentModal(pending) {
   renderTagEditor();
   els.contentModal.showModal();
   if (pending.type === "text") updateTextPreview();
+  if (pending.type === "link" && pending.url && !editing) await processContentUrl();
 }
 
-function openEditModal(tileId) {
+async function openEditModal(tileId) {
   const tile = state.tiles.find((t) => t.id === tileId);
   if (!tile) return;
-  openContentModal({ ...tile, text: displayText(tile) });
+  await openContentModal({ ...tile, text: displayText(tile) }, true);
   state.editingId = tile.id;
   state.pendingThumbnail = tile.thumbnail || null;
   state.pendingTags = [...(tile.tags || [])];
@@ -1225,6 +1231,53 @@ function openEditModal(tileId) {
   $("#deleteContentButton").hidden = false;
   $("#saveContentButton").textContent = "Save changes";
 }
+let urlProcessing = null;
+async function processContentUrl() {
+  if (urlProcessing) return urlProcessing;
+  if (state.pendingDrop?.type !== "link") return;
+  const draft = state.pendingDrop;
+  const url = normalizeUrl(els.contentForm.elements.url?.value || draft.url || "");
+  if (draft.checkedUrl === url) return;
+  const run = async () => {
+    let kind = mediaUrlKind(url);
+    if (!kind && /^https?:\/\//i.test(url)) {
+      try { if ((await api.inspectMediaUrl(url)).direct) kind = "direct"; } catch {}
+    }
+    if (!kind) { draft.embedUrl = ""; draft.url = url; draft.checkedUrl = url; return; }
+    if (state.pendingDrop !== draft || !els.contentModal.open || normalizeUrl(els.contentForm.elements.url?.value || "") !== url) return;
+    const yes = await askMedia(kind === "direct" ? "You're directly linking media. Download and convert to media post?" : "Would you like to embed this media?");
+    if (state.pendingDrop !== draft || !els.contentModal.open) return;
+    draft.checkedUrl = url; draft.url = url; draft.embedUrl = "";
+    if (!yes) return;
+    beginSubmission(kind === "direct" ? "Downloading media..." : "Fetching embedded media...");
+    try {
+      if (kind === "direct") {
+        const file = await api.downloadMedia(url);
+        endSubmission();
+        const [converted] = await prepareImages([file]);
+        if (state.pendingDrop !== draft || !els.contentModal.open) return;
+        state.pendingDrop = { ...draft, type: detectFileType(converted), files: [converted], embedUrl: "" };
+        state.pendingThumbnail = null;
+        refreshDynamicFields();
+        els.contentTypeEyebrow.textContent = `${state.pendingDrop.type} content`;
+        els.contentModalTitle.textContent = `Add ${state.pendingDrop.type}`;
+      } else {
+        const info = await api.resolveMedia(url);
+        draft.url = info.url; draft.checkedUrl = info.url; draft.embedUrl = info.embedUrl;
+        els.contentForm.elements.url.value = info.url;
+        if (info.thumbnail && !state.pendingThumbnail) {
+          try { const file = await api.downloadMedia(info.thumbnail); endSubmission(); [state.pendingThumbnail] = await prepareImages([file]); refreshDynamicFields(); }
+          catch { toast("Poster could not be downloaded. Add a thumbnail manually.", "error"); }
+        }
+        if (info.warning) toast(info.warning);
+      }
+    } catch (error) { draft.checkedUrl = null; toast(error.message, "error"); return false; }
+    finally { endSubmission(); }
+  };
+  urlProcessing = run();
+  try { return await urlProcessing; } finally { urlProcessing = null; }
+}
+
 function setContentBusy(busy) {
   state.savingContent = busy;
   $("#saveContentButton").disabled = busy;
@@ -1233,6 +1286,8 @@ function setContentBusy(busy) {
 async function handleContentSubmit(event) {
   event.preventDefault();
   if (state.savingContent) return;
+  setContentBusy(true);
+  try { if (await processContentUrl() === false) return; } finally { setContentBusy(false); }
   const type = state.pendingDrop?.type;
   if (type === "media") {
     toast("Choose, drop, or paste media first", "error");
@@ -1249,7 +1304,7 @@ async function handleContentSubmit(event) {
   const form = new FormData(els.contentForm),
     editingId = state.editingId;
   form.set("section", state.tiles.find((tile) => tile.id === editingId)?.section || state.section);
-  if (type === "link") form.set("url", normalizeUrl(form.get("url")));
+  if (type === "link") { form.set("url", normalizeUrl(form.get("url"))); form.set("embedUrl", state.pendingDrop.embedUrl || ""); }
   if (["text", "link"].includes(type)) {
     form.set("backgroundColor", String(Number.isInteger(state.pendingDrop.backgroundColor)
       ? state.pendingDrop.backgroundColor : Math.floor(Math.random() * TILE_COLOR_COUNT)));
@@ -1371,6 +1426,7 @@ function viewerSelectedMediaMarkup(tile) {
   return "";
 }
 function viewerMediaMarkup(tile) {
+  if (tile.type === "link" && tile.embedUrl) return `<div class="viewer-embed"><iframe src="${escapeHtml(tile.embedUrl)}" title="${escapeHtml(tile.label || "Embedded media")}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><a href="${escapeHtml(tile.url)}" target="_blank" rel="noopener noreferrer">Open original post</a></div>`;
   if (["image", "video"].includes(tile.type) && tile.files?.length) return viewerSelectedMediaMarkup(tile);
   if (tile.type === "audio" && tile.files?.[0])
     return `<div class="viewer-audio">${tile.thumbnail ? `<img src="${escapeHtml(tile.thumbnail)}" alt="">` : ""}<audio src="${escapeHtml(tile.files[0])}" controls autoplay></audio></div>`;
@@ -1474,6 +1530,7 @@ function openViewer(tile) {
 function activateTile(tileId) {
   const tile = state.tiles.find((t) => t.id === tileId);
   if (!tile) return;
+  if (tile.type === "link" && tile.embedUrl) { openViewer(tile); return; }
   if (tile.type === "link" && tile.url) {
     window.open(tile.url, "_blank", "noopener,noreferrer");
     return;
@@ -1481,25 +1538,11 @@ function activateTile(tileId) {
   if (MEDIA_TYPES.has(tile.type)) openViewer(tile);
 }
 
-function handleModalImages(images) {
-  if (!images.length) return;
-  if (
-    state.pendingDrop.type === "text" ||
-    ["video", "audio", "font", "file", "link"].includes(state.pendingDrop.type)
-  ) {
-    state.pendingDrop.backgroundColor = null;
-    state.pendingThumbnail = images[0];
-    refreshDynamicFields();
-    return;
-  }
-  if (state.pendingDrop.type === "media")
-    state.pendingDrop = { type: "image", files: [] };
-  if (state.pendingDrop.type === "image") {
-    state.pendingDrop.files.push(...images);
-    refreshDynamicFields();
-  }
-}
-function handleModalFiles(files) {
+function handleModalImages(images) { return handleModalFiles(images); }
+async function handleModalFiles(files) {
+  const draft = state.pendingDrop;
+  try { files = await prepareImages(files); } catch (error) { toast(error.message, "error"); return; }
+  if (!draft || state.pendingDrop !== draft || !els.contentModal.open) return;
   const images = files.filter((f) => f.type.startsWith("image/"));
   if (["text", "link"].includes(state.pendingDrop.type)) {
     if (images[0]) {
@@ -2262,6 +2305,11 @@ function bindEvents() {
     }
   });
   document.addEventListener("change", async (e) => {
+    if (e.target.matches('#contentForm [name="url"]')) { await processContentUrl(); return; }
+    let selectedFiles = [...(e.target.files || [])];
+    if (["galleryFileInput", "thumbnailPickerInput", "replacementFileInput"].includes(e.target.id)) {
+      try { selectedFiles = await prepareImages(selectedFiles); } catch (error) { toast(error.message, "error"); return; }
+    }
     if (e.target?.id === "fontFileInput") {
       const input = e.target;
       const file = input.files?.[0];
@@ -2291,19 +2339,19 @@ function bindEvents() {
     }
     if (e.target?.id === "galleryFileInput") {
       state.pendingDrop.files.push(
-        ...[...e.target.files].filter((f) => state.pendingDrop.type === "file" || detectFileType(f) === state.pendingDrop.type),
+        ...selectedFiles.filter((f) => state.pendingDrop.type === "file" || detectFileType(f) === state.pendingDrop.type),
       );
       refreshDynamicFields();
       return;
     }
     if (e.target?.id === "thumbnailPickerInput" && e.target.files?.[0]) {
       state.pendingDrop.backgroundColor = null;
-      state.pendingThumbnail = e.target.files[0];
+      state.pendingThumbnail = selectedFiles[0];
       refreshDynamicFields();
       return;
     }
     if (e.target?.id === "replacementFileInput" && e.target.files?.length) {
-      state.pendingDrop.files = [...e.target.files];
+      state.pendingDrop.files = selectedFiles;
       refreshDynamicFields();
       return;
     }
@@ -2383,13 +2431,13 @@ function bindEvents() {
   els.contentAddButton.addEventListener("click", () =>
     els.contentTypeModal.showModal(),
   );
-  els.contentFilePicker.addEventListener("change", () => {
+  els.contentFilePicker.addEventListener("change", async () => {
     const pending = detectFiles(els.contentFilePicker.files);
     if (!pending) return;
     if (els.contentModal.open && state.pendingDrop?.type === "media") {
-      state.pendingDrop = pending;
-      refreshDynamicFields();
-    } else openContentModal(pending);
+      await handleModalFiles([...els.contentFilePicker.files]);
+    } else await openContentModal(pending);
+    els.contentFilePicker.value = "";
   });
   els.contentForm.addEventListener("submit", handleContentSubmit);
   els.topLinkForm.addEventListener("submit", async (e) => {
@@ -2496,10 +2544,17 @@ function bindEvents() {
     handleModalFiles(files);
   });
   document.addEventListener("paste", (e) => {
+    if (e.target.matches?.('#contentForm [name="url"]')) { setTimeout(() => processContentUrl(), 0); return; }
+    if (!document.querySelector('dialog[open]') && !e.target.closest?.('input,textarea,[contenteditable]')) {
+      const value = (e.clipboardData?.getData('text/plain') || '').trim();
+      if (/^https?:\/\//i.test(value)) { e.preventDefault(); openContentModal({ type: "link", url: value }); return; }
+      const files = [...(e.clipboardData?.files || [])];
+      if (files.length) { e.preventDefault(); openContentModal(detectFiles(files)); return; }
+    }
     if (
       !els.contentModal.open ||
       !state.pendingDrop ||
-      !["media", "image", "video", "audio", "font", "file", "text"].includes(
+      !["media", "image", "video", "audio", "font", "file", "text", "link"].includes(
         state.pendingDrop.type,
       )
     )
@@ -2548,6 +2603,7 @@ function bindEvents() {
     if (e.button === 1) e.preventDefault();
   });
   els.mediaViewer.addEventListener("close", () => {
+    els.viewerMedia.replaceChildren();
     state.viewerTileId = null;
     state.viewerIndex = 0;
     resetViewerTransform();

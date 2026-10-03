@@ -10,6 +10,7 @@ const FONT_DIR = __DIR__ . '/assets/fonts';
 const FONT_URL = 'assets/fonts';
 const CALENDAR_DIR = __DIR__ . '/data';
 require_once __DIR__ . '/metadata.php';
+require_once __DIR__ . '/remote-media.php';
 
 function response(mixed $data = null, int $status = 200): never {
     http_response_code($status);
@@ -308,6 +309,28 @@ try {
             mutateData(function (&$data) use ($settings) { $data['settings'] = $settings; });
             response($settings);
 
+        case 'media.inspect':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('POST required', 405);
+            $remote = fetchPublicMedia(normalizeUrl((string)(bodyJson()['url'] ?? '')), 2097152, true);
+            $mime = strtolower(explode(';', $remote['headers']['content-type'] ?? '')[0]);
+            response(['direct'=>str_starts_with($mime, 'image/') || str_starts_with($mime, 'video/')]);
+
+        case 'media.resolve':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('POST required', 405);
+            response(resolveSocialMedia(normalizeUrl((string)(bodyJson()['url'] ?? ''))));
+
+        case 'media.download':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('POST required', 405);
+            $remote = fetchPublicMedia(normalizeUrl((string)(bodyJson()['url'] ?? '')), 67108864);
+            $mime = (new finfo(FILEINFO_MIME_TYPE))->buffer($remote['body']);
+            $extensions = ['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','image/gif'=>'gif','image/avif'=>'avif','image/bmp'=>'bmp','video/mp4'=>'mp4','video/webm'=>'webm','video/quicktime'=>'mov','video/ogg'=>'ogv'];
+            if (!isset($extensions[$mime])) fail('This URL did not return a supported image or video.');
+            header('Content-Type: '.$mime);
+            header('Content-Disposition: attachment; filename="linked-media.'.$extensions[$mime].'"');
+            header('Content-Length: '.strlen($remote['body']));
+            header('X-Content-Type-Options: nosniff');
+            echo $remote['body']; exit;
+
         case 'tiles.create':
         case 'tiles.update':
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('POST required', 405);
@@ -321,7 +344,7 @@ try {
             }
             $type = preg_replace('/[^a-z]/', '', $input['type'] ?? 'file');
             if (!in_array($type, ['link','text','image','video','audio','file','font'], true)) fail('Invalid content type');
-            if ($editing && $type !== $existing['type']) fail('Content type cannot be changed');
+            if ($editing && $type !== $existing['type'] && !($existing['type'] === 'link' && in_array($type, ['image','video'], true))) fail('Content type cannot be changed');
             $tileId = $existing['id'] ?? id('tile');
             $tile = [
                 'id'=>$tileId, 'section'=>in_array($input['section'] ?? '', ['dashboard','projects','resources'], true) ? $input['section'] : 'dashboard',
@@ -356,6 +379,12 @@ try {
                 $tile['backgroundColor'] = ($color !== false && $color !== null && $color >= 0 && $color <= 8) ? $color : random_int(0, 8);
             }
             if ($type === 'link') { $tile['url'] = normalizeUrl((string)($input['url'] ?? '')); if (!$tile['url']) fail('A valid URL is required'); }
+            if ($type === 'link' && !empty($input['embedUrl'])) {
+                $social = socialMediaInfo($tile['url']);
+                if (!$social || $social['embedUrl'] !== $input['embedUrl']) fail('Invalid media embed URL');
+                $tile['embedUrl'] = $social['embedUrl'];
+                $tile['provider'] = $social['provider'];
+            }
             if ($type === 'text') {
                 $tile['text'] = $input['text'] ?? '';
                 $tile['textStyle'] = ['font'=>trim($input['font'] ?? 'Arial, sans-serif'),'fontSize'=>(int)($input['fontSize'] ?? 28),'bold'=>isset($input['bold']),'italic'=>isset($input['italic']),'underline'=>isset($input['underline']),'align'=>in_array($input['align'] ?? '', ['left','center','right'], true) ? $input['align'] : 'left'];
