@@ -1103,6 +1103,32 @@ function initScrubInputs() {
   });
 }
 
+function updateTextPreviewBackground() {
+  if (state.pendingDrop?.type !== "text") return;
+  const preview = els.contentForm.elements.text;
+  if (!preview) return;
+  preview.style.backgroundColor = Number.isInteger(state.pendingDrop.backgroundColor)
+    ? tileColor(state.pendingDrop) : "";
+}
+
+function selectTileBackground(index) {
+  if (!["text", "link"].includes(state.pendingDrop?.type) ||
+      !Number.isInteger(index) || index < 0 || index >= TILE_COLOR_COUNT) return;
+  const scrollTop = els.contentForm.scrollTop;
+  state.pendingDrop.backgroundColor = state.pendingDrop.backgroundColor === index ? null : index;
+  state.pendingThumbnail = null;
+  // Preserve the editor and focused swatch instead of rebuilding the form.
+  els.dynamicFields.querySelectorAll(".gallery-picker--single .gallery-thumb").forEach(thumb => thumb.remove());
+  const thumbnailInput = els.dynamicFields.querySelector("#thumbnailPickerInput");
+  if (thumbnailInput) thumbnailInput.value = "";
+  els.dynamicFields.querySelectorAll("[data-tile-color]").forEach(button => {
+    button.setAttribute("aria-pressed", String(Number(button.dataset.tileColor) === state.pendingDrop.backgroundColor));
+  });
+  revokePreviewUrls();
+  updateTextPreviewBackground();
+  els.contentForm.scrollTop = scrollTop;
+}
+
 function updateTextPreview() {
   if (state.pendingDrop?.type !== "text") return;
   const f = els.contentForm.elements;
@@ -1114,6 +1140,7 @@ function updateTextPreview() {
   preview.style.fontStyle = f.italic?.checked ? "italic" : "normal";
   preview.style.textDecoration = f.underline?.checked ? "underline" : "none";
   preview.style.textAlign = f.align?.value || "left";
+  updateTextPreviewBackground();
   syncAlignToggle();
   autosizeTextPreview();
 }
@@ -2108,10 +2135,7 @@ function bindEvents() {
     }
     const color = e.target.closest("[data-tile-color]");
     if (color) {
-      const index = Number(color.dataset.tileColor);
-      state.pendingDrop.backgroundColor = state.pendingDrop.backgroundColor === index ? null : index;
-      state.pendingThumbnail = null;
-      refreshDynamicFields();
+      selectTileBackground(Number(color.dataset.tileColor));
       return;
     }
     const trigger = e.target.closest("[data-file-trigger]");
