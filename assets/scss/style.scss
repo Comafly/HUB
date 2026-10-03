@@ -934,3 +934,7 @@ html[data-tile-details="always"] .tile .tile-gradient { opacity:1; }
 #settingsModal .settings-toggle-section { grid-template-columns:minmax(0,1fr) auto;align-items:center; }
 #settingsModal .settings-toggle-section .switch { margin:0; }
 #settingsModal .calendar-upload-row small { font-size:13px;line-height:1.5;color:var(--muted); }
+
+/* Collection preview covers the viewport below the navigation. */
+.collection-grid-drop-overlay { position:fixed;top:auto;right:auto;bottom:0;left:auto;transform:none; }
+.collection-grid-drop-overlay.is-visible { pointer-events:auto;transform:none; }

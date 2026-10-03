@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261003-16";
+import { api } from "./api.js?v=20261003-17";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -82,20 +82,30 @@ function prepareImages(files) {
   const run = async () => {
     const oversized = files.filter(file => file instanceof File && file.type.startsWith('image/') && file.size > IMAGE_LIMIT);
     if (!oversized.length || !await askMedia('These images are over 5mb, would you like to compress?', oversized.map(file => file.name))) return files;
-    const dialog = document.createElement('dialog'); dialog.className = 'modal';
-    dialog.innerHTML = '<div class="modal-card modal-card--confirm"><h2>Compressing images</h2><p role="status" aria-live="polite"></p><progress max="1" value="0" aria-label="Image conversion progress"></progress></div>';
-    dialog.addEventListener('cancel', event => event.preventDefault()); document.body.append(dialog); dialog.showModal();
+    if (!beginSubmission('Compressing 1 / ' + oversized.length)) throw new Error('Another operation is in progress. Please try again.');
+    const started = performance.now();
+    let completed = 0, current = 1;
+    const update = () => setEmbedProgress(Math.min(completed, (performance.now() - started) / 3000), `Compressing ${current} / ${oversized.length}`, 'Compression progress');
+    update();
+    const timer = setInterval(update, 50);
     try {
       const converted = new Map();
       for (let i = 0; i < oversized.length; i++) {
+        current = i + 1;
         const file = oversized[i];
-        converted.set(file, await compressImage(file, (ratio, stage) => {
-          dialog.querySelector('progress').value = (i + ratio) / oversized.length;
-          dialog.querySelector('p').textContent = `${i + 1} / ${oversized.length}: ${file.name} — ${stage}`;
+        update();
+        converted.set(file, await compressImage(file, ratio => {
+          completed = (i + ratio) / oversized.length;
+          update();
         }));
       }
       return files.map(file => converted.get(file) || file);
-    } finally { dialog.close(); dialog.remove(); }
+    } finally {
+      await new Promise(resolve => setTimeout(resolve, Math.max(0, Math.ceil(3000 - (performance.now() - started)) + 1)));
+      setEmbedProgress(completed, `Compressing ${current} / ${oversized.length}`, 'Compression progress');
+      clearInterval(timer);
+      endSubmission();
+    }
   };
   const result = preparation.then(run); preparation = result.catch(() => {}); return result;
 }
@@ -753,42 +763,43 @@ function parseIcsEvents(content) {
 }
 function expandCalendarEvents(content, windowStart, windowEnd) {
   const result = new Map();
-  const add = (day, event, occurrenceStart) => {
+  const add = (date, event, allDay, suffix = '') => {
+    const day = startOfDay(date);
+    if (day < windowStart || day >= windowEnd) return;
     const key = dateKey(day);
     if (!result.has(key)) result.set(key, []);
     result.get(key).push({
-      summary: unescapeIcs(event.SUMMARY || "Untitled event"),
-      description: unescapeIcs(event.DESCRIPTION || ""),
-      location: unescapeIcs(event.LOCATION || ""),
-      allDay: occurrenceStart.allDay,
-      time: occurrenceStart.allDay ? "" : occurrenceStart.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+      summary: unescapeIcs(event.SUMMARY || 'Untitled event') + suffix,
+      description: unescapeIcs(event.DESCRIPTION || ''),
+      location: unescapeIcs(event.LOCATION || ''),
+      allDay,
+      time: allDay ? '' : date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
     });
   };
   for (const event of parseIcsEvents(content)) {
     const start = parseIcsDate(event.DTSTART, event.DTSTART_PARAMS);
     if (!start) continue;
     const end = parseIcsDate(event.DTEND, event.DTEND_PARAMS);
-    const durationDays = end?.allDay ? Math.max(1, Math.round((startOfDay(end.date) - startOfDay(start.date)) / 86400000)) : 1;
+    const duration = end ? Math.max(0, end.date - start.date) : 0;
+    const allDaySpan = start.allDay && end ? Math.max(0, Math.round((startOfDay(end.date) - startOfDay(start.date)) / 86400000) - 1) : 0;
     const rule = event.RRULE ? parseRRule(event.RRULE) : null;
     const until = rule?.UNTIL ? parseIcsDate(rule.UNTIL)?.date : null;
     let occurrenceCount = 0;
-    for (let day = new Date(windowStart); day < windowEnd; day = addDays(day, 1)) {
-      let occurs = false;
-      if (!rule) occurs = dateKey(day) === dateKey(start.date);
-      else if ((!until || day <= until) && matchesRecurrence(day, start.date, rule)) {
-        occurs = true;
-        occurrenceCount++;
-        if (rule.COUNT && occurrenceCount > Number(rule.COUNT)) occurs = false;
-      }
-      if (!occurs) continue;
-      const occurrenceStart = { ...start, date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), start.date.getHours(), start.date.getMinutes(), start.date.getSeconds()) };
-      for (let i = 0; i < durationDays; i++) {
-        const eventDay = addDays(day, i);
-        if (eventDay >= windowStart && eventDay < windowEnd) add(eventDay, event, occurrenceStart);
-      }
+    // Start at DTSTART so recurrence counts and endings from before the visible window stay correct.
+    for (let day = startOfDay(start.date); day < windowEnd; day = addDays(day, 1)) {
+      if (until && day > until) break;
+      if (rule && !matchesRecurrence(day, start.date, rule)) continue;
+      if (rule?.COUNT && ++occurrenceCount > Number(rule.COUNT)) break;
+      const occurrenceStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), start.date.getHours(), start.date.getMinutes(), start.date.getSeconds());
+      // ICS all-day DTEND is exclusive: show the final occupied day.
+      const occurrenceEnd = start.allDay ? addDays(day, allDaySpan) : new Date(occurrenceStart.getTime() + duration);
+      const multipleDays = dateKey(occurrenceStart) !== dateKey(occurrenceEnd);
+      add(occurrenceStart, event, start.allDay, multipleDays ? ' - Begins' : '');
+      if (multipleDays) add(occurrenceEnd, event, start.allDay, ' - Ends');
+      if (!rule) break;
     }
   }
-  for (const items of result.values()) items.sort((a, b) => (a.time || "").localeCompare(b.time || "") || a.summary.localeCompare(b.summary));
+  for (const items of result.values()) items.sort((a, b) => (a.time || '').localeCompare(b.time || '') || a.summary.localeCompare(b.summary));
   return result;
 }
 function calendarWeekStart(reference = new Date()) {
@@ -1422,14 +1433,14 @@ function contentUrlChanged() {
   clearTimeout(linkMetadataTimer);
   if (url) linkMetadataTimer = setTimeout(() => fetchLinkDetails(draft), 450);
 }
-function setEmbedProgress(ratio, message) {
+function setEmbedProgress(ratio, message, label = 'Embedding progress') {
   $('#submissionMessage').textContent = message;
   $('#submissionProgress').hidden = false;
   $('#submissionProgressBar').style.width = `${Math.round(ratio * 100)}%`;
   $('#submissionProgressAmount').textContent = message;
   $('#submissionProgressPercent').textContent = `${Math.round(ratio * 100)}%`;
   const track = $('#submissionProgress .submission-progress-track');
-  track.setAttribute('role', 'progressbar'); track.setAttribute('aria-label', 'Embedding progress');
+  track.setAttribute('role', 'progressbar'); track.setAttribute('aria-label', label);
   track.setAttribute('aria-valuemin', '0'); track.setAttribute('aria-valuemax', '100'); track.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
 }
 async function embedContentUrl() {
@@ -2166,16 +2177,24 @@ function setupDragAndDrop() {
     );
     clearCollectionHighlights();
   });
+  const showCollectionOverlay = () => {
+    const column = els.contentColumn.getBoundingClientRect();
+    const top = Math.max(0, document.querySelector('.topbar').getBoundingClientRect().bottom);
+    Object.assign(els.collectionGridDropOverlay.style, { top: `${top}px`, left: `${column.left}px`, width: `${column.width}px` });
+    els.collectionGridDropOverlay.classList.add('is-visible');
+  };
+  window.addEventListener('resize', () => { if (draggedCollectionId && els.collectionGridDropOverlay.classList.contains('is-visible')) showCollectionOverlay(); });
+  window.addEventListener('scroll', () => { if (draggedCollectionId && els.collectionGridDropOverlay.classList.contains('is-visible')) showCollectionOverlay(); }, { passive: true });
   els.contentColumn.addEventListener("dragenter", (e) => {
     if (!draggedCollectionId) return;
     e.preventDefault();
-    els.collectionGridDropOverlay.classList.add("is-visible");
+    showCollectionOverlay();
   });
   els.contentColumn.addEventListener("dragover", (e) => {
     if (!draggedCollectionId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
-    els.collectionGridDropOverlay.classList.add("is-visible");
+    showCollectionOverlay();
   });
   els.contentColumn.addEventListener("dragleave", (e) => {
     if (!draggedCollectionId || els.contentColumn.contains(e.relatedTarget)) return;

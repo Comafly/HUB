@@ -5164,4 +5164,19 @@ html[data-tile-details=always] .tile .tile-gradient {
   font-size: 13px;
   line-height: 1.5;
   color: var(--muted);
+}
+
+/* Collection preview covers the viewport below the navigation. */
+.collection-grid-drop-overlay {
+  position: fixed;
+  top: auto;
+  right: auto;
+  bottom: 0;
+  left: auto;
+  transform: none;
+}
+
+.collection-grid-drop-overlay.is-visible {
+  pointer-events: auto;
+  transform: none;
 }/*# sourceMappingURL=style.css.map */
