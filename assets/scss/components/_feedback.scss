@@ -1,12 +1,125 @@
-.toast-region { position: fixed; right: 20px; bottom: 20px; z-index: 200; display: grid; gap: 8px; pointer-events: none; }
-.toast { min-width: 220px; max-width: 360px; padding: 13px 15px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--text); color: var(--bg); font-size: 12px; font-weight: 800; box-shadow: var(--shadow-soft); opacity: 0; transform: translateY(12px) scale(.96); transition: all var(--speed-med) var(--ease-pop); }.toast.is-visible { opacity: 1; transform: none; }.toast--error { background: var(--danger); color: white; }
-.empty-state { min-height: 320px; border: 1px dashed var(--line-strong); border-radius: var(--radius-md); place-items: center; align-content: center; text-align: center; color: var(--muted); }.empty-state:not([hidden]) { display: grid; }.empty-mark { width: 58px; height: 58px; border: 1px solid var(--line-strong); border-radius: 50%; display:grid;place-items:center;font-size:30px;color:var(--accent-2);}.empty-state h2{color:var(--text);margin:15px 0 4px;font-size:18px}.empty-state p{margin:0;max-width:360px;font-size:12px;line-height:1.5}
+.toast-region {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483647;
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+  inset: auto 20px 20px auto;
+  width: min(360px, calc(100vw - 40px));
+  height: auto;
+  max-height: calc(100dvh - 40px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: var(--text);
+}
 
-/* Shared floating tooltip escapes clipped panes and stacking contexts. */
-[data-tooltip]::after { content: none !important; }
-.app-tooltip { position: fixed; inset: auto; margin: 0; width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 7px 9px; border: 0; border-radius: 8px; background: var(--text); color: var(--bg); font: 700 11px/1.4 Arial, sans-serif; letter-spacing: .04em; pointer-events: none; z-index: 2147483647; box-shadow: var(--shadow-soft); }
-.app-tooltip[hidden] { display: none; }
-.app-tooltip .tooltip-description { display: block; max-width: 320px; margin-top: 4px; font-size: 10px; font-weight: 400; line-height: 1.45; letter-spacing: 0; opacity: .72; white-space: normal; overflow-wrap: anywhere; }
-.text-content { display: block; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.collection-item { cursor: pointer; }
-.collection-item:focus-visible { outline: 2px solid var(--accent-2); outline-offset: -2px; }
+.toast {
+  min-width: 0;
+  max-width: 360px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: var(--shadow-soft);
+  opacity: 0;
+  transform: translateY(12px) scale(.96);
+  transition: all var(--speed-med) var(--ease-pop);
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.toast.is-visible {
+opacity: 1; transform: none;
+}
+
+.toast--error {
+background: var(--danger); color: white;
+}
+
+.empty-state {
+min-height: 320px; border: 1px dashed var(--line-strong); border-radius: var(--radius-md); place-items: center; align-content: center; text-align: center; color: var(--muted);
+}
+
+.empty-state:not([hidden]) {
+display: grid;
+}
+
+.empty-mark {
+width: 58px; height: 58px; border: 1px solid var(--line-strong); border-radius: 50%; display:grid;place-items:center;font-size:30px;color:var(--accent-2);
+}
+
+.empty-state h2 {
+color:var(--text);margin:15px 0 4px;font-size:18px
+}
+
+.empty-state p {
+margin:0;max-width:360px;font-size:12px;line-height:1.5
+}
+
+[data-tooltip]::after {
+content: none !important;
+}
+
+.app-tooltip {
+position: fixed; inset: auto; margin: 0; width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 7px 9px; border: 0; border-radius: 8px; background: var(--text); color: var(--bg); font: 700 11px/1.4 Arial, sans-serif; letter-spacing: .04em; pointer-events: none; z-index: 2147483647; box-shadow: var(--shadow-soft);
+}
+
+.app-tooltip[hidden] {
+display: none;
+}
+
+.app-tooltip .tooltip-description {
+display: block; max-width: 320px; margin-top: 4px; font-size: 10px; font-weight: 400; line-height: 1.45; letter-spacing: 0; opacity: .72; white-space: normal; overflow-wrap: anywhere;
+}
+
+.text-content {
+display: block; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
+.collection-item {
+cursor: pointer;
+}
+
+.collection-item:focus-visible {
+outline: 2px solid var(--accent-2); outline-offset: -2px;
+}
+
+.submission-modal {
+padding: 25px 32px; border: 1px solid var(--line-strong); border-radius: 20px; background: var(--bg-elevated); color: var(--text); box-shadow: var(--shadow-soft);
+}
+
+.submission-modal[open] {
+display: flex; align-items: center; gap: 14px;
+}
+
+.submission-modal::backdrop {
+background: rgba(0,0,0,.35);
+}
+
+.submission-modal p {
+margin: 0; font-size: 16px; font-weight: 700;
+}
+
+.submission-spinner {
+width: 22px; height: 22px; border: 2px solid var(--line-strong); border-top-color: var(--accent-2); border-radius: 50%; animation: submissionSpin 800ms linear infinite;
+}
+
+@keyframes submissionSpin {
+to { transform: rotate(360deg); }
+}
+
+.toast-region::backdrop {
+background: transparent; backdrop-filter: none; pointer-events: none;
+}
+
+.toast-region[popover]:not(:popover-open) {
+display: none;
+}

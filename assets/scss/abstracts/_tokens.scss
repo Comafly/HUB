@@ -9,4 +9,7 @@
   --speed-slow: 520ms;
   --ease: cubic-bezier(.2, .8, .2, 1);
   --ease-pop: cubic-bezier(.18, .89, .32, 1.28);
+  --tile-color-0: color-mix(in srgb, var(--panel) 92%, var(--accent));
+  --tile-color-1: color-mix(in srgb, var(--panel) 90%, var(--accent-2));
+  --tile-color-2: color-mix(in srgb, var(--panel) 92%, var(--text));
 }

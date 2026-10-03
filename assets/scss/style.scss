@@ -19,12 +19,7 @@
 @use "components/collections";
 @use "layout/responsive";
 
-@use "components/interaction-updates";
-
 @use "components/metadata";
-
-@use "components/requested-updates";
-
 
 /* v7 gallery viewer, upload progress, and tactile fullscreen controls */
 .viewer-main {
@@ -642,6 +637,8 @@
 }
 .calendar-module[hidden] { display: none; }
 .calendar-ranges {
+  cursor: grab;
+  touch-action: pan-y;
   display: flex;
   align-items: flex-start;
   gap: 28px;
@@ -876,3 +873,5 @@
 .calendar-ranges.is-month-mode .calendar-range-label strong {
   letter-spacing: .14em;
 }
+
+.calendar-ranges.is-panning { cursor: grabbing; user-select: none; scroll-behavior: auto; }

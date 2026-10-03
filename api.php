@@ -325,7 +325,7 @@ try {
             $tileId = $existing['id'] ?? id('tile');
             $tile = [
                 'id'=>$tileId, 'section'=>in_array($input['section'] ?? '', ['dashboard','projects','resources'], true) ? $input['section'] : 'dashboard',
-                'location'=>trim($input['location'] ?? ''),
+                'location'=>in_array($type, ['text','link'], true) ? '' : trim($input['location'] ?? ''),
                 'dateAdded'=>$existing['dateAdded'] ?? $existing['createdAt'] ?? date(DATE_ATOM),
                 'type'=>$type, 'label'=>trim($input['label'] ?? ''), 'description'=>trim($input['description'] ?? ''),
                 'tags'=>cleanTags($input['tags'] ?? ''), 'size'=>in_array($input['size'] ?? '', ['small','medium','large'], true) ? $input['size'] : 'medium',
@@ -340,6 +340,7 @@ try {
             if (in_array($type, ['image','video','audio','file','font'], true) && !$files) fail('Choose at least one file');
             $thumbnail = normalizedFiles('thumbnail');
             $thumbPath = $thumbnail ? storeUpload($thumbnail[0], $tileId) : null;
+            if (in_array($type, ['text','link'], true) && $files) fail('Text and URL content accept one thumbnail only');
             if ($files) $tile['files'] = $files;
             $tile['fileMetadata'] = [];
             $metadataTags = [];
@@ -350,6 +351,10 @@ try {
             }
             $tile['metadataTags'] = array_values(array_unique($metadataTags));
             if ($thumbPath || $retainedThumbnail) $tile['thumbnail'] = $thumbPath ?: $retainedThumbnail;
+            if (in_array($type, ['text','link'], true)) {
+                $color = filter_var($input['backgroundColor'] ?? null, FILTER_VALIDATE_INT);
+                $tile['backgroundColor'] = ($color !== false && $color !== null && $color >= 0 && $color <= 2) ? $color : random_int(0, 2);
+            }
             if ($type === 'link') { $tile['url'] = normalizeUrl((string)($input['url'] ?? '')); if (!$tile['url']) fail('A valid URL is required'); }
             if ($type === 'text') {
                 $tile['text'] = $input['text'] ?? '';

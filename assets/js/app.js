@@ -235,11 +235,16 @@ function displayText(tile) {
   };
   return samples[tile.id] === text ? text.replace(/\\n/g, "\n") : text;
 }
+function tileColor(tile) {
+  const choice = Number.isInteger(tile.backgroundColor) ? tile.backgroundColor :
+    [...String(tile.id || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 3;
+  return `var(--tile-color-${Math.max(0, Math.min(2, choice))})`;
+}
 function tileMedia(tile) {
   if (tile.type === "text") {
     const s = tile.textStyle || {};
     const over = !!tile.thumbnail;
-    const textHtml = `<div class="text-tile${over ? " text-tile--over" : ""}" style="font-family:${escapeHtml(s.font || "inherit")};font-size:${Number(s.fontSize || 28)}px;font-weight:${s.bold ? 700 : 500};font-style:${s.italic ? "italic" : "normal"};text-decoration:${s.underline ? "underline" : "none"};text-align:${escapeHtml(s.align || "left")}"><span class="text-content">${escapeHtml(displayText(tile))}</span></div>`;
+    const textHtml = `<div class="text-tile${over ? " text-tile--over" : ""}" style="background-color:${tileColor(tile)};font-family:${escapeHtml(s.font || "inherit")};font-size:${Number(s.fontSize || 28)}px;font-weight:${s.bold ? 700 : 500};font-style:${s.italic ? "italic" : "normal"};text-decoration:${s.underline ? "underline" : "none"};text-align:${escapeHtml(s.align || "left")}"><span class="text-content">${escapeHtml(displayText(tile))}</span></div>`;
     return over
       ? `<div class="text-thumb"><img class="cover" src="${escapeHtml(tile.thumbnail)}" alt="" />${textHtml}</div>`
       : textHtml;
@@ -262,8 +267,7 @@ function tileMedia(tile) {
   )
     return `<img class="cover" src="${escapeHtml(tile.thumbnail)}" alt="" />`;
   if (tile.type === "link") {
-    const thumb = tile.thumbnail || favicon(tile.url);
-    return `<div class="link-preview">${thumb ? `<img src="${escapeHtml(thumb)}" alt="" />` : ""}<div class="link-domain">${escapeHtml(safeHostname(tile.url))}</div></div>`;
+    return `<div class="link-preview" style="background-color:${tileColor(tile)}">${tile.thumbnail ? `<img class="link-thumbnail" src="${escapeHtml(tile.thumbnail)}" alt="" />` : ""}<div class="link-domain"><img class="link-favicon" src="${escapeHtml(favicon(tile.url))}" alt="" /><span>${escapeHtml(tile.url || "")}</span></div></div>`;
   }
   return `<div class="file-symbol">${tile.type === "audio" ? "♪" : tile.type === "font" ? "Aa" : "↗"}</div>`;
 }
@@ -273,7 +277,7 @@ function renderTiles() {
   els.tileGrid.innerHTML = items
     .map(
       (tile) =>
-        `<article draggable="false" class="tile tile--${escapeHtml(tile.size || "medium")} tile--${escapeHtml(tile.orientation || "landscape")}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0"><div class="tile-media">${tileMedia(tile)}</div><div class="tile-gradient"></div><div class="tile-actions"><button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit tile" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button></div><div class="tile-content"><h3>${escapeHtml(tile.label || defaultTileLabel(tile))}</h3></div></article>`,
+        `<article draggable="false" class="tile tile--${escapeHtml(tile.size || "medium")} tile--${escapeHtml(tile.orientation || "landscape")}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0"><div class="tile-media">${tileMedia(tile)}</div><div class="tile-gradient"></div><div class="tile-actions"><button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit tile" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button></div><div class="tile-content"><h3>${escapeHtml(tile.label || defaultTileLabel(tile))}</h3>${tile.description ? `<p>${escapeHtml(tile.description)}</p>` : ""}</div></article>`,
     )
     .join("");
   els.emptyState.hidden = state.section !== "dashboard" || items.length > 0;
@@ -373,7 +377,31 @@ function layoutTiles() {
     item.el.style.gridColumn = `${item.x + 1} / span ${item.w}`;
     item.el.style.gridRow = `${item.y + 1} / span ${item.h}`;
   });
+  fitTextTiles();
 }
+// Fit only grid previews; saved font sizes remain intact in the fullscreen viewer.
+function fitTextTiles() {
+  els.tileGrid.querySelectorAll(".text-tile").forEach(preview => {
+    const tile = state.tiles.find(item => item.id === preview.closest("[data-tile-id]").dataset.tileId);
+    const content = preview.querySelector(".text-content");
+    const css = getComputedStyle(preview);
+    const height = preview.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom);
+    const width = preview.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
+    if (!content || height <= 0 || width <= 0) return;
+    let low = 0, high = Math.max(1, Number(tile?.textStyle?.fontSize || 28));
+    preview.style.fontSize = `${high}px`;
+    if (content.scrollHeight <= height && content.scrollWidth <= width) return;
+    for (let i = 0; i < 20; i++) {
+      const size = (low + high) / 2;
+      preview.style.fontSize = `${size}px`;
+      if (content.scrollHeight <= height && content.scrollWidth <= width) low = size;
+      else high = size;
+    }
+    preview.style.fontSize = `${low}px`;
+  });
+}
+document.fonts?.ready.then(fitTextTiles);
+document.fonts?.addEventListener("loadingdone", fitTextTiles);
 let layoutFrame;
 new ResizeObserver(() => {
   cancelAnimationFrame(layoutFrame);
@@ -827,7 +855,7 @@ function renderTagEditor() {
   els.contentForm.elements.tags.value = state.pendingTags.join(",");
   els.presetTags.innerHTML = PRESET_TAGS.map(
     (tag) =>
-      `<button type="button" class="preset-tag ${state.pendingTags.some((t) => t.toLowerCase() === tag.toLowerCase()) ? "is-added" : ""}" data-preset-tag="${tag}">${tag}</button>`,
+      `<button type="button" class="preset-tag ${state.pendingTags.some((t) => t.toLowerCase() === tag.toLowerCase()) ? "is-added" : ""}" aria-pressed="${state.pendingTags.some(t => t.toLowerCase() === tag.toLowerCase())}" data-preset-tag="${tag}">${tag}</button>`,
   ).join("");
 }
 function normalizeTag(raw) {
@@ -938,14 +966,17 @@ function refreshFontSelect(selected) {
   select.append(...legacy);
   select.value = current;
 }
+function tileBackgroundPickerMarkup() {
+  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<div class="tile-color-options" role="group" aria-label="Background colour">${[0, 1, 2].map(index => `<button type="button" class="tile-color-option" style="background:var(--tile-color-${index})" data-tile-color="${index}" aria-label="Background colour ${index + 1}" aria-pressed="${state.pendingDrop.backgroundColor === index}"><span>Aa</span></button>`).join("")}</div></div><small>Choose one thumbnail or a background colour.</small>`;
+}
 function fieldMarkup(type, pending = {}) {
   const media = selectedMediaMarkup(type);
   if (type === "media")
     return `<div class="field field--wide"><span>Media</span><div class="media-empty-drop"><strong>Drop media here</strong><small>Drag files into this modal, paste an image, or choose files manually.</small><button class="upload-button" type="button" id="chooseMediaButton"><span class="upload-button-icon">＋</span><span>Choose media</span></button></div></div>`;
   if (type === "link")
-    return `<label class="field field--wide"><span>URL</span><input name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(pending.url || "")}" /></label><div class="field field--wide"><span>Thumbnail image</span>${singleImagePickerMarkup()}</div>`;
+    return `<label class="field field--wide"><span>URL</span><input name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(pending.url || "")}" /></label><div class="field field--wide"><span>Thumbnail image / colour</span>${tileBackgroundPickerMarkup()}</div>`;
   if (type === "text")
-    return `<div class="text-format-row"><div class="field text-font-field"><span>Font</span><div class="font-picker-row"><select name="font">${fontOptionsMarkup()}</select><button type="button" class="font-upload-btn" id="fontUploadButton" aria-label="Upload a font file" data-tooltip="Upload font">${FONT_UPLOAD_ICON}</button></div><input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2,.ttc,.otc,.eot" hidden /></div><label class="field text-size-field"><span>Size</span><input name="fontSize" class="scrub-input" type="number" min="12" max="96" value="28" /></label><div class="field text-style-field"><span>Style</span><div class="format-row"><label class="format-toggle"><input name="bold" type="checkbox" /><span>B</span></label><label class="format-toggle"><input name="italic" type="checkbox" /><span><i>I</i></span></label><label class="format-toggle"><input name="underline" type="checkbox" /><span><u>U</u></span></label><input name="align" type="hidden" value="left" /><button type="button" class="align-toggle" id="alignToggle" data-align-cycle aria-label="Text alignment: left" data-tooltip="Align: left"></button></div></div></div><label class="field field--wide"><span>Text</span><textarea class="text-live-preview-input" name="text" rows="1" required placeholder="Type text for your tile preview...">${escapeHtml(pending.text || "")}</textarea></label><div class="field field--wide"><span>Thumbnail image</span>${singleImagePickerMarkup()}</div>`;
+    return `<div class="text-format-row"><div class="field text-font-field"><span>Font</span><div class="font-picker-row"><select name="font">${fontOptionsMarkup()}</select><button type="button" class="font-upload-btn" id="fontUploadButton" aria-label="Upload a font file" data-tooltip="Upload font">${FONT_UPLOAD_ICON}</button></div><input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2,.ttc,.otc,.eot" hidden /></div><label class="field text-size-field"><span>Size</span><input name="fontSize" class="scrub-input" type="number" min="12" max="96" value="28" /></label><div class="field text-style-field"><span>Style</span><div class="format-row"><label class="format-toggle"><input name="bold" type="checkbox" /><span>B</span></label><label class="format-toggle"><input name="italic" type="checkbox" /><span><i>I</i></span></label><label class="format-toggle"><input name="underline" type="checkbox" /><span><u>U</u></span></label><input name="align" type="hidden" value="left" /><button type="button" class="align-toggle" id="alignToggle" data-align-cycle aria-label="Text alignment: left" data-tooltip="Align: left"></button></div></div></div><label class="field field--wide"><span>Text</span><textarea class="text-live-preview-input" name="text" rows="1" required placeholder="Type text for your tile preview...">${escapeHtml(pending.text || "")}</textarea></label><div class="field field--wide"><span>Thumbnail image / colour</span>${tileBackgroundPickerMarkup()}</div>`;
   if (type === "image")
     return `<div class="field field--wide"><span>Gallery images</span>${media}<small>Drop or paste images anywhere in this modal to add them to the gallery.</small></div>`;
   const mediaLabel = {video: "Video", audio: "Audio", font: "Font files", file: "Files"}[type] || "Files";
@@ -957,6 +988,10 @@ function filesRequired(type) {
   );
 }
 function refreshDynamicFields() {
+  const location = els.contentForm.elements.location;
+  const hideLocation = ["text", "link"].includes(state.pendingDrop.type);
+  location.closest(".field").hidden = hideLocation;
+  location.disabled = hideLocation;
   refreshMetadataTags();
   const draft = new FormData(els.contentForm);
   const preserve =
@@ -1180,6 +1215,11 @@ async function handleContentSubmit(event) {
     editingId = state.editingId;
   form.set("section", state.tiles.find((tile) => tile.id === editingId)?.section || state.section);
   if (type === "link") form.set("url", normalizeUrl(form.get("url")));
+  if (["text", "link"].includes(type)) {
+    form.set("backgroundColor", String(Number.isInteger(state.pendingDrop.backgroundColor)
+      ? state.pendingDrop.backgroundColor : Math.floor(Math.random() * 3)));
+    form.set("location", "");
+  }
   form.set(
     "existingFiles",
     JSON.stringify(pendingFiles().filter((file) => typeof file === "string")),
@@ -1366,6 +1406,7 @@ function renderViewerSelection(tile) {
   els.viewerActions.innerHTML = viewerActionsMarkup(tile);
   els.viewerThumbnails.innerHTML = viewerThumbnailsMarkup(tile);
   els.viewerThumbnails.hidden = !els.viewerThumbnails.innerHTML;
+  els.viewerMedia.style.backgroundColor = tile.type === "text" && !tile.thumbnail ? tileColor(tile) : "";
   els.viewerMedia.classList.toggle("viewer-media--text-background", tile.type === "text" && !!tile.thumbnail);
   if (tile.type === "text" && tile.thumbnail) {
     const background = document.createElement("img");
@@ -1411,6 +1452,7 @@ function handleModalImages(images) {
     state.pendingDrop.type === "text" ||
     ["video", "audio", "font", "file", "link"].includes(state.pendingDrop.type)
   ) {
+    state.pendingDrop.backgroundColor = null;
     state.pendingThumbnail = images[0];
     refreshDynamicFields();
     return;
@@ -1424,9 +1466,10 @@ function handleModalImages(images) {
 }
 function handleModalFiles(files) {
   const images = files.filter((f) => f.type.startsWith("image/"));
-  if (state.pendingDrop.type === "text") {
+  if (["text", "link"].includes(state.pendingDrop.type)) {
     if (images[0]) {
-      state.pendingThumbnail = images[0];
+      state.pendingDrop.backgroundColor = null;
+    state.pendingThumbnail = images[0];
       refreshDynamicFields();
     }
     return;
@@ -1447,6 +1490,7 @@ function handleModalFiles(files) {
     return;
   }
   if (images.length) {
+    state.pendingDrop.backgroundColor = null;
     state.pendingThumbnail = images[0];
     refreshDynamicFields();
     return;
@@ -2039,7 +2083,11 @@ function bindEvents() {
     }
     const preset = e.target.closest("[data-preset-tag]");
     if (preset) {
-      addTag(preset.dataset.presetTag);
+      const tag = preset.dataset.presetTag;
+      if (state.pendingTags.some(t => t.toLowerCase() === tag.toLowerCase())) {
+        state.pendingTags = state.pendingTags.filter(t => t.toLowerCase() !== tag.toLowerCase());
+        renderTagEditor();
+      } else addTag(tag);
       return;
     }
     const removeFormTag = e.target.closest("[data-remove-form-tag]");
@@ -2048,6 +2096,14 @@ function bindEvents() {
         (t) => t !== removeFormTag.dataset.removeFormTag,
       );
       renderTagEditor();
+      return;
+    }
+    const color = e.target.closest("[data-tile-color]");
+    if (color) {
+      const index = Number(color.dataset.tileColor);
+      state.pendingDrop.backgroundColor = state.pendingDrop.backgroundColor === index ? null : index;
+      state.pendingThumbnail = null;
+      refreshDynamicFields();
       return;
     }
     const trigger = e.target.closest("[data-file-trigger]");
@@ -2209,6 +2265,7 @@ function bindEvents() {
       return;
     }
     if (e.target?.id === "thumbnailPickerInput" && e.target.files?.[0]) {
+      state.pendingDrop.backgroundColor = null;
       state.pendingThumbnail = e.target.files[0];
       refreshDynamicFields();
       return;
@@ -2564,3 +2621,36 @@ async function init() {
   setupTooltips();
 }
 init();
+
+// Horizontal calendar panning, with a movement threshold to preserve clicks.
+(() => {
+  const ranges = els.calendarRanges;
+  let pan = null;
+  ranges.addEventListener("pointerdown", event => {
+    if (event.button !== 0 || event.target.closest("button,a,input")) return;
+    pan = { id: event.pointerId, x: event.clientX, y: event.clientY, scroll: ranges.scrollLeft, moved: false };
+  });
+  ranges.addEventListener("pointermove", event => {
+    if (!pan || event.pointerId !== pan.id) return;
+    const dx = event.clientX - pan.x, dy = event.clientY - pan.y;
+    if (!pan.moved) {
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) { pan = null; return; }
+      if (Math.abs(dx) < 5) return;
+      pan.moved = true;
+      ranges.setPointerCapture(event.pointerId);
+      ranges.classList.add("is-panning");
+    }
+    event.preventDefault();
+    ranges.scrollLeft = pan.scroll - dx;
+  });
+  const end = event => {
+    if (!pan || event.pointerId !== pan.id) return;
+    pan = null;
+    ranges.classList.remove("is-panning");
+    if (ranges.hasPointerCapture(event.pointerId)) ranges.releasePointerCapture(event.pointerId);
+  };
+  ranges.addEventListener("pointerup", end);
+  ranges.addEventListener("pointercancel", end);
+  ranges.addEventListener("lostpointercapture", end);
+  ranges.addEventListener("pointerleave", event => { if (pan && !pan.moved) end(event); });
+})();

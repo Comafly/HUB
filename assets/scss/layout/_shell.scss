@@ -1,5 +1,5 @@
 .app-shell {
-  width: min(1640px, calc(100% - 48px));
+width: min(1640px, calc(100% - 48px));
   margin: 0 auto;
 }
 
@@ -13,12 +13,13 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: color-mix(in srgb, var(--bg) 86%, transparent);
-  backdrop-filter: blur(20px);
+  background: var(--bg);
+  backdrop-filter: none;
+  isolation: isolate;
 }
 
 .top-links {
-  display: flex;
+display: flex;
   gap: 10px;
   align-items: center;
   min-width: 0;
@@ -26,7 +27,7 @@
 
 .circle-link,
 .icon-btn {
-  width: 42px;
+width: 42px;
   height: 42px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
@@ -43,32 +44,33 @@
 
 .circle-link:hover,
 .icon-btn:hover {
-  transform: translateY(-2px) scale(1.03);
+transform: translateY(-2px) scale(1.03);
   border-color: var(--accent);
   background: var(--panel-2);
 }
 
 .circle-link:active,
 .icon-btn:active {
-  transform: translateY(0) scale(.96);
+transform: translateY(0) scale(.96);
 }
 
 .circle-link img {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+width: 100%;
+  height: 100%;
+  border-radius: inherit;
   object-fit: cover;
+  display: block;
 }
 
 .circle-link--add {
-  font-size: 23px;
+font-size: 23px;
   color: var(--accent-2);
   border-style: dashed;
   background: transparent;
 }
 
 [data-tooltip]::after {
-  content: attr(data-tooltip);
+content: attr(data-tooltip);
   position: absolute;
   top: calc(100% + 10px);
   left: 50%;
@@ -88,22 +90,22 @@
 }
 
 [data-tooltip]:hover::after {
-  opacity: 1;
+opacity: 1;
   transform: translate(-50%, 0);
 }
 
 .main-nav {
-  display: flex;
+display: flex;
   gap: 8px;
   align-items: center;
   padding: 5px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--bg-elevated);
+  background: transparent;
 }
 
 .nav-tab {
-  border: 0;
+border: 0;
   background: transparent;
   text-transform: uppercase;
   letter-spacing: .12em;
@@ -117,22 +119,22 @@
 }
 
 .nav-tab:hover {
-  color: var(--text);
+color: var(--text);
 }
 
 .nav-tab.is-active {
-  background: var(--panel-3);
+background: var(--panel-3);
   color: var(--text);
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
 .settings-btn {
-  justify-self: end;
+justify-self: end;
   font-size: 16px;
 }
 
 .workspace {
-  display: grid;
+display: grid;
   grid-template-columns: 190px minmax(0, 1fr) 260px;
   gap: 30px;
   padding: 34px 0 60px;
@@ -141,12 +143,12 @@
 
 .tags-panel,
 .bookmarks-panel {
-  position: sticky;
+position: sticky;
   top: 126px;
 }
 
 .eyebrow {
-  text-transform: uppercase;
+text-transform: uppercase;
   letter-spacing: .18em;
   font-size: 10px;
   font-weight: 900;
@@ -154,12 +156,12 @@
 }
 
 .tag-list {
-  display: grid;
+display: grid;
   gap: 9px;
 }
 
 .tag-btn {
-  min-height: 48px;
+min-height: 48px;
   padding: 0 15px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
@@ -175,35 +177,36 @@
 }
 
 .tag-btn span {
-  opacity: .25;
+opacity: .25;
   transition: transform var(--speed-med) var(--ease);
 }
 
 .tag-btn:hover {
-  transform: translateX(4px);
+transform: translateX(4px);
   color: var(--text);
   background: var(--accent-soft);
   border-color: var(--line-strong);
 }
 
 .tag-btn:hover span {
-  transform: rotate(45deg);
+transform: rotate(45deg);
   opacity: .7;
 }
 
 .tag-btn.is-active {
-  background: var(--text);
+background: var(--text);
   color: var(--bg);
   border-color: var(--text);
   transform: translateX(4px);
 }
 
 .content-column {
-  min-width: 0;
+min-width: 0;
+  position: relative;
 }
 
 .search-wrap {
-  height: 58px;
+height: 58px;
   border: 1px solid var(--line);
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
@@ -215,19 +218,19 @@
 }
 
 .search-wrap:focus-within {
-  border-color: var(--accent);
+border-color: var(--accent);
   transform: translateY(-1px);
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 .search-icon {
-  font-size: 24px;
+font-size: 24px;
   color: var(--muted);
   transform: rotate(-15deg);
 }
 
 .search-input {
-  flex: 1;
+flex: 1;
   min-width: 0;
   border: 0;
   outline: 0;
@@ -238,15 +241,15 @@
 }
 
 .search-input::placeholder {
-  color: var(--faint);
+color: var(--faint);
 }
 
 .search-input::-webkit-search-cancel-button {
-  appearance: none;
+appearance: none;
 }
 
 .search-clear {
-  width: 34px;
+width: 34px;
   height: 34px;
   display: grid;
   place-items: center;
@@ -263,13 +266,13 @@
 }
 
 .search-clear.is-visible {
-  opacity: 1;
+opacity: 1;
   transform: scale(1) rotate(0);
   pointer-events: auto;
 }
 
 .section-heading {
-  display: flex;
+display: flex;
   justify-content: space-between;
   gap: 28px;
   align-items: center;
@@ -277,7 +280,7 @@
 }
 
 .section-heading h1 {
-  margin: 7px 0 0;
+margin: 7px 0 0;
   font-size: clamp(38px, 4.4vw, 72px);
   line-height: .93;
   letter-spacing: -.055em;
@@ -285,21 +288,21 @@
 }
 
 .section-heading p {
-  width: min(380px, 45%);
+width: min(380px, 45%);
   margin: 0 0 7px;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
 }
-/* Keep the delete control inside the hover area while crossing the circle edge. */
+
 .top-link {
-  position: relative;
+position: relative;
   display: inline-flex;
   flex: 0 0 auto;
 }
 
 .top-link > :is(.top-link-remove, .top-link-edit) {
-  position: absolute;
+position: absolute;
   top: -10px;
   left: calc(50% - 14px);
   z-index: 2;
@@ -316,19 +319,64 @@
 }
 
 .top-link:hover > :is(.top-link-remove, .top-link-edit) {
-  opacity: 1;
+opacity: 1;
   visibility: visible;
   transition-delay: 3s, 3s, 0s, 0s, 0s;
 }
 
-/* Keyboard users can reveal and reach the same control without hovering. */
 .top-link:has(:focus-visible) > :is(.top-link-remove, .top-link-edit) {
-  opacity: 1;
+opacity: 1;
   visibility: visible;
   transition-delay: 0s;
 }
 
 .top-link > :is(.top-link-remove, .top-link-edit):hover {
-  background: #fff;
+background: #fff;
   color: #000;
+}
+
+.development-panel {
+min-height: 55vh; display: grid; place-content: center; text-align: center; gap: 12px;
+}
+
+.development-panel h1 {
+margin: 0; font-size: clamp(24px, 4vw, 40px);
+}
+
+.link-preview img {
+width: 100%; height: 100%; object-fit: cover;
+  padding: 0; border-radius: 0; background: transparent; box-shadow: none;
+}
+
+.link-domain {
+top: 16px; left: 16px; right: 52px; width: fit-content; max-width: calc(100% - 68px);
+  padding: 8px 11px; border-radius: 9px;
+  color: #fff; background: rgba(0, 0, 0, .68);
+  font-size: clamp(16px, 1.6vw, 24px); font-weight: 850; line-height: 1.25;
+  letter-spacing: -.02em; text-transform: none; overflow-wrap: anywhere;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .5);
+}
+
+.circle-link {
+overflow: hidden; padding: 0;
+}
+
+.top-link > .top-link-edit {
+left: calc(50% - 29px);
+}
+
+.top-link > .top-link-remove {
+left: calc(50% + 1px);
+}
+
+.top-link:focus-within > :is(.top-link-remove, .top-link-edit) {
+opacity: 1; visibility: visible; transition-delay: 0s;
+}
+
+.app-tooltip .tooltip-url {
+display: block; margin-top: 4px; font-size: 10px; font-weight: 400; opacity: .7; letter-spacing: 0; overflow-wrap: anywhere;
+}
+
+.topbar::before {
+content: ""; position: absolute; inset: 0 calc((100% - 100vw) / 2); background: var(--bg); z-index: -1; pointer-events: none;
 }

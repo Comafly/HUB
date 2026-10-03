@@ -1,5 +1,5 @@
 .modal {
-  width: 100%;
+width: 100%;
   max-width: none;
   height: 100%;
   max-height: none;
@@ -9,17 +9,20 @@
   background: transparent;
   color: var(--text);
 }
+
 .modal::backdrop {
-  background: var(--overlay);
+background: var(--overlay);
   backdrop-filter: blur(14px);
   animation: fadeIn var(--speed-med) var(--ease);
 }
+
 .modal[open] {
-  display: grid;
+display: grid;
   place-items: center;
 }
+
 .modal-card {
-  width: min(620px, 100%);
+width: min(620px, 100%);
   max-height: calc(100vh - 40px);
   overflow: auto;
   background: var(--bg-elevated);
@@ -29,56 +32,66 @@
   box-shadow: 0 32px 100px rgba(0, 0, 0, 0.34);
   animation: modalIn var(--speed-med) var(--ease-pop);
 }
+
 .modal-card--wide {
-  width: min(860px, 100%);
+width: min(860px, 100%);
 }
+
 .modal-head {
-  display: flex;
+display: flex;
   justify-content: space-between;
   gap: 18px;
   align-items: flex-start;
   padding-bottom: 1rem;
 }
+
 .modal-head h2 {
-  margin: 5px 0 0;
+margin: 5px 0 0;
   font-size: 28px;
   letter-spacing: -0.03em;
 }
+
 .modal-close {
-  width: 36px;
+width: 36px;
   height: 36px;
   font-size: 22px;
 }
+
 .form-grid {
-  display: grid;
+display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
 }
+
 .field {
-  display: grid;
+display: grid;
   gap: 8px;
   align-content: start;
 }
+
 .field--wide {
-  grid-column: 1 / -1;
+grid-column: 1 / -1;
 }
+
 .field > span,
 .field > label > span {
-  font-size: 11px;
+font-size: 11px;
   font-weight: 850;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--muted);
 }
+
 .field small {
-  color: var(--faint);
+color: var(--faint);
   font-size: 10px;
 }
+
 .field input,
 .field textarea,
 .field select,
 .format-row select {
-  width: 100%;
+width: 100%;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel);
@@ -89,31 +102,37 @@
     border-color var(--speed-fast) var(--ease),
     box-shadow var(--speed-fast) var(--ease);
 }
+
 .field textarea {
-  resize: vertical;
+resize: vertical;
   min-height: 84px;
 }
+
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
-  border-color: var(--accent);
+border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
+
 .dynamic-fields {
-  display: contents;
+display: contents;
 }
+
 .format-row {
-  display: flex;
+display: flex;
   gap: 8px;
   align-items: center;
 }
+
 .format-toggle input {
-  position: absolute;
+position: absolute;
   opacity: 0;
   pointer-events: none;
 }
+
 .format-toggle span {
-  width: 42px;
+width: 42px;
   height: 42px;
   display: grid;
   place-items: center;
@@ -122,23 +141,27 @@
   background: var(--panel);
   cursor: pointer;
 }
+
 .format-toggle input:checked + span {
-  background: var(--text);
+background: var(--text);
   color: var(--bg);
 }
+
 .format-row select {
-  flex: 1;
+flex: 1;
 }
+
 .modal-actions {
-  display: flex;
+display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 22px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
 }
+
 .btn {
-  min-height: 44px;
+min-height: 44px;
   border-radius: 12px;
   border: 1px solid var(--line-strong);
   padding: 0 17px;
@@ -148,56 +171,63 @@
     transform var(--speed-fast) var(--ease-pop),
     background var(--speed-fast) var(--ease);
 }
+
 .btn--ghost {
-  background: transparent;
+background: transparent;
   color: var(--muted);
 }
+
 .btn--ghost:hover {
-  background: var(--text);
+background: var(--text);
   color: var(--bg);
   border-color: var(--text);
 }
 
 .btn--primary {
-  background: transparent;
+background: transparent;
   color: var(--muted);
 }
 
 .btn--primary:hover {
-  background: var(--text);
+background: var(--text);
   color: var(--bg);
   border-color: var(--text);
 }
+
 .settings-section {
-  display: grid;
+display: grid;
   gap: 14px;
 }
 
-.settings-copy{
-  border-top: 1px solid var(--line);
+.settings-copy {
+border-top: 1px solid var(--line);
   padding-top: 1rem;
 }
 
 .settings-copy h3 {
-  margin: 0;
+margin: 0;
   font-size: 15px;
 }
+
 .settings-copy p {
-  margin: 5px 0 0;
+margin: 5px 0 0;
   color: var(--muted);
   font-size: 12px;
 }
+
 .switch {
-  position: relative;
+position: relative;
   width: 48px;
   height: 28px;
 }
+
 .switch input {
-  position: absolute;
+position: absolute;
   opacity: 0;
 }
+
 .switch span {
-  position: absolute;
+position: absolute;
   inset: 0;
   border-radius: 999px;
   background: var(--panel-3);
@@ -205,8 +235,9 @@
   cursor: pointer;
   transition: background var(--speed-med) var(--ease);
 }
+
 .switch span::after {
-  content: "";
+content: "";
   position: absolute;
   width: 20px;
   height: 20px;
@@ -218,49 +249,54 @@
     transform var(--speed-med) var(--ease-pop),
     background var(--speed-med) var(--ease);
 }
+
 .switch input:checked + span {
-  background: var(--accent-soft);
+background: var(--accent-soft);
 }
+
 .switch input:checked + span::after {
-  transform: translateX(20px);
+transform: translateX(20px);
   background: var(--accent-2);
 }
+
 @keyframes fadeIn {
-  from {
+from {
     opacity: 0;
   }
 }
+
 @keyframes modalIn {
-  from {
+from {
     opacity: 0;
     transform: translateY(18px) scale(0.96);
   }
 }
 
-/* Content chooser, unified upload controls, sticky modal heads, and live text preview. */
 .modal-head {
-  position: sticky;
+position: sticky;
   top: -23px;
   z-index: 8;
   margin-top: -23px;
   padding-top: 23px;
   background: var(--bg-elevated);
 }
+
 .modal-card--chooser {
-  width: min(700px, 100%);
+width: min(700px, 100%);
 }
+
 .content-type-grid {
-  display: grid;
+display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
 .modal-card--chooser .content-type-grid {
-  padding-top: 8px;
+padding-top: 8px;
 }
 
 .content-type-choice {
-  min-height: 190px;
+min-height: 190px;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: var(--panel);
@@ -278,16 +314,19 @@
     border-color var(--speed-fast) var(--ease),
     background var(--speed-fast) var(--ease);
 }
+
 .content-type-choice:hover {
-  transform: translateY(-4px);
+transform: translateY(-4px);
   border-color: var(--accent);
   background: var(--panel-2);
 }
+
 .content-type-choice:active {
-  transform: translateY(0) scale(0.97);
+transform: translateY(0) scale(0.97);
 }
+
 .content-type-icon {
-  width: 54px;
+width: 54px;
   height: 54px;
   border-radius: 50%;
   display: grid;
@@ -297,21 +336,25 @@
   color: var(--accent-2);
   font-size: 21px;
 }
+
 .content-type-choice strong {
-  font-size: 18px;
+font-size: 18px;
 }
+
 .content-type-choice small {
-  color: var(--muted);
+color: var(--muted);
   line-height: 1.35;
 }
+
 .custom-upload {
-  display: flex;
+display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
+
 .upload-button {
-  min-height: 46px;
+min-height: 46px;
   padding: 0 16px 0 10px;
   border: 1px solid var(--line-strong);
   border-radius: 13px;
@@ -327,16 +370,19 @@
     border-color var(--speed-fast) var(--ease),
     background var(--speed-fast) var(--ease);
 }
+
 .upload-button:hover {
-  transform: translateY(-2px);
+transform: translateY(-2px);
   border-color: var(--accent);
   background: var(--panel-2);
 }
+
 .upload-button:active {
-  transform: scale(0.96);
+transform: scale(0.96);
 }
+
 .upload-button-icon {
-  width: 27px;
+width: 27px;
   height: 27px;
   display: grid;
   place-items: center;
@@ -346,8 +392,9 @@
   font-size: 18px;
   font-weight: 500;
 }
+
 .upload-file-name {
-  min-width: 0;
+min-width: 0;
   max-width: 100%;
   color: var(--muted);
   font-size: 11px;
@@ -355,8 +402,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .text-live-preview {
-  min-height: 180px;
+min-height: 180px;
   padding: 22px;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -371,8 +419,9 @@
     font-size var(--speed-fast) var(--ease),
     background var(--speed-fast) var(--ease);
 }
+
 @media (max-width: 680px) {
-  .content-type-grid {
+.content-type-grid {
     grid-template-columns: 1fr;
   }
   .content-type-choice {
@@ -380,9 +429,8 @@
   }
 }
 
-/* The text editor is also the live tile preview. */
 .field textarea.text-live-preview-input {
-  min-height: 84px;
+min-height: 84px;
   padding: 22px;
   resize: none;
   overflow: hidden;
@@ -395,31 +443,34 @@
     box-shadow var(--speed-fast) var(--ease),
     background var(--speed-fast) var(--ease);
 }
+
 .field textarea.text-live-preview-input:focus {
-  background: var(--panel);
+background: var(--panel);
 }
 
 #deleteContentButton {
-  margin-right: auto;
+margin-right: auto;
   color: var(--danger);
   border: 1px solid currentColor;
 }
+
 #deleteContentButton:hover {
-  background: var(--danger);
+background: var(--danger);
   color: var(--text);
   border-color: var(--danger);
 }
+
 #deleteContentButton[hidden] {
-  display: none;
+display: none;
 }
+
 .btn:disabled {
-  opacity: 0.55;
+opacity: 0.55;
   cursor: wait;
 }
 
-/* Alignment: single 3-state toggle (left / centre / right). */
 .align-toggle {
-  width: 42px;
+width: 42px;
   height: 42px;
   display: grid;
   place-items: center;
@@ -434,63 +485,68 @@
     color var(--speed-fast) var(--ease),
     border-color var(--speed-fast) var(--ease);
 }
+
 .align-toggle:hover {
-  background: var(--text);
+background: var(--text);
   color: var(--bg);
   border-color: var(--text);
 }
+
 .align-toggle:focus-visible {
-  outline: 0;
+outline: 0;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-/* Click-to-type / drag-to-scrub number field. */
 .scrub-input {
-  cursor: ew-resize;
+cursor: ew-resize;
   appearance: textfield;
   -moz-appearance: textfield;
 }
+
 .scrub-input::-webkit-outer-spin-button,
 .scrub-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
+-webkit-appearance: none;
   margin: 0;
 }
+
 .scrub-input:focus {
-  cursor: text;
+cursor: text;
 }
+
 body.is-scrubbing,
 body.is-scrubbing * {
-  cursor: ew-resize !important;
+cursor: ew-resize !important;
   user-select: none;
 }
 
-/* Close / edit buttons share the primary + ghost hover style. */
 .modal-close:hover,
 .viewer-close:hover,
 .capsule-x:hover,
 .tile-action:hover {
-  background: var(--text);
+background: var(--text);
   color: var(--bg);
   border-color: var(--text);
 }
+
 .modal-close:hover,
 .viewer-close:hover {
-  transform: none;
+transform: none;
 }
 
-/* Font picker: dropdown + upload button. */
 .font-picker-row {
-  display: flex;
+display: flex;
   gap: 8px;
   align-items: stretch;
 }
+
 .font-picker-row select {
-  flex: 1;
+flex: 1;
   min-width: 0;
 }
+
 .font-upload-btn {
-  flex: none;
+flex: none;
   width: 46px;
   display: grid;
   place-items: center;
@@ -505,29 +561,32 @@ body.is-scrubbing * {
     color var(--speed-fast) var(--ease),
     border-color var(--speed-fast) var(--ease);
 }
+
 .font-upload-btn:hover {
-  background: var(--text);
+background: var(--text);
   color: var(--bg);
   border-color: var(--text);
 }
+
 .font-upload-btn:focus-visible {
-  outline: 0;
+outline: 0;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
+
 .font-upload-btn:disabled {
-  opacity: 0.55;
+opacity: 0.55;
   cursor: wait;
 }
 
-/* Viewer side panel: uploaded font download link. */
 .viewer-font {
-  margin-top: 26px;
+margin-top: 26px;
   padding-top: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
+
 .viewer-font-link {
-  display: flex;
+display: flex;
   flex-direction: column;
   gap: 3px;
   margin-top: 10px;
@@ -541,18 +600,29 @@ body.is-scrubbing * {
     color var(--speed-fast) var(--ease),
     border-color var(--speed-fast) var(--ease);
 }
+
 .viewer-font-link span {
-  font-weight: 850;
+font-weight: 850;
   font-size: 15px;
   overflow-wrap: anywhere;
 }
+
 .viewer-font-link small {
-  font-size: 11px;
+font-size: 11px;
   letter-spacing: 0.04em;
   opacity: 0.7;
 }
+
 .viewer-font-link:hover {
-  background: var(--text);
+background: var(--text);
   color: var(--bg);
   border-color: var(--text);
+}
+
+.modal-card--confirm {
+width: min(460px, calc(100vw - 32px));
+}
+
+.confirm-copy {
+margin: 0; color: var(--muted); line-height: 1.55;
 }
