@@ -6,6 +6,7 @@
 [data-tooltip]::after { content: none !important; }
 .app-tooltip { position: fixed; inset: auto; margin: 0; width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 7px 9px; border: 0; border-radius: 8px; background: var(--text); color: var(--bg); font: 700 11px/1.4 Arial, sans-serif; letter-spacing: .04em; pointer-events: none; z-index: 2147483647; box-shadow: var(--shadow-soft); }
 .app-tooltip[hidden] { display: none; }
+.app-tooltip .tooltip-description { display: block; max-width: 320px; margin-top: 4px; font-size: 10px; font-weight: 400; line-height: 1.45; letter-spacing: 0; opacity: .72; white-space: normal; overflow-wrap: anywhere; }
 .text-content { display: block; width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .collection-item { cursor: pointer; }
 .collection-item:focus-visible { outline: 2px solid var(--accent-2); outline-offset: -2px; }

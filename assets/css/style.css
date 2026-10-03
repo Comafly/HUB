@@ -2010,6 +2010,19 @@ body.is-scrubbing * {
   display: none;
 }
 
+.app-tooltip .tooltip-description {
+  display: block;
+  max-width: 320px;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  opacity: 0.72;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .text-content {
   display: block;
   width: 100%;
@@ -4254,7 +4267,7 @@ body.is-tile-dragging, body.is-tile-dragging * {
   --calendar-day-width: 132px;
   flex: 0 0 auto;
   width: max-content;
-  max-width: 100%;
+  max-width: none;
 }
 
 .calendar-range:has(.calendar-day.is-compact) {
@@ -4297,8 +4310,9 @@ body.is-tile-dragging, body.is-tile-dragging * {
   grid-auto-flow: column;
   grid-auto-columns: var(--calendar-day-width);
   gap: 10px;
-  width: 100%;
-  justify-content: center;
+  width: max-content;
+  max-width: none;
+  justify-content: start;
   transition: grid-auto-columns var(--speed-med) var(--ease);
 }
 
@@ -4391,13 +4405,20 @@ body.is-tile-dragging, body.is-tile-dragging * {
   color: var(--text);
   font-size: 9px;
   line-height: 1.1;
+  cursor: pointer;
   transition: transform var(--speed-fast) var(--ease-pop), border-color var(--speed-fast) var(--ease), background var(--speed-fast) var(--ease);
 }
 
-.calendar-event:hover {
+.calendar-event:hover,
+.calendar-event:focus-visible {
   transform: translateX(2px);
   border-color: var(--line-strong);
   background: var(--panel-2);
+}
+
+.calendar-event:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
 }
 
 .calendar-event-title {

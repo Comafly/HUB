@@ -574,7 +574,7 @@ function parseIcsEvents(content) {
     const left = line.slice(0, colon), value = line.slice(colon + 1);
     const [name, ...paramBits] = left.split(";");
     const key = name.toUpperCase();
-    if (["DTSTART", "DTEND", "SUMMARY", "LOCATION", "RRULE", "UID"].includes(key)) {
+    if (["DTSTART", "DTEND", "SUMMARY", "DESCRIPTION", "LOCATION", "RRULE", "UID"].includes(key)) {
       current[key] = value;
       current[`${key}_PARAMS`] = paramBits.join(";");
     }
@@ -588,6 +588,7 @@ function expandCalendarEvents(content, windowStart, windowEnd) {
     if (!result.has(key)) result.set(key, []);
     result.get(key).push({
       summary: unescapeIcs(event.SUMMARY || "Untitled event"),
+      description: unescapeIcs(event.DESCRIPTION || ""),
       location: unescapeIcs(event.LOCATION || ""),
       allDay: occurrenceStart.allDay,
       time: occurrenceStart.allDay ? "" : occurrenceStart.date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
@@ -654,7 +655,7 @@ function calendarDayMarkup(date, items, today) {
   const listClass = items.length > 3 ? " calendar-event-list--scroll" : "";
   const todayClass = dateKey(date) === dateKey(today) ? " is-today" : "";
   const past = startOfDay(date) < startOfDay(today);
-  return `<article class="calendar-day${dense}${todayClass}${past ? " is-past" : ""}"><div class="calendar-date"><strong>${date.getDate()}</strong><span>${date.toLocaleDateString("en-AU", { weekday: "short" })}</span></div><div class="calendar-event-list${listClass}">${items.map((item) => `<div class="calendar-event${past ? " is-past" : ""}" title="${escapeHtml(item.location || item.summary)}"><span class="calendar-event-title">${escapeHtml(item.summary)}</span>${item.time ? `<span class="calendar-event-time">${escapeHtml(item.time)}</span>` : ""}</div>`).join("")}</div></article>`;
+  return `<article class="calendar-day${dense}${todayClass}${past ? " is-past" : ""}"><div class="calendar-date"><strong>${date.getDate()}</strong><span>${date.toLocaleDateString("en-AU", { weekday: "short" })}</span></div><div class="calendar-event-list${listClass}">${items.map((item) => `<div class="calendar-event${past ? " is-past" : ""}" tabindex="0" data-tooltip="${escapeHtml(item.summary)}"${item.description ? ` data-tooltip-description="${escapeHtml(item.description)}"` : ""}><span class="calendar-event-title">${escapeHtml(item.summary)}</span>${item.time ? `<span class="calendar-event-time">${escapeHtml(item.time)}</span>` : ""}</div>`).join("")}</div></article>`;
 }
 function renderCalendar() {
   if (!ENABLE_CALENDAR_MODULE) {
@@ -2495,6 +2496,12 @@ function setupTooltips() {
     hide();
     owner = target;
     tip.textContent = target.dataset.tooltip;
+    if (target.dataset.tooltipDescription) {
+      const description = document.createElement("span");
+      description.className = "tooltip-description";
+      description.textContent = target.dataset.tooltipDescription;
+      tip.append(description);
+    }
     if (target.dataset.tooltipUrl) {
       const url = document.createElement("span");
       url.className = "tooltip-url";

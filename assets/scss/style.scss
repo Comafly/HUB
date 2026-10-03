@@ -656,7 +656,7 @@
   --calendar-day-width: 132px;
   flex: 0 0 auto;
   width: max-content;
-  max-width: 100%;
+  max-width: none;
 }
 .calendar-range:has(.calendar-day.is-compact) { --calendar-day-width: 120px; }
 .calendar-range:has(.calendar-day.is-dense) { --calendar-day-width: 108px; }
@@ -689,8 +689,9 @@
   grid-auto-flow: column;
   grid-auto-columns: var(--calendar-day-width);
   gap: 10px;
-  width: 100%;
-  justify-content: center;
+  width: max-content;
+  max-width: none;
+  justify-content: start;
   transition: grid-auto-columns var(--speed-med) var(--ease);
 }
 .calendar-day {
@@ -762,12 +763,18 @@
   color: var(--text);
   font-size: 9px;
   line-height: 1.1;
+  cursor: pointer;
   transition: transform var(--speed-fast) var(--ease-pop), border-color var(--speed-fast) var(--ease), background var(--speed-fast) var(--ease);
 }
-.calendar-event:hover {
+.calendar-event:hover,
+.calendar-event:focus-visible {
   transform: translateX(2px);
   border-color: var(--line-strong);
   background: var(--panel-2);
+}
+.calendar-event:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
 }
 .calendar-event-title {
   min-width: 0;
