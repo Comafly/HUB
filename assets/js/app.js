@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261003-11";
+import { api } from "./api.js?v=20261003-12";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
