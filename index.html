@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1a0f0a" />
   <title>COMMA HUB</title>
   <!-- build: collections-ui-v4-chevron -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261003-14" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20261003-15" />
 </head>
 <body>
   <div class="app-shell" id="app">
@@ -188,7 +188,7 @@
         <button class="icon-btn modal-close" type="button" data-close="settingsModal" aria-label="Close">×</button>
       </div>
       <section class="settings-section">
-        <div class="settings-copy"><h3>Theme</h3><p>Choose a visual style, then switch between its dark and light modes.</p></div>
+        <div class="settings-copy"><h3>Themes</h3><p>Choose a visual style, then switch between its dark and light modes.</p></div>
         <div class="theme-grid" id="themeGrid">
           <button class="theme-card" type="button" data-theme-choice="umber" aria-pressed="true">
             <span class="theme-swatch theme-swatch--umber" aria-hidden="true"><span></span><span></span><span></span></span>
@@ -216,16 +216,13 @@
           </button>
         </div>
       </section>
-      <section class="settings-section appearance-settings">
-        <div class="settings-copy"><h3>Appearance</h3></div>
-        <div class="mode-row appearance-row">
-          <label class="appearance-label" for="modeToggle">Dark / Light Mode<span id="modeLabel">Dark mode</span></label>
-          <label class="switch" aria-label="Toggle dark or light mode"><input id="modeToggle" type="checkbox" checked /><span></span></label>
-        </div>
-        <div class="mode-row appearance-row">
-          <label class="appearance-label" for="tileDetailsToggle">Always Show Tile Details<span>Keep labels and descriptions visible.</span></label>
-          <label class="switch" aria-label="Always Show Tile Details"><input id="tileDetailsToggle" type="checkbox" /><span></span></label>
-        </div>
+      <section class="settings-section settings-toggle-section">
+        <div class="settings-copy"><h3><label for="modeToggle">Dark/Light Mode</label></h3><p id="modeLabel">Dark mode</p></div>
+        <label class="switch" aria-label="Toggle dark or light mode"><input id="modeToggle" type="checkbox" checked /><span></span></label>
+      </section>
+      <section class="settings-section settings-toggle-section">
+        <div class="settings-copy"><h3><label for="tileDetailsToggle">Always Show Tile Details</label></h3><p>Keep labels and descriptions visible.</p></div>
+        <label class="switch" aria-label="Always Show Tile Details"><input id="tileDetailsToggle" type="checkbox" /><span></span></label>
       </section>
       <section class="settings-section">
         <div class="settings-copy"><h3>Calendar</h3><p>Load upcoming events from an ICS calendar file stored in the data folder.</p></div>
@@ -245,7 +242,7 @@
         </div>
       </section>
       <section class="settings-section">
-        <div class="settings-copy"><h3>Content backup</h3><p>Download saved content, collections, settings, and uploaded files. Extract the ZIP into the project folder to restore its data/ and uploads/ directories.</p></div>
+        <div class="settings-copy"><h3>Content Backup</h3><p>Download saved content, collections, settings, and uploaded files. Extract the ZIP into the project folder to restore its data/ and uploads/ directories.</p></div>
         <button class="btn btn--primary" id="downloadContentButton" type="button">Download Content</button>
       </section>
     </div>

@@ -5062,30 +5062,6 @@ html {
   border-color: var(--text);
 }
 
-.appearance-settings .settings-copy h3 {
-  font-size: 22px;
-}
-
-.appearance-row {
-  margin-top: 16px;
-  gap: 18px;
-}
-
-.appearance-label {
-  font-size: 17px;
-  font-weight: 650;
-  line-height: 1.4;
-  cursor: pointer;
-}
-
-.appearance-label span {
-  display: block;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--muted);
-  margin-top: 3px;
-}
-
 html[data-tile-details=always] .tile .tile-content {
   opacity: 1;
   transform: none;
@@ -5133,4 +5109,59 @@ html[data-tile-details=always] .tile .tile-gradient {
     padding-right: 8px;
     gap: 7px;
   }
+}
+/* One typography and spacing scale for every settings section. */
+#settingsModal .settings-section {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+}
+
+#settingsModal .settings-section:last-child {
+  padding-bottom: 0;
+}
+
+#settingsModal .settings-copy {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+#settingsModal .settings-copy h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+#settingsModal .settings-copy h3 label {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+#settingsModal .settings-copy p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+#settingsModal .settings-toggle-section {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+#settingsModal .settings-toggle-section .switch {
+  margin: 0;
+}
+
+#settingsModal .calendar-upload-row small {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
 }/*# sourceMappingURL=style.css.map */
