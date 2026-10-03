@@ -97,11 +97,6 @@
 .field input,
 .field textarea,
 .field select,
-.format-toggle input:focus-visible+span {
-  outline: 2px solid var(--accent-2);
-  outline-offset: 2px;
-}
-
 .format-row select {
   width: 100%;
   border: 1px solid var(--line);
@@ -177,6 +172,11 @@
 .format-toggle input:checked+span {
   background: var(--text);
   color: var(--bg);
+}
+
+.format-toggle input:focus-visible+span {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
 }
 
 .format-row select {
