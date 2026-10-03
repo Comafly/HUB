@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261003-14";
+import { api } from "./api.js?v=20261003-16";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -1667,7 +1667,7 @@ function viewerSelectedMediaMarkup(tile) {
   return "";
 }
 function viewerMediaMarkup(tile) {
-  if (tile.type === "link" && tile.embedUrl) return `<div class="viewer-embed"><iframe src="${escapeHtml(tile.embedUrl)}" title="${escapeHtml(tile.label || "Embedded media")}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><a href="${escapeHtml(tile.url)}" target="_blank" rel="noopener noreferrer">Open original post</a></div>`;
+  if (tile.type === "link" && tile.embedUrl) return `<div class="viewer-embed"><iframe src="${escapeHtml(tile.embedUrl)}" title="${escapeHtml(tile.label || "Embedded media")}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
   if (["image", "video"].includes(tile.type) && tile.files?.length) return viewerSelectedMediaMarkup(tile);
   if (tile.type === "audio" && tile.files?.[0])
     return `<div class="viewer-audio">${tile.thumbnail ? `<img src="${escapeHtml(tile.thumbnail)}" alt="">` : ""}<audio src="${escapeHtml(tile.files[0])}" controls autoplay></audio></div>`;
@@ -1696,6 +1696,7 @@ function viewerFontLinkMarkup(tile) {
   return `<div class="viewer-font"><div class="eyebrow">Font used</div><a class="viewer-font-link" href="${escapeHtml(encodeURI(font.file))}" download="${escapeHtml(download)}"><span>${escapeHtml(font.name)}</span><small>Download .${escapeHtml(font.ext)}</small></a></div>`;
 }
 function viewerActionsMarkup(tile) {
+  if (tile.type === "link" && tile.url) return `<a class="viewer-action-button viewer-original-link" href="${escapeHtml(tile.url)}" target="_blank" rel="noopener noreferrer" data-tooltip="Open Original Link" aria-label="Open Original Link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7M14 11a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.7-1.7"/></svg></a>`;
   if (!tile.files?.length || ["text", "link"].includes(tile.type)) return "";
   const selected = `api.php?action=tiles.download&amp;id=${encodeURIComponent(tile.id)}&amp;index=${state.viewerIndex}`;
   const all = `api.php?action=tiles.download&amp;id=${encodeURIComponent(tile.id)}`;
@@ -1734,6 +1735,7 @@ function applyViewerTransform() {
   els.viewerMedia.classList.toggle("is-zoomed", state.viewerZoom > 1);
 }
 function renderViewerSelection(tile) {
+  els.viewerMedia.classList.toggle("viewer-media--embed", tile.type === "link" && !!tile.embedUrl);
   els.viewerMedia.innerHTML = viewerMediaMarkup(tile);
   els.viewerActions.innerHTML = viewerActionsMarkup(tile);
   els.viewerThumbnails.innerHTML = viewerThumbnailsMarkup(tile);
