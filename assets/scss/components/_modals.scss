@@ -8,6 +8,8 @@
   border: 0;
   background: transparent;
   color: var(--text);
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .modal::backdrop {
@@ -95,6 +97,11 @@
 .field input,
 .field textarea,
 .field select,
+.format-toggle input:focus-visible+span {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
 .format-row select {
   width: 100%;
   border: 1px solid var(--line);
@@ -135,8 +142,23 @@
   align-items: center;
 }
 
+.format-toggle {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
 .format-toggle input {
   position: absolute;
+  inset: 0 auto auto 0;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
   opacity: 0;
   pointer-events: none;
 }
