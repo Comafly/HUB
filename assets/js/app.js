@@ -235,10 +235,17 @@ function displayText(tile) {
   };
   return samples[tile.id] === text ? text.replace(/\\n/g, "\n") : text;
 }
+const TILE_COLOR_GROUPS = [
+  { label: "Complementary", indices: [1, 5, 6] },
+  { label: "Analogous", indices: [3, 0, 4] },
+  { label: "Triadic", indices: [2, 7] },
+  { label: "Neutral", indices: [8] },
+];
+const TILE_COLOR_COUNT = 9;
 function tileColor(tile) {
   const choice = Number.isInteger(tile.backgroundColor) ? tile.backgroundColor :
-    [...String(tile.id || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 3;
-  return `var(--tile-color-${Math.max(0, Math.min(2, choice))})`;
+    [...String(tile.id || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TILE_COLOR_COUNT;
+  return `var(--tile-color-${Math.max(0, Math.min(TILE_COLOR_COUNT - 1, choice))})`;
 }
 function tileMedia(tile) {
   if (tile.type === "text") {
@@ -967,7 +974,8 @@ function refreshFontSelect(selected) {
   select.value = current;
 }
 function tileBackgroundPickerMarkup() {
-  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<div class="tile-color-options" role="group" aria-label="Background colour">${[0, 1, 2].map(index => `<button type="button" class="tile-color-option" style="background:var(--tile-color-${index})" data-tile-color="${index}" data-tooltip="${["Analogous", "Complementary", "Triadic"][index]}" aria-label="${["Analogous", "Complementary", "Triadic"][index]} background colour" aria-pressed="${state.pendingDrop.backgroundColor === index}"><span>Aa</span></button>`).join("")}</div></div><small>Choose one thumbnail or a background colour.</small>`;
+  const groups = TILE_COLOR_GROUPS.map(group => `<div class="tile-color-group" role="group" aria-label="${group.label} background colours"><small class="tile-color-label">${group.label}</small><div class="tile-color-swatches">${group.indices.map((index, variant) => `<button type="button" class="tile-color-option" style="background:var(--tile-color-${index})" data-tile-color="${index}" data-tooltip="${group.label}${group.indices.length > 1 ? ` ${variant + 1}` : ""}" aria-label="${group.label} background colour${group.indices.length > 1 ? ` ${variant + 1}` : ""}" aria-pressed="${state.pendingDrop.backgroundColor === index}"><span>Aa</span></button>`).join("")}</div></div>`).join("");
+  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<div class="tile-color-options">${groups}</div></div><small>Choose one thumbnail or a background colour.</small>`;
 }
 function fieldMarkup(type, pending = {}) {
   const media = selectedMediaMarkup(type);
@@ -1217,7 +1225,7 @@ async function handleContentSubmit(event) {
   if (type === "link") form.set("url", normalizeUrl(form.get("url")));
   if (["text", "link"].includes(type)) {
     form.set("backgroundColor", String(Number.isInteger(state.pendingDrop.backgroundColor)
-      ? state.pendingDrop.backgroundColor : Math.floor(Math.random() * 3)));
+      ? state.pendingDrop.backgroundColor : Math.floor(Math.random() * TILE_COLOR_COUNT)));
     form.set("location", "");
   }
   form.set(

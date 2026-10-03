@@ -357,12 +357,21 @@ position: absolute;
 }
 
 .tile-background-picker {
-display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px;
 }
 
 .tile-color-options {
-display: flex; gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  gap: 14px 10px;
+  max-width: 100%;
 }
+
+.tile-color-group:nth-child(-n + 2) { grid-column: 1 / -1; }
+.tile-color-group:nth-child(3) { grid-column: span 2; }
+.tile-color-label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
+.tile-color-swatches { display: flex; gap: 10px; }
+
 
 .tile-color-option {
 width: 64px; height: 64px; border: 2px solid var(--line-strong); border-radius: 14px; color: var(--text); cursor: pointer;

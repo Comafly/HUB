@@ -19,6 +19,8 @@ html[data-theme="bubblegum"][data-mode="dark"] {
   --tile-hue: 326.72;
   --tile-saturation: 50%;
   --tile-lightness: 28%;
+  --tile-lightness-deep: 20%;
+  --tile-lightness-soft: 34%;
   color-scheme: dark;
 }
 
@@ -43,5 +45,7 @@ html[data-theme="bubblegum"][data-mode="light"] {
   --tile-hue: 326.58;
   --tile-saturation: 46%;
   --tile-lightness: 80%;
+  --tile-lightness-deep: 70%;
+  --tile-lightness-soft: 90%;
   color-scheme: light;
 }

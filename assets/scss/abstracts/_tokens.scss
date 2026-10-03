@@ -9,11 +9,14 @@
   --speed-slow: 520ms;
   --ease: cubic-bezier(.2, .8, .2, 1);
   --ease-pop: cubic-bezier(.18, .89, .32, 1.28);
-  /* Accent hue offsets: analogous +30°, complementary +180°, triadic +120°. */
-  --tile-color-analogous: hsl(calc(var(--tile-hue) + 30) var(--tile-saturation) var(--tile-lightness));
-  --tile-color-complementary: hsl(calc(var(--tile-hue) + 180) var(--tile-saturation) var(--tile-lightness));
-  --tile-color-triadic: hsl(calc(var(--tile-hue) + 120) var(--tile-saturation) var(--tile-lightness));
-  --tile-color-0: var(--tile-color-analogous);
-  --tile-color-1: var(--tile-color-complementary);
-  --tile-color-2: var(--tile-color-triadic);
+  /* Keep saved indices 0–2 stable while extending each colour harmony. */
+  --tile-color-0: hsl(calc(var(--tile-hue) + 30) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-1: hsl(calc(var(--tile-hue) + 180) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-2: hsl(calc(var(--tile-hue) + 120) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-3: hsl(calc(var(--tile-hue) - 30) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-4: hsl(calc(var(--tile-hue) - 60) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-5: hsl(calc(var(--tile-hue) + 180) var(--tile-saturation) var(--tile-lightness-deep));
+  --tile-color-6: hsl(calc(var(--tile-hue) + 180) calc(var(--tile-saturation) * .65) var(--tile-lightness-soft));
+  --tile-color-7: hsl(calc(var(--tile-hue) + 240) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-8: var(--bg-elevated);
 }

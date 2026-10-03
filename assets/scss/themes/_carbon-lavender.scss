@@ -22,6 +22,8 @@ html[data-theme="carbon-lavender"][data-mode="dark"] {
   --tile-hue: 276.0;
   --tile-saturation: 28%;
   --tile-lightness: 28%;
+  --tile-lightness-deep: 20%;
+  --tile-lightness-soft: 34%;
   color-scheme: dark;
 }
 
@@ -49,5 +51,7 @@ html[data-theme="carbon-lavender"][data-mode="light"] {
   --tile-hue: 276.46;
   --tile-saturation: 28%;
   --tile-lightness: 80%;
+  --tile-lightness-deep: 70%;
+  --tile-lightness-soft: 90%;
   color-scheme: light;
 }

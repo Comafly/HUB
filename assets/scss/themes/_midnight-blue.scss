@@ -19,6 +19,8 @@ html[data-theme="midnight-blue"][data-mode="dark"] {
   --tile-hue: 211.3;
   --tile-saturation: 38%;
   --tile-lightness: 28%;
+  --tile-lightness-deep: 20%;
+  --tile-lightness-soft: 34%;
   color-scheme: dark;
 }
 
@@ -43,5 +45,7 @@ html[data-theme="midnight-blue"][data-mode="light"] {
   --tile-hue: 209.03;
   --tile-saturation: 40%;
   --tile-lightness: 80%;
+  --tile-lightness-deep: 70%;
+  --tile-lightness-soft: 90%;
   color-scheme: light;
 }

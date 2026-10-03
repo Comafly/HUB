@@ -353,7 +353,7 @@ try {
             if ($thumbPath || $retainedThumbnail) $tile['thumbnail'] = $thumbPath ?: $retainedThumbnail;
             if (in_array($type, ['text','link'], true)) {
                 $color = filter_var($input['backgroundColor'] ?? null, FILTER_VALIDATE_INT);
-                $tile['backgroundColor'] = ($color !== false && $color !== null && $color >= 0 && $color <= 2) ? $color : random_int(0, 2);
+                $tile['backgroundColor'] = ($color !== false && $color !== null && $color >= 0 && $color <= 8) ? $color : random_int(0, 8);
             }
             if ($type === 'link') { $tile['url'] = normalizeUrl((string)($input['url'] ?? '')); if (!$tile['url']) fail('A valid URL is required'); }
             if ($type === 'text') {
