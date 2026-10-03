@@ -16,6 +16,9 @@ html[data-theme="bubblegum"][data-mode="dark"] {
   --overlay: rgba(24,7,19,.78);
   --ambient: rgba(229,92,168,.09);
   --viewer-panel: rgba(29,13,24,.80);
+  --tile-hue: 326.72;
+  --tile-saturation: 50%;
+  --tile-lightness: 28%;
   color-scheme: dark;
 }
 
@@ -37,5 +40,8 @@ html[data-theme="bubblegum"][data-mode="light"] {
   --overlay: rgba(84,35,64,.38);
   --ambient: rgba(216,67,150,.08);
   --viewer-panel: rgba(255,241,248,.88);
+  --tile-hue: 326.58;
+  --tile-saturation: 46%;
+  --tile-lightness: 80%;
   color-scheme: light;
 }

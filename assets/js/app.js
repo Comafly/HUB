@@ -967,7 +967,7 @@ function refreshFontSelect(selected) {
   select.value = current;
 }
 function tileBackgroundPickerMarkup() {
-  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<div class="tile-color-options" role="group" aria-label="Background colour">${[0, 1, 2].map(index => `<button type="button" class="tile-color-option" style="background:var(--tile-color-${index})" data-tile-color="${index}" aria-label="Background colour ${index + 1}" aria-pressed="${state.pendingDrop.backgroundColor === index}"><span>Aa</span></button>`).join("")}</div></div><small>Choose one thumbnail or a background colour.</small>`;
+  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<div class="tile-color-options" role="group" aria-label="Background colour">${[0, 1, 2].map(index => `<button type="button" class="tile-color-option" style="background:var(--tile-color-${index})" data-tile-color="${index}" data-tooltip="${["Analogous", "Complementary", "Triadic"][index]}" aria-label="${["Analogous", "Complementary", "Triadic"][index]} background colour" aria-pressed="${state.pendingDrop.backgroundColor === index}"><span>Aa</span></button>`).join("")}</div></div><small>Choose one thumbnail or a background colour.</small>`;
 }
 function fieldMarkup(type, pending = {}) {
   const media = selectedMediaMarkup(type);

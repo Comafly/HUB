@@ -1,3 +1,4 @@
+@charset "UTF-8";
 :root {
   --radius-xs: 10px;
   --radius-sm: 14px;
@@ -9,9 +10,13 @@
   --speed-slow: 520ms;
   --ease: cubic-bezier(.2, .8, .2, 1);
   --ease-pop: cubic-bezier(.18, .89, .32, 1.28);
-  --tile-color-0: color-mix(in srgb, var(--panel) 92%, var(--accent));
-  --tile-color-1: color-mix(in srgb, var(--panel) 90%, var(--accent-2));
-  --tile-color-2: color-mix(in srgb, var(--panel) 92%, var(--text));
+  /* Accent hue offsets: analogous +30°, complementary +180°, triadic +120°. */
+  --tile-color-analogous: hsl(calc(var(--tile-hue) + 30) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-complementary: hsl(calc(var(--tile-hue) + 180) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-triadic: hsl(calc(var(--tile-hue) + 120) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-0: var(--tile-color-analogous);
+  --tile-color-1: var(--tile-color-complementary);
+  --tile-color-2: var(--tile-color-triadic);
 }
 
 html[data-theme=umber][data-mode=dark] {
@@ -32,6 +37,9 @@ html[data-theme=umber][data-mode=dark] {
   --overlay: rgba(18,9,5,.76);
   --ambient: rgba(180,92,42,.055);
   --viewer-panel: rgba(24,14,9,.72);
+  --tile-hue: 25.37;
+  --tile-saturation: 43%;
+  --tile-lightness: 28%;
   color-scheme: dark;
 }
 
@@ -53,6 +61,9 @@ html[data-theme=umber][data-mode=light] {
   --overlay: rgba(59,36,20,.42);
   --ambient: rgba(168,85,32,.07);
   --viewer-panel: rgba(247,236,216,.86);
+  --tile-hue: 23.38;
+  --tile-saturation: 48%;
+  --tile-lightness: 80%;
   color-scheme: light;
 }
 
@@ -74,6 +85,9 @@ html[data-theme=midnight-blue][data-mode=dark] {
   --overlay: rgba(3,8,17,.80);
   --ambient: rgba(57,123,195,.08);
   --viewer-panel: rgba(8,16,28,.80);
+  --tile-hue: 211.3;
+  --tile-saturation: 38%;
+  --tile-lightness: 28%;
   color-scheme: dark;
 }
 
@@ -95,6 +109,9 @@ html[data-theme=midnight-blue][data-mode=light] {
   --overlay: rgba(18,43,67,.42);
   --ambient: rgba(47,111,171,.08);
   --viewer-panel: rgba(237,244,250,.88);
+  --tile-hue: 209.03;
+  --tile-saturation: 40%;
+  --tile-lightness: 80%;
   color-scheme: light;
 }
 
@@ -116,6 +133,9 @@ html[data-theme=bubblegum][data-mode=dark] {
   --overlay: rgba(24,7,19,.78);
   --ambient: rgba(229,92,168,.09);
   --viewer-panel: rgba(29,13,24,.80);
+  --tile-hue: 326.72;
+  --tile-saturation: 50%;
+  --tile-lightness: 28%;
   color-scheme: dark;
 }
 
@@ -137,6 +157,9 @@ html[data-theme=bubblegum][data-mode=light] {
   --overlay: rgba(84,35,64,.38);
   --ambient: rgba(216,67,150,.08);
   --viewer-panel: rgba(255,241,248,.88);
+  --tile-hue: 326.58;
+  --tile-saturation: 46%;
+  --tile-lightness: 80%;
   color-scheme: light;
 }
 
@@ -158,6 +181,9 @@ html[data-theme=caramel][data-mode=dark] {
   --overlay: rgba(20,12,6,.78);
   --ambient: rgba(185,107,43,.08);
   --viewer-panel: rgba(27,18,11,.80);
+  --tile-hue: 27.04;
+  --tile-saturation: 44%;
+  --tile-lightness: 28%;
   color-scheme: dark;
 }
 
@@ -179,6 +205,9 @@ html[data-theme=caramel][data-mode=light] {
   --overlay: rgba(62,37,19,.40);
   --ambient: rgba(169,95,35,.07);
   --viewer-panel: rgba(250,236,216,.88);
+  --tile-hue: 26.87;
+  --tile-saturation: 46%;
+  --tile-lightness: 80%;
   color-scheme: light;
 }
 
@@ -200,6 +229,9 @@ html[data-theme=marble][data-mode=dark] {
   --overlay: rgba(9,11,12,.80);
   --ambient: rgba(193,203,209,.045);
   --viewer-panel: rgba(17,19,21,.82);
+  --tile-hue: 205.38;
+  --tile-saturation: 28%;
+  --tile-lightness: 28%;
   color-scheme: dark;
 }
 
@@ -221,6 +253,9 @@ html[data-theme=marble][data-mode=light] {
   --overlay: rgba(44,48,49,.38);
   --ambient: rgba(109,122,128,.05);
   --viewer-panel: rgba(247,247,245,.90);
+  --tile-hue: 198.95;
+  --tile-saturation: 28%;
+  --tile-lightness: 80%;
   color-scheme: light;
 }
 
@@ -242,6 +277,9 @@ html[data-theme=carbon-lavender][data-mode=dark] {
   --overlay: rgba(16, 15, 18, .80);
   --ambient: rgba(207, 159, 240, .085);
   --viewer-panel: rgba(25, 23, 28, .86);
+  --tile-hue: 276.0;
+  --tile-saturation: 28%;
+  --tile-lightness: 28%;
   color-scheme: dark;
 }
 
@@ -263,6 +301,9 @@ html[data-theme=carbon-lavender][data-mode=light] {
   --overlay: rgba(45, 41, 48, .38);
   --ambient: rgba(135, 87, 166, .08);
   --viewer-panel: rgba(229, 225, 232, .91);
+  --tile-hue: 276.46;
+  --tile-saturation: 28%;
+  --tile-lightness: 80%;
   color-scheme: light;
 }
 

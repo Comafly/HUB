@@ -16,6 +16,9 @@ html[data-theme="umber"][data-mode="dark"] {
   --overlay: rgba(18,9,5,.76);
   --ambient: rgba(180,92,42,.055);
   --viewer-panel: rgba(24,14,9,.72);
+  --tile-hue: 25.37;
+  --tile-saturation: 43%;
+  --tile-lightness: 28%;
   color-scheme: dark;
 }
 
@@ -37,5 +40,8 @@ html[data-theme="umber"][data-mode="light"] {
   --overlay: rgba(59,36,20,.42);
   --ambient: rgba(168,85,32,.07);
   --viewer-panel: rgba(247,236,216,.86);
+  --tile-hue: 23.38;
+  --tile-saturation: 48%;
+  --tile-lightness: 80%;
   color-scheme: light;
 }

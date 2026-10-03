@@ -16,6 +16,9 @@ html[data-theme="midnight-blue"][data-mode="dark"] {
   --overlay: rgba(3,8,17,.80);
   --ambient: rgba(57,123,195,.08);
   --viewer-panel: rgba(8,16,28,.80);
+  --tile-hue: 211.3;
+  --tile-saturation: 38%;
+  --tile-lightness: 28%;
   color-scheme: dark;
 }
 
@@ -37,5 +40,8 @@ html[data-theme="midnight-blue"][data-mode="light"] {
   --overlay: rgba(18,43,67,.42);
   --ambient: rgba(47,111,171,.08);
   --viewer-panel: rgba(237,244,250,.88);
+  --tile-hue: 209.03;
+  --tile-saturation: 40%;
+  --tile-lightness: 80%;
   color-scheme: light;
 }
