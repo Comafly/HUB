@@ -33,3 +33,7 @@ color: inherit;
 [hidden] {
 display: none !important;
 }
+
+html:has(dialog.modal[open]) {
+  overflow: hidden;
+}

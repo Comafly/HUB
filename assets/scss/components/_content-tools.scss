@@ -361,6 +361,8 @@
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 18px;
+    width: 100%;
+    min-width: 0;
 }
 
 .tile-color-options {

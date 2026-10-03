@@ -369,6 +369,10 @@ button {
   display: none !important;
 }
 
+html:has(dialog.modal[open]) {
+  overflow: hidden;
+}
+
 .app-shell {
   width: min(1640px, 100% - 48px);
   margin: 0 auto;
@@ -1401,12 +1405,17 @@ body.is-tile-dragging * {
 .modal[open] {
   display: grid;
   place-items: center;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .modal-card {
   width: min(620px, 100%);
+  min-width: 0;
+  max-width: 100%;
   max-height: calc(100vh - 40px);
   overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--bg-elevated);
   border: 1px solid var(--line-strong);
   border-radius: 26px;
@@ -1441,7 +1450,7 @@ body.is-tile-dragging * {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 15px;
 }
 
@@ -1493,6 +1502,11 @@ body.is-tile-dragging * {
 .field select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.field,
+.dynamic-fields {
+  min-width: 0;
 }
 
 .dynamic-fields {
@@ -2727,6 +2741,8 @@ body.is-scrubbing * {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 18px;
+  width: 100%;
+  min-width: 0;
 }
 
 .tile-color-options {
