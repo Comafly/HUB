@@ -48,11 +48,16 @@ final class TmdbClient {
             if (strlen($body)+strlen($chunk)>$limit) { $tooLarge=true; return 0; }
             $body .= $chunk; return strlen($chunk);
         }]);
-        $ok = curl_exec($ch); $status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); curl_close($ch);
-        if ($tooLarge) throw new RuntimeException('The TMDB response is too large.');
-        if ($status === 401 || $status === 403) throw new RuntimeException('TMDB rejected the configured read access token. Check the server configuration.');
-        if ($status === 429) throw new RuntimeException('TMDB is temporarily limiting requests. Please try again shortly.');
-        if ($ok === false || $status !== 200) throw new RuntimeException('Could not reach TMDB. Please try again.');
+        $ok = curl_exec($ch); $status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); $curlError = curl_errno($ch); curl_close($ch);
+        if ($tooLarge) throw new RuntimeException('The TMDB response is too large.', 413);
+        if ($status === 401 || $status === 403) throw new RuntimeException('TMDB rejected the configured read access token. Check the server configuration.', $status);
+        if ($status === 429) throw new RuntimeException('TMDB is temporarily limiting requests. Please try again shortly.', 429);
+        if ($status === 404) throw new RuntimeException('This result is no longer available on TMDB.', 404);
+        if ($ok === false) {
+            $message = $curlError === 28 ? 'The TMDB request timed out. Please try again.' : 'Could not connect to TMDB (cURL error '.$curlError.'). Please try again.';
+            throw new RuntimeException($message, $curlError);
+        }
+        if ($status !== 200) throw new RuntimeException('TMDB returned HTTP '.$status.'. Please try again.', $status);
         return $body;
     }
 
@@ -82,7 +87,16 @@ final class TmdbClient {
         $response = $this->request('/search/'.$type, ['query'=>$query, 'include_adult'=>'false', 'page'=>$providerPage]);
         $offset = (($page-1)%3)*7;
         $results = [];
-        foreach (array_slice($response['results'] ?? [], $offset, 7) as $item) $results[] = $this->normalize($this->details($type, $item['id']), $type);
+        foreach (array_slice($response['results'] ?? [], $offset, 7) as $item) {
+            try {
+                $details = $this->details($type, $item['id']);
+            } catch (RuntimeException $error) {
+                // Search can include stale/deleted records. Keep the other matches.
+                if ($error->getCode() === 404) continue;
+                throw $error;
+            }
+            $results[] = $this->normalize($details, $type);
+        }
         $total = min((int)($response['total_results'] ?? 0), 10000);
         // TMDB serves 20 records per provider page; the last local page has six.
         $fullPages = intdiv($total,20); $remaining = $total%20;
