@@ -5493,4 +5493,36 @@ html[data-tile-details=always] .tile .tile-gradient {
 
 .viewer-media.is-zoomed .viewer-stage {
   touch-action: none;
+}
+
+/* Gallery slides follow the pointer and snap into place on release. */
+.viewer-swipe-track {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.viewer-swipe-slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.viewer-swipe-slide > img {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.viewer-stage.is-swiping {
+  cursor: grabbing;
 }/*# sourceMappingURL=style.css.map */

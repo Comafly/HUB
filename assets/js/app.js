@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261004-4";
+import { api } from "./api.js?v=20261004-5";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -1897,7 +1897,59 @@ function applyViewerTransform() {
   media.style.transform = `translate3d(${state.viewerPanX}px, ${state.viewerPanY}px, 0) scale(${state.viewerZoom})`;
   els.viewerMedia.classList.toggle("is-zoomed", state.viewerZoom > 1);
 }
+let gallerySwipeCleanup = () => {};
+function createGallerySwipe(tile) {
+  const stage = $('.viewer-stage', els.viewerMedia);
+  const current = $('.viewer-zoom-target', stage);
+  const width = stage.clientWidth || stage.getBoundingClientRect().width || els.viewerMedia.clientWidth;
+  if (!current || !width) return null;
+  const track = document.createElement('div');track.className = 'viewer-swipe-track';
+  let timer, finished = false, settling = false;
+  for (const offset of [-1, 0, 1]) {
+    const file = tile.files[state.viewerIndex + offset];
+    if (!file) continue;
+    const slide = document.createElement('div');slide.className = 'viewer-swipe-slide';
+    slide.style.transform = `translateX(${offset * 100}%)`;
+    if (offset === 0) slide.append(current);
+    else { const image = document.createElement('img');image.src = file;image.alt = '';image.draggable = false;slide.append(image); }
+    track.append(slide);
+  }
+  stage.append(track);stage.classList.add('is-swiping');
+  const cleanup = () => {
+    if (finished) return;
+    finished = true;clearTimeout(timer);
+    if (track.contains(current)) stage.append(current);
+    track.remove();stage.classList.remove('is-swiping');
+    if (gallerySwipeCleanup === cleanup) gallerySwipeCleanup = () => {};
+  };
+  gallerySwipeCleanup = cleanup;
+  return {
+    cleanup,
+    move(dx) {
+      if (settling || finished) return;
+      const edge = (dx > 0 && state.viewerIndex === 0) || (dx < 0 && state.viewerIndex === tile.files.length - 1);
+      track.style.transform = `translate3d(${Math.max(-width, Math.min(width, edge ? dx * .25 : dx))}px,0,0)`;
+    },
+    settle(nextIndex) {
+      if (settling || finished) return;
+      settling = true;
+      const changed = nextIndex !== state.viewerIndex;
+      const target = changed ? (nextIndex > state.viewerIndex ? -width : width) : 0;
+      const duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 240;
+      track.style.transition = `transform ${duration}ms cubic-bezier(.22,.61,.36,1)`;
+      track.style.transform = `translate3d(${target}px,0,0)`;
+      const tileId = state.viewerTileId;
+      const finish = () => {
+        if (finished) return;
+        cleanup();
+        if (changed && state.viewerTileId === tileId && state.viewerZoom === 1) { state.viewerIndex = nextIndex;renderViewerSelection(tile); }
+      };
+      timer = setTimeout(finish, duration);
+    },
+  };
+}
 function renderViewerSelection(tile) {
+  gallerySwipeCleanup();
   instagramViewerCleanup();
   els.viewerMedia.classList.toggle("viewer-media--image-gallery", tile.type === "image" && (tile.files?.length || 0) > 1);
   els.viewerMedia.classList.toggle("viewer-media--embed", tile.type === "link" && !!tile.embedUrl);
@@ -1917,6 +1969,9 @@ function renderViewerSelection(tile) {
   }
   els.viewerMeta.innerHTML = `<div class="eyebrow">${escapeHtml(tile.type)}</div><h2>${escapeHtml(tile.label || defaultTileLabel(tile))}</h2>${tile.description ? `<p>${escapeHtml(tile.description)}</p>` : ""}${tile.tags?.length ? `<div class="viewer-tags">${tile.tags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${tile.metadataTags?.length ? `<div class="viewer-tags metadata-tags">${tile.metadataTags.map(t => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${viewerPropertiesMarkup(tile)}${viewerFontLinkMarkup(tile)}`;
   resetViewerTransform();
+  if (tile.type === 'image' && tile.files?.length > 1) {
+    for (const index of [state.viewerIndex - 1, state.viewerIndex + 1]) if (tile.files[index]) { const preload = new Image();preload.src = tile.files[index]; }
+  }
   const media = $("img.viewer-zoom-target, video.viewer-zoom-target", els.viewerMedia);
   if (media) {
     const update = () => {
@@ -3021,6 +3076,7 @@ function bindEvents() {
     const media = $(".viewer-zoom-target", els.viewerMedia);
     if (!media) return;
     e.preventDefault();
+    endViewerGesture();gallerySwipeCleanup();
     const previous = state.viewerZoom;
     const next = Math.max(1, Math.min(3, previous + (e.deltaY < 0 ? 0.1 : -0.1)));
     if (next === 1) {
@@ -3032,8 +3088,9 @@ function bindEvents() {
   }, { passive: false });
   let viewerGesture = null;
   const endViewerGesture = () => {
-    if (viewerGesture && els.viewerMedia.hasPointerCapture?.(viewerGesture.id)) els.viewerMedia.releasePointerCapture(viewerGesture.id);
+    const gesture = viewerGesture;
     viewerGesture = null;state.viewerPanning = false;
+    if (gesture && els.viewerMedia.hasPointerCapture?.(gesture.id)) els.viewerMedia.releasePointerCapture(gesture.id);
   };
   els.viewerMedia.addEventListener('pointerdown', event => {
     if (event.button !== 0 || event.isPrimary === false || !event.target.closest('.viewer-stage')) return;
@@ -3042,11 +3099,16 @@ function bindEvents() {
     if (!swipe && state.viewerZoom <= 1) return;
     if (event.pointerType !== 'touch') event.preventDefault();
     viewerGesture = { id:event.pointerId, x:event.clientX, y:event.clientY, panX:state.viewerPanX, panY:state.viewerPanY, zoom:state.viewerZoom, tileId:state.viewerTileId, index:state.viewerIndex, swipe };
+    if (swipe) { gallerySwipeCleanup();viewerGesture.visual = createGallerySwipe(tile); }
     state.viewerPanning = !swipe;
     els.viewerMedia.setPointerCapture?.(event.pointerId);
   });
   els.viewerMedia.addEventListener('pointermove', event => {
     if (!viewerGesture || event.pointerId !== viewerGesture.id) return;
+    if (viewerGesture.swipe && state.viewerZoom === 1) {
+      const dx = event.clientX - viewerGesture.x, dy = event.clientY - viewerGesture.y;
+      viewerGesture.visual?.move(Math.abs(dx) > Math.abs(dy) * 1.2 ? dx : 0);
+    }
     if (viewerGesture.zoom > 1 && state.viewerZoom > 1) {
       state.viewerPanX = viewerGesture.panX + event.clientX - viewerGesture.x;
       state.viewerPanY = viewerGesture.panY + event.clientY - viewerGesture.y;
@@ -3059,13 +3121,20 @@ function bindEvents() {
     endViewerGesture();
     const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
     const tile = state.tiles.find(item => item.id === gesture.tileId);
-    if (!gesture.swipe || state.viewerZoom !== 1 || state.viewerTileId !== gesture.tileId || state.viewerIndex !== gesture.index || tile?.type !== 'image' || Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
+    if (!gesture.swipe || state.viewerZoom !== 1 || state.viewerTileId !== gesture.tileId || state.viewerIndex !== gesture.index || tile?.type !== 'image') { gesture.visual?.cleanup();return; }
+    if (Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy) * 1.2) { gesture.visual?.settle(state.viewerIndex);return; }
     const next = Math.max(0, Math.min(tile.files.length - 1, state.viewerIndex + (dx < 0 ? 1 : -1)));
-    if (next !== state.viewerIndex) { state.viewerIndex = next;renderViewerSelection(tile); }
+    if (gesture.visual) gesture.visual.settle(next);
+    else if (next !== state.viewerIndex) { state.viewerIndex = next;renderViewerSelection(tile); }
   });
-  els.viewerMedia.addEventListener('pointercancel', endViewerGesture);
-  els.viewerMedia.addEventListener('lostpointercapture', endViewerGesture);
-  els.mediaViewer.addEventListener('close', endViewerGesture);
+  const cancelViewerGesture = () => {
+    if (!viewerGesture) return;
+    viewerGesture.visual?.settle(state.viewerIndex);
+    endViewerGesture();
+  };
+  els.viewerMedia.addEventListener('pointercancel', cancelViewerGesture);
+  els.viewerMedia.addEventListener('lostpointercapture', cancelViewerGesture);
+  els.mediaViewer.addEventListener('close', () => { endViewerGesture();gallerySwipeCleanup(); });
   els.viewerMedia.addEventListener("auxclick", (e) => {
     if (e.button === 1) e.preventDefault();
   });
