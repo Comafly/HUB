@@ -6,7 +6,10 @@
     <meta name="theme-color" content="#1a0f0a" />
     <title>COMMA HUB</title>
     <!-- build: collections-ui-v4-chevron -->
-    <link rel="stylesheet" href="assets/css/style.css?v=20261004-watchlist-4" />
+    <link
+      rel="stylesheet"
+      href="assets/css/style.css?v=20261005-responsive-genres"
+    />
   </head>
   <body>
     <div class="app-shell" id="app">
@@ -50,55 +53,81 @@
             </div>
           </section>
 
-          <div class="content-toolbar">
-            <button
-              class="icon-btn grid-layout-button"
-              id="gridLayoutToggle"
-              type="button"
-              aria-label="Switch to equal grid"
-              aria-pressed="false"
-              data-tooltip="Switch to equal grid"
-            ></button>
-            <div class="search-wrap">
-              <span class="search-icon" aria-hidden="true">⌕</span>
-              <input
-                id="searchInput"
-                class="search-input"
-                type="search"
-                autocomplete="off"
-                placeholder="Search Dashboard"
-                aria-label="Search content"
-              />
-              <button
-                id="clearSearch"
-                class="search-clear"
-                type="button"
-                aria-label="Clear search"
+          <div class="content-layout">
+            <div class="content-controls">
+              <div class="content-toolbar">
+                <button
+                  class="icon-btn grid-layout-button"
+                  id="gridLayoutToggle"
+                  type="button"
+                  aria-label="Switch to equal grid"
+                  aria-pressed="false"
+                  data-tooltip="Switch to equal grid"
+                ></button>
+                <div class="search-wrap">
+                  <span class="search-icon" aria-hidden="true">⌕</span>
+                  <input
+                    id="searchInput"
+                    class="search-input"
+                    type="search"
+                    autocomplete="off"
+                    placeholder="Search Dashboard"
+                    aria-label="Search content"
+                  />
+                  <button
+                    id="clearSearch"
+                    class="search-clear"
+                    type="button"
+                    aria-label="Clear search"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <button
+                  class="content-add-button"
+                  id="contentAddButton"
+                  type="button"
+                  data-tooltip="Add New Content"
+                  aria-label="Add New Content"
+                >
+                  Add
+                </button>
+              </div>
+
+              <section
+                class="watchlist-genre-filters"
+                id="watchlistGenreFilters"
+                aria-label="Watchlist genres"
+                hidden
               >
-                ×
-              </button>
+                <span class="genre-filter-label">Genres</span>
+                <div
+                  class="genre-filter-list"
+                  id="watchlistGenreList"
+                  role="group"
+                  aria-label="Select genres"
+                ></div>
+              </section>
             </div>
 
-            <button
-              class="content-add-button"
-              id="contentAddButton"
-              type="button"
-              data-tooltip="Add New Content"
-              aria-label="Add New Content"
-            >
-              Add
-            </button>
-          </div>
-
-          <input id="contentFilePicker" type="file" hidden multiple />
-          <div class="collection-filter-bar" id="collectionFilterBar" hidden>
-            <span>Collection: <strong id="collectionFilterName"></strong></span>
-            <button
-              class="capsule-x collection-filter-clear"
-              id="collectionFilterClear"
-              type="button"
-              aria-label="Show all content"
-            ></button>
+            <input id="contentFilePicker" type="file" hidden multiple />
+            <div class="collection-filter-bar" id="collectionFilterBar" hidden>
+              <span
+                >Collection: <strong id="collectionFilterName"></strong
+              ></span>
+              <button
+                class="capsule-x collection-filter-clear"
+                id="collectionFilterClear"
+                type="button"
+                aria-label="Show all content"
+              ></button>
+            </div>
+            <div class="tile-grid" id="tileGrid" aria-live="polite"></div>
+            <div class="empty-state" id="emptyState" hidden>
+              <h2>No matching content</h2>
+              <p>Change the search or filter, or use Add to create content.</p>
+            </div>
           </div>
           <div
             class="collection-grid-drop-overlay"
@@ -106,11 +135,6 @@
             aria-hidden="true"
           >
             <span>Drop the collection to display it</span>
-          </div>
-          <div class="tile-grid" id="tileGrid" aria-live="polite"></div>
-          <div class="empty-state" id="emptyState" hidden>
-            <h2>No matching content</h2>
-            <p>Change the search or filter, or use Add to create content.</p>
           </div>
         </section>
 
@@ -832,7 +856,7 @@
 
     <script
       type="module"
-      src="assets/js/app.js?v=20261004-watchlist-4"
+      src="assets/js/app.js?v=20261005-responsive-genres"
     ></script>
   </body>
 </html>

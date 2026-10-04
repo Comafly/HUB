@@ -110,6 +110,7 @@ export class Application extends Feature {
     this.services.collections.ensureCollections();
     this.services.calendar.renderCalendar();
     this.services.calendar.renderCalendarSettings();
+    this.services.watchlist.renderGenreFilters();
     this.services.board.renderTags();
     this.services.board.renderTiles();
     this.renderTopLinks();
@@ -350,6 +351,7 @@ export class Application extends Feature {
     });
     this.applyTheme();
     this.services.tabs.select(state.section);
+    this.setupStickyNavbar();
     Object.values(this.services).forEach((feature) => feature.bindEvents?.());
     this.services.collections.setupDragAndDrop();
     this.setupTooltips();

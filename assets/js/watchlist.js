@@ -70,6 +70,60 @@ export class Watchlist extends Feature {
     return this.services.tabs.current.form === "watchlist";
   }
 
+  renderGenreFilters() {
+    const panel = $("#watchlistGenreFilters");
+    panel.hidden = !this.isActive();
+    if (panel.hidden) return;
+    const genres = new Map();
+    const labels = [
+      ...(this.services.tabs.current.tagPresets || []),
+      ...this.services.tabs.items.flatMap((tile) => tile.tags || []),
+      ...state.genreFilters,
+    ];
+    for (const label of labels) {
+      const name = String(label).trim();
+      const key = name.toLowerCase();
+      if (name && !genres.has(key)) genres.set(key, name);
+    }
+    $("#watchlistGenreList").innerHTML =
+      '<button type="button" class="genre-filter-button" data-genre="" aria-pressed="false">All genres</button>' +
+      [...genres]
+        .map(
+          ([key, name]) =>
+            `<button type="button" class="genre-filter-button" data-genre="${escapeHtml(key)}" aria-pressed="false">${escapeHtml(name)}</button>`,
+        )
+        .join("");
+    this.syncGenreButtons();
+  }
+
+  syncGenreButtons() {
+    for (const button of $$("[data-genre]", $("#watchlistGenreFilters"))) {
+      const selected = button.dataset.genre
+        ? state.genreFilters.includes(button.dataset.genre)
+        : state.genreFilters.length === 0;
+      button.setAttribute("aria-pressed", String(selected));
+    }
+  }
+
+  matchesGenres(tile) {
+    if (!state.genreFilters.length) return true;
+    const tags = (tile.tags || []).map((tag) => tag.toLowerCase().trim());
+    return state.genreFilters.some((genre) => tags.includes(genre));
+  }
+
+  toggleGenre(genre) {
+    if (!this.isActive()) return;
+    if (!genre) state.genreFilters = [];
+    else if (state.genreFilters.includes(genre))
+      state.genreFilters = state.genreFilters.filter(
+        (value) => value !== genre,
+      );
+    else state.genreFilters.push(genre);
+    // Keep the focused button and the horizontal scroll position intact.
+    this.syncGenreButtons();
+    this.services.board.renderTiles();
+  }
+
   providerType() {
     return (
       { Movies: "movie", Series: "tv" }[
@@ -388,6 +442,10 @@ export class Watchlist extends Feature {
       event.stopPropagation();
     }
     try {
+      if (target.dataset.genre !== undefined) {
+        event.preventDefault();
+        return this.toggleGenre(target.dataset.genre);
+      }
       if (statusId) return await this.toggleStatus(statusId);
       if (target.id === "tmdbPrevious" && this.lookup)
         return await this.search(

@@ -43,6 +43,7 @@ export const state = {
   section: "dashboard",
   tabs: [],
   tag: "All",
+  genreFilters: [],
   query: "",
   pendingDrop: null,
   pendingThumbnail: null,

@@ -1,0 +1,21 @@
+@use "sass:map";
+
+// Shared screen breakpoints. Content layouts use the width of .content-column.
+$screens: (
+  wide: 1180px,
+  tablet: 900px,
+  phone: 680px,
+  compact: 480px,
+);
+
+@mixin below($screen) {
+  @media (max-width: map.get($screens, $screen)) {
+    @content;
+  }
+}
+
+@mixin content-below($width) {
+  @container hub-content (max-width: #{$width}) {
+    @content;
+  }
+}

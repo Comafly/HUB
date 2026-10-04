@@ -57,6 +57,7 @@ export class TabController {
     if (!id) return;
     state.section = id;
     state.tag = "All";
+    state.genreFilters = [];
     state.query = "";
     state.activeCollectionId = null;
     els.search.value = "";
@@ -96,6 +97,11 @@ export class TabController {
         (value) =>
           String(value || "").toLowerCase() === state.tag.toLowerCase(),
       )
+    )
+      return false;
+    if (
+      this.current.form === "watchlist" &&
+      !this.services.watchlist.matchesGenres(tile)
     )
       return false;
     if (
@@ -190,7 +196,7 @@ export class TabController {
             ? `<div class="viewer-tags watchlist-row-tags">${tile.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>`
             : "";
         const edit = `<button class="tile-action${watchlist ? " watchlist-row-edit" : ""}" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit ${escapeHtml(tile.label || "content")}" data-tooltip="Edit content">✎</button>`;
-        return `<article class="watchlist-row${watchlist ? " watchlist-row--media" : ""}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0" aria-label="${escapeHtml(tile.label || "Untitled")}">${watchlist ? `<div class="watchlist-row-poster">${this.services.board.tileMedia(tile)}</div>` : ""}<div class="watchlist-row-name">${watchlist ? "" : '<span class="list-field-label">Name</span>'}<strong>${escapeHtml(tile.label || "Untitled")}</strong>${tags}</div><div class="watchlist-row-description"><span class="list-field-label">Description</span><p>${escapeHtml(tile.description || "—")}</p></div><div><span class="list-field-label">Media type</span><span>${escapeHtml(tile.mediaType || tile.type)}</span></div><div><span class="list-field-label">${watchlist ? "Release date" : "Date added"}</span><time datetime="${escapeHtml(dateValue(tile))}">${escapeHtml(date(tile))}</time></div><div class="watchlist-row-actions">${watchlist ? this.services.watchlist.watchedButton(tile) : edit}</div>${watchlist ? edit : ""}</article>`;
+        return `<article class="watchlist-row${watchlist ? " watchlist-row--media" : ""}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0" aria-label="${escapeHtml(tile.label || "Untitled")}">${watchlist ? `<div class="watchlist-row-poster">${this.services.board.tileMedia(tile)}</div>` : ""}<div class="watchlist-row-name">${watchlist ? "" : '<span class="list-field-label">Name</span>'}<strong>${escapeHtml(tile.label || "Untitled")}</strong>${tags}</div><div class="watchlist-row-description"><span class="list-field-label">Description</span><p>${escapeHtml(tile.description || "—")}</p></div><div class="list-row-type"><span class="list-field-label">Media type</span><span>${escapeHtml(tile.mediaType || tile.type)}</span></div><div class="list-row-date"><span class="list-field-label">${watchlist ? "Release date" : "Date added"}</span><time datetime="${escapeHtml(dateValue(tile))}">${escapeHtml(date(tile))}</time></div><div class="watchlist-row-actions">${watchlist ? this.services.watchlist.watchedButton(tile) : edit}</div>${watchlist ? edit : ""}</article>`;
       })
       .join("");
     els.emptyState.hidden = items.length > 0;
