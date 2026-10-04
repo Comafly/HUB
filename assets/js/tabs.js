@@ -1,5 +1,12 @@
 import { state, els, $, $$, escapeHtml } from "./context.js";
 
+// Keep all view icons at the original 24 px size.
+const VIEW_ICON_PATHS = {
+  equal: "M2 2h5v5H2zm7 0h5v5H9zm7 0h5v5h-5zM2 9h5v5H2zm7 0h5v5H9zm7 0h5v5h-5zM2 16h5v5H2zm7 0h5v5H9zm7 0h5v5h-5z",
+  asymmetric: "M2 2h8v12H2zm10 0h10v6H12zm0 8h10v12H12zM2 16h8v6H2z",
+  list: "M2 3h3v3H2zm5 0h15v3H7zM2 10h3v3H2zm5 0h15v3H7zM2 17h3v3H2zm5 0h15v3H7z",
+};
+
 /** One tab definition controls navigation, filtering, forms, and available views. */
 export class TabController {
   constructor(services) {
@@ -138,12 +145,7 @@ export class TabController {
       `${this.current.title || "Content"}: ${labels[this.view]}`,
     );
     const button = els.gridLayoutToggle;
-    button.innerHTML =
-      next === "list"
-        ? '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M2 3h3v3H2zm5 0h15v3H7zM2 10h3v3H2zm5 0h15v3H7zM2 17h3v3H2zm5 0h15v3H7z"/></svg>'
-        : next === "equal"
-          ? '<span aria-hidden="true">▦</span>'
-          : '<span aria-hidden="true">▥</span>';
+    button.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" style="width:24px;height:24px;display:block" fill="currentColor" aria-hidden="true"><path d="${VIEW_ICON_PATHS[next]}"/></svg>`;
     button.hidden = views.length < 2;
     button.removeAttribute("aria-pressed");
     button.setAttribute("aria-label", `Switch to ${labels[next]}`);
