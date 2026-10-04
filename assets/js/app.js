@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261004-1";
+import { api } from "./api.js?v=20261004-2";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -396,6 +396,11 @@ function urlBackgroundPickerMarkup() {
 }
 const EMBED_BUTTON_ICON = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4H4v16h16v-8M11 13 21 3M14 3h7v7"/></svg>';
 
+function isYoutubeLink(tile) {
+  if (tile.type !== 'link') return false;
+  try { return /^(?:www\.|m\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)$/.test(new URL(normalizeUrl(tile.url)).hostname); }
+  catch { return false; }
+}
 function tileMedia(tile) {
   if (tile.type === "text") {
     const s = tile.textStyle || {};
@@ -426,7 +431,7 @@ function tileMedia(tile) {
   if (tile.type === "link") {
     const background = tile.thumbnail || tile.urlBackground || defaultUrlBackground(tile);
     const icon = tile.faviconUrl || siteFaviconUrl(tile.url);
-    return `<div class="link-preview link-preview--site">${background ? `<img class="link-thumbnail" src="${escapeHtml(background)}" alt="" />` : ""}<span class="link-site-icon" aria-label="Website"><span class="link-globe">${GLOBE_ICON}</span>${icon ? `<img class="link-favicon" data-link-favicon src="${escapeHtml(icon)}" alt="" referrerpolicy="no-referrer" />` : ""}</span></div>`;
+    return `<div class="link-preview link-preview--site">${background ? `<img class="link-thumbnail${tile.thumbnail && isYoutubeLink(tile) ? ' link-thumbnail--youtube' : ''}" src="${escapeHtml(background)}" alt="" />` : ""}<span class="link-site-icon" aria-label="Website"><span class="link-globe">${GLOBE_ICON}</span>${icon ? `<img class="link-favicon" data-link-favicon src="${escapeHtml(icon)}" alt="" referrerpolicy="no-referrer" />` : ""}</span></div>`;
   }
   return `<div class="file-symbol">${tile.type === "audio" ? "♪" : tile.type === "font" ? "Aa" : "↗"}</div>`;
 }
@@ -3011,7 +3016,12 @@ function setupTooltips() {
   tip.hidden = true;
   document.body.append(tip);
   let owner = null;
+  const observer = new MutationObserver(() => {
+    if (owner?.isConnected) show(owner);
+    else hide();
+  });
   function hide() {
+    observer.disconnect();
     if (owner) {
       const ids = (owner.getAttribute("aria-describedby") || "")
         .split(" ")
@@ -3027,6 +3037,7 @@ function setupTooltips() {
     if (!target) return;
     hide();
     owner = target;
+    observer.observe(target, { attributes: true, attributeFilter: ['data-tooltip', 'data-tooltip-description', 'data-tooltip-url'] });
     tip.textContent = target.dataset.tooltip;
     if (target.dataset.tooltipDescription) {
       const description = document.createElement("span");
@@ -3063,7 +3074,9 @@ function setupTooltips() {
     show(e.target.closest("[data-tooltip]")),
   );
   document.addEventListener("focusout", hide);
-  document.addEventListener("pointerdown", hide);
+  document.addEventListener("pointerdown", (event) => {
+    if (!owner?.contains(event.target)) hide();
+  });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hide();
   });
