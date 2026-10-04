@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261004-3";
+import { api } from "./api.js?v=20261004-4";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -8,7 +8,7 @@ function mediaUrlKind(value) {
     const url = new URL(value);
     if (!['http:', 'https:'].includes(url.protocol)) return null;
     if (/\.(jpe?g|png|webp|gif|avif|bmp|svg|mp4|webm|mov|m4v|ogv)$/i.test(url.pathname)) return 'direct';
-    if (/^(www\.|m\.|vm\.|vt\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com|tiktok\.com|instagram\.com)$/.test(url.hostname)) return 'social';
+    if (/^(www\.|m\.|vm\.|vt\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com|tiktok\.com|instagram\.com|facebook\.com|fb\.watch)$/.test(url.hostname)) return 'social';
   } catch {}
   return null;
 }
@@ -422,7 +422,7 @@ function tileMedia(tile) {
     return `<div class="gallery gallery--${tile.files.length > 1 ? 4 : 1}">${imgs}</div>${tile.files.length > 1 ? `<span class="gallery-count" aria-label="${tile.files.length} images">+${tile.files.length}</span>` : ""}`;
   }
   if (tile.type === "video" && tile.files?.[0])
-    return `<video src="${escapeHtml(tile.files[0])}"${tile.thumbnail ? ` poster="${escapeHtml(tile.thumbnail)}"` : ""} muted loop playsinline preload="${tile.thumbnail ? "metadata" : "auto"}"></video>`;
+    return `<video src="${escapeHtml(tile.files[0])}"${tile.thumbnail ? ` poster="${escapeHtml(tile.thumbnail)}"` : ""} muted loop playsinline preload="${tile.thumbnail ? "metadata" : "auto"}"></video><span class="video-tile-play" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21"/><path d="m19 14 15 10-15 10z"/></svg></span>`;
   if (
     (tile.type === "audio" || tile.type === "file" || tile.type === "font") &&
     tile.thumbnail
@@ -661,7 +661,7 @@ function renderBookmarks() {
         const items = (collection.items || [])
           .map((id, itemIndex) => {
             const tile = byId.get(id);
-            return `<div class="bookmark-item collection-item" draggable="true" tabindex="0" role="button" aria-label="Open ${escapeHtml(tile.label || defaultTileLabel(tile))}" data-bookmark-id="${escapeHtml(id)}" data-collection-id="${escapeHtml(collection.id)}" data-item-index="${itemIndex}"><span class="bookmark-grip">⋮⋮</span><div><strong>${escapeHtml(tile.label || defaultTileLabel(tile))}</strong><small>${escapeHtml(tile.type)}</small></div><button class="bookmark-remove capsule-x" data-remove-bookmark="${escapeHtml(id)}" data-from-collection="${escapeHtml(collection.id)}" aria-label="Remove from collection">×</button></div>`;
+            return `<div class="bookmark-item collection-item" draggable="true" tabindex="0" role="button" aria-label="Open ${escapeHtml(tile.label || defaultTileLabel(tile))}" data-bookmark-id="${escapeHtml(id)}" data-collection-id="${escapeHtml(collection.id)}" data-item-index="${itemIndex}"><span class="bookmark-grip">⋮⋮</span><div><strong>${escapeHtml(tile.label || defaultTileLabel(tile))}</strong><small>${escapeHtml(tile.type === "link" && tile.embedUrl ? "LINK - EMBEDDED" : tile.type)}</small></div><button class="bookmark-remove capsule-x" data-remove-bookmark="${escapeHtml(id)}" data-from-collection="${escapeHtml(collection.id)}" aria-label="Remove from collection">×</button></div>`;
           })
           .join("");
         return `<section class="collection-folder ${collection.collapsed ? "is-collapsed" : ""} ${state.activeCollectionId === collection.id ? "is-active-filter" : ""}" draggable="true" data-collection-id="${escapeHtml(collection.id)}" data-collection-index="${index}"><div class="collection-folder-head"><button class="collection-folder-toggle" type="button" data-toggle-collection="${escapeHtml(collection.id)}"><span class="collection-folder-grip" aria-hidden="true">⋮⋮</span><span class="collection-chevron" aria-hidden="true"><span></span></span><strong>${escapeHtml(collection.name)}</strong></button><button class="collection-folder-delete capsule-x" type="button" data-delete-collection="${escapeHtml(collection.id)}" aria-label="Delete ${escapeHtml(collection.name)} collection"></button></div><div class="collection-items" data-collection-drop="${escapeHtml(collection.id)}">${items || '<div class="collection-empty">Drop tiles here</div>'}</div></section>`;
@@ -1375,7 +1375,7 @@ async function openContentModal(pending, editing = false) {
   $("#deleteContentButton").hidden = true;
   $("#saveContentButton").textContent = "Add content";
   revokePreviewUrls();
-  state.pendingDrop = { ...pending, autoLabel: !editing || !pending.label || pending.label === pending.linkTitle || pending.label === safeHostname(pending.url), autoDescription: !editing || !pending.description || pending.description === pending.url, checkedUrl: editing ? pending.url : undefined, files: [...(pending.files || [])] };
+  state.pendingDrop = { ...pending, embedPreference: editing ? !!pending.embedUrl : undefined, autoLabel: !editing || !pending.label || pending.label === pending.linkTitle || pending.label === safeHostname(pending.url), autoDescription: !editing || !pending.description || pending.description === pending.url, checkedUrl: editing ? pending.url : undefined, files: [...(pending.files || [])] };
   state.pendingThumbnail = null;
   state.pendingTags = [];
   els.contentModal.querySelector(".modal-card")?.classList.remove("is-modal-drop-target");
@@ -1463,6 +1463,9 @@ function fetchLinkDetails(draft = state.pendingDrop, force = false) {
     applyLinkDetails(draft, info);
     draft.linkInfo = info; draft.embedAllowed = !!info.embedAllowed && !!info.embedUrl;
     if (!draft.embedAllowed) draft.embedUrl = '';
+    else if (['youtube','instagram','tiktok','facebook'].includes(info.provider) && draft.embedPreference !== false) {
+      draft.embedUrl = info.embedUrl;draft.provider = info.provider;
+    }
     draft.embedWidth = Number(info.embedWidth || 0); draft.embedHeight = Number(info.embedHeight || 0);
     syncEmbedButton();
     return info;
@@ -1514,7 +1517,7 @@ function contentUrlChanged() {
   const draft = state.pendingDrop, url = currentContentUrl();
   const changed = draft.url !== url;
   if (changed) {
-    draft.embedUrl = ''; draft.embedAllowed = false; draft.provider = ''; draft.linkInfo = null; draft.embedWidth = draft.embedHeight = draft.mediaWidth = draft.mediaHeight = 0; draft.linkTitle = ''; draft.faviconUrl = '';
+    draft.embedPreference = undefined; draft.embedUrl = ''; draft.embedAllowed = false; draft.provider = ''; draft.linkInfo = null; draft.embedWidth = draft.embedHeight = draft.mediaWidth = draft.mediaHeight = 0; draft.linkTitle = ''; draft.faviconUrl = '';
     draft.needsAutoThumbnail = true;
     draft.checkedUrl = undefined; draft.detailsUrl = undefined; draft.thumbnailRevision = (draft.thumbnailRevision || 0) + 1;
   }
@@ -1546,6 +1549,7 @@ function setEmbedProgress(ratio, message, label = 'Embedding progress') {
 function toggleLinkEmbedding() {
   const draft = state.pendingDrop, toggle = $('#embedUrlToggle');
   if (!draft || toggle.disabled) return;
+  draft.embedPreference = toggle.checked;
   draft.embedUrl = toggle.checked && draft.embedAllowed ? draft.linkInfo?.embedUrl || '' : '';
   draft.provider = draft.embedUrl ? draft.linkInfo?.provider || '' : '';
   syncEmbedButton();
@@ -1895,6 +1899,7 @@ function applyViewerTransform() {
 }
 function renderViewerSelection(tile) {
   instagramViewerCleanup();
+  els.viewerMedia.classList.toggle("viewer-media--image-gallery", tile.type === "image" && (tile.files?.length || 0) > 1);
   els.viewerMedia.classList.toggle("viewer-media--embed", tile.type === "link" && !!tile.embedUrl);
   els.viewerMedia.innerHTML = viewerMediaMarkup(tile);
   if (tile.type === "link" && tile.embedUrl && (tile.provider === "instagram" || /instagram\.com/.test(tile.embedUrl))) setupInstagramViewer(tile);
@@ -3025,26 +3030,42 @@ function bindEvents() {
     state.viewerZoom = Number(next.toFixed(2));
     applyViewerTransform();
   }, { passive: false });
-  els.viewerMedia.addEventListener("mousedown", (e) => {
-    if (e.button !== 0 || state.viewerZoom <= 0 || !e.target.closest(".viewer-stage")) return;
-    e.preventDefault();
-    state.viewerPanning = true;
-    const startX = e.clientX, startY = e.clientY;
-    const baseX = state.viewerPanX, baseY = state.viewerPanY;
-    const move = (event) => {
-      if (!state.viewerPanning) return;
-      state.viewerPanX = baseX + event.clientX - startX;
-      state.viewerPanY = baseY + event.clientY - startY;
-      applyViewerTransform();
-    };
-    const stop = () => {
-      state.viewerPanning = false;
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", stop);
-    };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", stop, { once: true });
+  let viewerGesture = null;
+  const endViewerGesture = () => {
+    if (viewerGesture && els.viewerMedia.hasPointerCapture?.(viewerGesture.id)) els.viewerMedia.releasePointerCapture(viewerGesture.id);
+    viewerGesture = null;state.viewerPanning = false;
+  };
+  els.viewerMedia.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || event.isPrimary === false || !event.target.closest('.viewer-stage')) return;
+    const tile = state.tiles.find(item => item.id === state.viewerTileId);
+    const swipe = state.viewerZoom === 1 && tile?.type === 'image' && (tile.files?.length || 0) > 1;
+    if (!swipe && state.viewerZoom <= 1) return;
+    if (event.pointerType !== 'touch') event.preventDefault();
+    viewerGesture = { id:event.pointerId, x:event.clientX, y:event.clientY, panX:state.viewerPanX, panY:state.viewerPanY, zoom:state.viewerZoom, tileId:state.viewerTileId, index:state.viewerIndex, swipe };
+    state.viewerPanning = !swipe;
+    els.viewerMedia.setPointerCapture?.(event.pointerId);
   });
+  els.viewerMedia.addEventListener('pointermove', event => {
+    if (!viewerGesture || event.pointerId !== viewerGesture.id) return;
+    if (viewerGesture.zoom > 1 && state.viewerZoom > 1) {
+      state.viewerPanX = viewerGesture.panX + event.clientX - viewerGesture.x;
+      state.viewerPanY = viewerGesture.panY + event.clientY - viewerGesture.y;
+      applyViewerTransform();
+    }
+  });
+  els.viewerMedia.addEventListener('pointerup', event => {
+    if (!viewerGesture || event.pointerId !== viewerGesture.id) return;
+    const gesture = viewerGesture;
+    endViewerGesture();
+    const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
+    const tile = state.tiles.find(item => item.id === gesture.tileId);
+    if (!gesture.swipe || state.viewerZoom !== 1 || state.viewerTileId !== gesture.tileId || state.viewerIndex !== gesture.index || tile?.type !== 'image' || Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
+    const next = Math.max(0, Math.min(tile.files.length - 1, state.viewerIndex + (dx < 0 ? 1 : -1)));
+    if (next !== state.viewerIndex) { state.viewerIndex = next;renderViewerSelection(tile); }
+  });
+  els.viewerMedia.addEventListener('pointercancel', endViewerGesture);
+  els.viewerMedia.addEventListener('lostpointercapture', endViewerGesture);
+  els.mediaViewer.addEventListener('close', endViewerGesture);
   els.viewerMedia.addEventListener("auxclick", (e) => {
     if (e.button === 1) e.preventDefault();
   });

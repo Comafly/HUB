@@ -65,6 +65,15 @@ function socialMediaInfo(string $url): ?array {
         $canonical = 'https://www.instagram.com/'.($match[1] === 'reels' ? 'reel' : $match[1]).'/'.$match[2].'/';
         return ['provider'=>'instagram','url'=>$canonical,'embedUrl'=>$canonical.'embed/', 'thumbnail'=>''];
     }
+    if (in_array($host, ['facebook.com','www.facebook.com','m.facebook.com','web.facebook.com','fb.watch'], true)) {
+        if (preg_match('~^/plugins/(video|post)\.php$~', $path) && !empty($query['href'])) return socialMediaInfo((string)$query['href']);
+        $video = $host === 'fb.watch' || preg_match('~/(?:videos|reel|reels|watch)(?:/|$)|^/(?:video|watch)\.php$|^/share/[vr]/~', $path) || isset($query['v']);
+        $post = preg_match('~/(?:posts|permalink)(?:/|$)|^/(?:permalink|story|photo)\.php$|^/share/p/~', $path);
+        if ($video || $post) {
+            $canonical = $host === 'fb.watch' ? $url : 'https://www.facebook.com'.$path.(empty($parts['query']) ? '' : '?'.$parts['query']);
+            return ['provider'=>'facebook','url'=>$canonical,'embedUrl'=>'https://www.facebook.com/plugins/'.($video ? 'video' : 'post').'.php?href='.rawurlencode($canonical).'&show_text=false','thumbnail'=>'','facebookVideo'=>(bool)$video];
+        }
+    }
     return null;
 }
 
@@ -130,16 +139,22 @@ function resolveSocialMedia(string $url): array {
         $data = json_decode(fetchPublicMedia('https://www.youtube.com/oembed?format=json&url='.rawurlencode($info['url']), 2097152, false, 12)['body'], true) ?: [];
     } elseif ($info['provider'] === 'tiktok') {
         $data = json_decode(fetchPublicMedia('https://www.tiktok.com/oembed?url='.rawurlencode($url), 2097152, false, 12)['body'], true) ?: [];
+    } elseif ($info['provider'] === 'facebook') {
+        $endpoint = !empty($info['facebookVideo']) ? 'oembed_video' : 'oembed_post';
+        $data = json_decode(fetchPublicMedia('https://graph.facebook.com/v25.0/'.$endpoint.'?url='.rawurlencode($info['url']), 2097152, false, 12)['body'], true) ?: [];
     } else {
         $token = getenv('HUB_INSTAGRAM_OEMBED_TOKEN');
-        if ($token) { try { $data = json_decode(fetchPublicMedia('https://graph.facebook.com/instagram_oembed?url='.rawurlencode($info['url']).'&access_token='.rawurlencode($token), 2097152, false, 12)['body'], true) ?: []; } catch (Throwable $error) { /* Try the public embed page independently. */ } }
-        // Public embed pages can supply a poster when oEmbed omits it.
-        $page = fetchPublicMedia($info['embedUrl'], 2097152, false, 12);
-        $meta = parsePageMetadata($page['body'], $page['url']);
-        $framePolicy = strtolower($page['headers']['x-frame-options'] ?? '');
-        if (str_contains($page['url'], '/accounts/') || in_array($framePolicy, ['deny','sameorigin'], true) || preg_match("~frame-ancestors\s+'none'~i", $page['headers']['content-security-policy'] ?? '')) throw new RuntimeException('The owner or provider does not allow embedding.');
-        if (!$data) $data = ['html'=>preg_match('~(?:EmbeddedMedia|Embed\b|instagram-media)~i', $page['body']) ? 'public-embed' : '', 'thumbnail_url'=>$meta['thumbnail'], 'title'=>$meta['title']];
-        if (empty($data['thumbnail_url'])) $data['thumbnail_url'] = $meta['thumbnail'];
+        $endpoint = 'https://graph.facebook.com/v25.0/instagram_oembed?url='.rawurlencode($info['url']);
+        if ($token) $endpoint .= '&access_token='.rawurlencode($token);
+        try { $data = json_decode(fetchPublicMedia($endpoint, 2097152, false, 12)['body'], true) ?: []; }
+        catch (Throwable $error) { /* Try the public embed page independently. */ }
+        if (empty($data['html']) || !empty($data['error'])) {
+            $page = fetchPublicMedia($info['embedUrl'], 2097152, false, 12);
+            $meta = parsePageMetadata($page['body'], $page['url']);
+            $framePolicy = strtolower($page['headers']['x-frame-options'] ?? '');
+            if (str_contains($page['url'], '/accounts/') || in_array($framePolicy, ['deny','sameorigin'], true) || preg_match("~frame-ancestors\\s+'none'~i", $page['headers']['content-security-policy'] ?? '')) throw new RuntimeException('The owner or provider does not allow embedding.');
+            $data = ['html'=>preg_match('~(?:EmbeddedMedia|Embed\\b|instagram-media)~i', $page['body']) ? 'public-embed' : '', 'thumbnail_url'=>$meta['thumbnail'], 'title'=>$meta['title']];
+        }
     }
     if (empty($data['html']) || !empty($data['error']) || !empty($data['error_code'])) throw new RuntimeException('The owner or provider does not allow embedding.');
     $info['thumbnail'] = publicHttpUrl((string)($data['thumbnail_url'] ?? $info['thumbnail'] ?? ''));

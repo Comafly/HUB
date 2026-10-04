@@ -991,3 +991,15 @@ html[data-tile-details="always"] .tile .tile-gradient { opacity:1; }
 
 .tile-grid--equal .tile:hover .tile-media .link-thumbnail--youtube,
 .tile-grid--equal .tile:focus-visible .tile-media .link-thumbnail--youtube { transform:scale(1.3); }
+
+/* A first-frame video preview with an unobtrusive play affordance. */
+.video-tile-play { position:absolute;inset:0;display:grid;place-items:center;z-index:2;pointer-events:none; }
+.video-tile-play svg { width:64px;height:64px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.25)); }
+.video-tile-play circle { fill:rgba(255,255,255,.12);stroke:rgba(255,255,255,.65);stroke-width:1.5; }
+.video-tile-play path { fill:rgba(255,255,255,.75); }
+/* The search toolbar replaces the navbar at the top while scrolling. */
+.topbar { position:relative; }
+.content-toolbar { position:sticky;top:0;z-index:35;background:var(--bg);padding-block:10px; }
+.viewer-media--image-gallery .viewer-stage { cursor:grab;touch-action:pan-y; }
+.viewer-media--image-gallery .viewer-stage:active { cursor:grabbing; }
+.viewer-media.is-zoomed .viewer-stage { touch-action:none; }
