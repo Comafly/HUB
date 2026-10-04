@@ -1,2 +1,4 @@
 uploads/
 data/app.json
+node_modules/
+test-results/

@@ -1,6 +1,57 @@
-.drag-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: var(--overlay); backdrop-filter: blur(16px); opacity: 0; pointer-events: none; transition: opacity var(--speed-med) var(--ease); }
-.drag-overlay.is-visible { opacity: 1; }
-.drag-overlay-card { width: min(520px, calc(100% - 40px)); min-height: 320px; border: 1px dashed var(--accent-2); border-radius: 32px; display: grid; place-items: center; align-content: center; text-align: center; background: color-mix(in srgb, var(--panel) 85%, transparent); transform: scale(.92); transition: transform var(--speed-med) var(--ease-pop); }
-.drag-overlay.is-visible .drag-overlay-card { transform: scale(1); }
-.drag-plus { width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--accent); color: var(--accent-2); font-size: 44px; }
-.drag-overlay-card h2 { margin: 22px 0 5px; font-size: 26px; }.drag-overlay-card p { margin: 0; color: var(--muted); }
+// components/drag-drop: consolidated rules. Compile through style.scss.
+
+.drag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--overlay);
+  backdrop-filter: blur(16px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--speed-med) var(--ease);
+}
+
+.drag-overlay.is-visible {
+  opacity: 1;
+}
+
+.drag-overlay-card {
+  width: min(520px, calc(100% - 40px));
+  min-height: 320px;
+  border: 1px dashed var(--accent-2);
+  border-radius: 32px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  transform: scale(0.92);
+  transition: transform var(--speed-med) var(--ease-pop);
+}
+
+.drag-overlay.is-visible .drag-overlay-card {
+  transform: scale(1);
+}
+
+.drag-plus {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--accent);
+  color: var(--accent-2);
+  font-size: 44px;
+}
+
+.drag-overlay-card h2 {
+  margin: 22px 0 5px;
+  font-size: 26px;
+}
+
+.drag-overlay-card p {
+  margin: 0;
+  color: var(--muted);
+}

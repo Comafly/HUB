@@ -1,5 +1,7 @@
+// layout/shell: consolidated rules. Compile through style.scss.
+
 .app-shell {
-width: min(1640px, calc(100% - 48px));
+  width: min(1640px, calc(100% - 48px));
   margin: 0 auto;
 }
 
@@ -10,16 +12,13 @@ width: min(1640px, calc(100% - 48px));
   align-items: center;
   gap: 24px;
   border-bottom: 1px solid var(--line);
-  position: sticky;
-  top: 0;
-  z-index: 30;
   background: var(--bg);
   backdrop-filter: none;
   isolation: isolate;
 }
 
 .top-links {
-display: flex;
+  display: flex;
   gap: 10px;
   align-items: center;
   min-width: 0;
@@ -27,7 +26,7 @@ display: flex;
 
 .circle-link,
 .icon-btn {
-width: 42px;
+  width: 42px;
   height: 42px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
@@ -39,23 +38,26 @@ width: 42px;
   cursor: pointer;
   text-decoration: none;
   overflow: visible;
-  transition: transform var(--speed-fast) var(--ease-pop), border-color var(--speed-fast) var(--ease), background var(--speed-fast) var(--ease);
+  transition:
+    transform var(--speed-fast) var(--ease-pop),
+    border-color var(--speed-fast) var(--ease),
+    background var(--speed-fast) var(--ease);
 }
 
 .circle-link:hover,
 .icon-btn:hover {
-transform: translateY(-2px) scale(1.03);
+  transform: translateY(-2px) scale(1.03);
   border-color: var(--accent);
   background: var(--panel-2);
 }
 
 .circle-link:active,
 .icon-btn:active {
-transform: translateY(0) scale(.96);
+  transform: translateY(0) scale(0.96);
 }
 
 .circle-link img {
-width: 100%;
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   object-fit: cover;
@@ -63,14 +65,13 @@ width: 100%;
 }
 
 .circle-link--add {
-font-size: 23px;
+  font-size: 23px;
   color: var(--accent-2);
   border-style: dashed;
   background: transparent;
 }
 
 [data-tooltip]::after {
-content: attr(data-tooltip);
   position: absolute;
   top: calc(100% + 10px);
   left: 50%;
@@ -82,20 +83,22 @@ content: attr(data-tooltip);
   white-space: nowrap;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: .04em;
+  letter-spacing: 0.04em;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--speed-fast) var(--ease), transform var(--speed-fast) var(--ease);
+  transition:
+    opacity var(--speed-fast) var(--ease),
+    transform var(--speed-fast) var(--ease);
   z-index: 100;
 }
 
 [data-tooltip]:hover::after {
-opacity: 1;
+  opacity: 1;
   transform: translate(-50%, 0);
 }
 
 .main-nav {
-display: flex;
+  display: flex;
   gap: 8px;
   align-items: center;
   padding: 5px;
@@ -105,10 +108,10 @@ display: flex;
 }
 
 .nav-tab {
-border: 0;
+  border: 0;
   background: transparent;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: 0.12em;
   font-size: 11px;
   font-weight: 800;
   padding: 11px 17px;
@@ -119,22 +122,22 @@ border: 0;
 }
 
 .nav-tab:hover {
-color: var(--text);
+  color: var(--text);
 }
 
 .nav-tab.is-active {
-background: var(--panel-3);
+  background: var(--panel-3);
   color: var(--text);
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
 .settings-btn {
-justify-self: end;
+  justify-self: end;
   font-size: 16px;
 }
 
 .workspace {
-display: grid;
+  display: grid;
   grid-template-columns: 190px minmax(0, 1fr) 260px;
   gap: 30px;
   padding: 34px 0 60px;
@@ -143,25 +146,25 @@ display: grid;
 
 .tags-panel,
 .bookmarks-panel {
-position: sticky;
+  position: sticky;
   top: 126px;
 }
 
 .eyebrow {
-text-transform: uppercase;
-  letter-spacing: .18em;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
   font-size: 10px;
   font-weight: 900;
   color: var(--accent-2);
 }
 
 .tag-list {
-display: grid;
+  display: grid;
   gap: 9px;
 }
 
 .tag-btn {
-min-height: 48px;
+  min-height: 48px;
   padding: 0 15px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
@@ -173,40 +176,44 @@ min-height: 48px;
   font-weight: 800;
   cursor: pointer;
   color: var(--muted);
-  transition: transform var(--speed-fast) var(--ease-pop), background var(--speed-med) var(--ease), color var(--speed-med) var(--ease), border-color var(--speed-med) var(--ease);
+  transition:
+    transform var(--speed-fast) var(--ease-pop),
+    background var(--speed-med) var(--ease),
+    color var(--speed-med) var(--ease),
+    border-color var(--speed-med) var(--ease);
 }
 
 .tag-btn span {
-opacity: .25;
+  opacity: 0.25;
   transition: transform var(--speed-med) var(--ease);
 }
 
 .tag-btn:hover {
-transform: translateX(4px);
+  transform: translateX(4px);
   color: var(--text);
   background: var(--accent-soft);
   border-color: var(--line-strong);
 }
 
 .tag-btn:hover span {
-transform: rotate(45deg);
-  opacity: .7;
+  transform: rotate(45deg);
+  opacity: 0.7;
 }
 
 .tag-btn.is-active {
-background: var(--text);
+  background: var(--text);
   color: var(--bg);
   border-color: var(--text);
   transform: translateX(4px);
 }
 
 .content-column {
-min-width: 0;
+  min-width: 0;
   position: relative;
 }
 
 .search-wrap {
-height: 58px;
+  height: 58px;
   border: 1px solid var(--line);
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
@@ -214,23 +221,26 @@ height: 58px;
   align-items: center;
   gap: 13px;
   padding: 0 16px 0 18px;
-  transition: border-color var(--speed-fast) var(--ease), transform var(--speed-fast) var(--ease), box-shadow var(--speed-fast) var(--ease);
+  transition:
+    border-color var(--speed-fast) var(--ease),
+    transform var(--speed-fast) var(--ease),
+    box-shadow var(--speed-fast) var(--ease);
 }
 
 .search-wrap:focus-within {
-border-color: var(--accent);
+  border-color: var(--accent);
   transform: translateY(-1px);
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 .search-icon {
-font-size: 24px;
+  font-size: 24px;
   color: var(--muted);
   transform: rotate(-15deg);
 }
 
 .search-input {
-flex: 1;
+  flex: 1;
   min-width: 0;
   border: 0;
   outline: 0;
@@ -241,15 +251,15 @@ flex: 1;
 }
 
 .search-input::placeholder {
-color: var(--faint);
+  color: var(--faint);
 }
 
 .search-input::-webkit-search-cancel-button {
-appearance: none;
+  appearance: none;
 }
 
 .search-clear {
-width: 34px;
+  width: 34px;
   height: 34px;
   display: grid;
   place-items: center;
@@ -260,49 +270,27 @@ width: 34px;
   line-height: 1;
   cursor: pointer;
   opacity: 0;
-  transform: scale(.6) rotate(-30deg);
+  transform: scale(0.6) rotate(-30deg);
   pointer-events: none;
-  transition: opacity var(--speed-fast) var(--ease), transform var(--speed-fast) var(--ease-pop);
+  transition:
+    opacity var(--speed-fast) var(--ease),
+    transform var(--speed-fast) var(--ease-pop);
 }
 
 .search-clear.is-visible {
-opacity: 1;
+  opacity: 1;
   transform: scale(1) rotate(0);
   pointer-events: auto;
 }
 
-.section-heading {
-display: flex;
-  justify-content: space-between;
-  gap: 28px;
-  align-items: center;
-  padding: 22px 2px 24px;
-}
-
-.section-heading h1 {
-margin: 7px 0 0;
-  font-size: clamp(38px, 4.4vw, 72px);
-  line-height: .93;
-  letter-spacing: -.055em;
-  text-transform: uppercase;
-}
-
-.section-heading p {
-width: min(380px, 45%);
-  margin: 0 0 7px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 .top-link {
-position: relative;
+  position: relative;
   display: inline-flex;
   flex: 0 0 auto;
 }
 
 .top-link > :is(.top-link-remove, .top-link-edit) {
-position: absolute;
+  position: absolute;
   top: -10px;
   left: calc(50% - 14px);
   z-index: 2;
@@ -313,72 +301,91 @@ position: absolute;
   color: var(--text);
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--speed-fast) var(--ease), visibility 0s,
-    background var(--speed-fast) var(--ease), color var(--speed-fast) var(--ease),
+  transition:
+    opacity var(--speed-fast) var(--ease),
+    visibility 0s,
+    background var(--speed-fast) var(--ease),
+    color var(--speed-fast) var(--ease),
     transform var(--speed-fast) var(--ease-pop);
 }
 
 .top-link:hover > :is(.top-link-remove, .top-link-edit) {
-opacity: 1;
+  opacity: 1;
   visibility: visible;
   transition-delay: 3s, 3s, 0s, 0s, 0s;
 }
 
 .top-link:has(:focus-visible) > :is(.top-link-remove, .top-link-edit) {
-opacity: 1;
+  opacity: 1;
   visibility: visible;
   transition-delay: 0s;
 }
 
 .top-link > :is(.top-link-remove, .top-link-edit):hover {
-background: #fff;
+  background: #fff;
   color: #000;
 }
 
-.development-panel {
-min-height: 55vh; display: grid; place-content: center; text-align: center; gap: 12px;
-}
-
-.development-panel h1 {
-margin: 0; font-size: clamp(24px, 4vw, 40px);
-}
-
 .link-preview img {
-width: 100%; height: 100%; object-fit: cover;
-  padding: 0; border-radius: 0; background: transparent; box-shadow: none;
-}
-
-.link-domain {
-top: 16px; left: 16px; right: 52px; width: fit-content; max-width: calc(100% - 68px);
-  padding: 8px 11px; border-radius: 9px;
-  color: #fff; background: rgba(0, 0, 0, .68);
-  font-size: clamp(16px, 1.6vw, 24px); font-weight: 850; line-height: 1.25;
-  letter-spacing: -.02em; text-transform: none; overflow-wrap: anywhere;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, .5);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .circle-link {
-overflow: hidden; padding: 0;
+  overflow: hidden;
+  padding: 0;
 }
 
 .top-link > .top-link-edit {
-left: calc(50% - 29px);
+  left: calc(50% - 29px);
 }
 
 .top-link > .top-link-remove {
-left: calc(50% + 1px);
+  left: calc(50% + 1px);
 }
 
 .top-link:focus-within > :is(.top-link-remove, .top-link-edit) {
-opacity: 1; visibility: visible; transition-delay: 0s;
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 .app-tooltip .tooltip-url {
-display: block; margin-top: 4px; font-size: 10px; font-weight: 400; opacity: .7; letter-spacing: 0; overflow-wrap: anywhere;
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.7;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .topbar::before {
-content: ""; position: absolute; inset: 0;
+  content: "";
+  position: absolute;
+  inset: 0;
   box-shadow: 0 0 0 100vmax var(--bg);
-  clip-path: inset(0 -100vmax); background: var(--bg); z-index: -1; pointer-events: none;
+  clip-path: inset(0 -100vmax);
+  background: var(--bg);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.content-toolbar {
+  position: sticky;
+  top: var(--navbar-height, 92px);
+  z-index: 35;
+  background: var(--bg);
+  padding-block: 10px;
 }

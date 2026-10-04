@@ -1,3 +1,5 @@
+// themes/bubblegum: consolidated rules. Compile through style.scss.
+
 html[data-theme="bubblegum"][data-mode="dark"] {
   --bg: #1d0d18;
   --bg-elevated: #281020;
@@ -7,15 +9,15 @@ html[data-theme="bubblegum"][data-mode="dark"] {
   --text: #ffe8f5;
   --muted: #d59abf;
   --faint: #9a6284;
-  --line: rgba(238,129,192,.18);
-  --line-strong: rgba(238,129,192,.32);
+  --line: rgba(238, 129, 192, 0.18);
+  --line-strong: rgba(238, 129, 192, 0.32);
   --accent: #e55ca8;
   --accent-2: #ff92cb;
-  --accent-soft: rgba(229,92,168,.17);
+  --accent-soft: rgba(229, 92, 168, 0.17);
   --danger: #f07a72;
-  --overlay: rgba(24,7,19,.78);
-  --ambient: rgba(229,92,168,.09);
-  --viewer-panel: rgba(29,13,24,.80);
+  --overlay: rgba(24, 7, 19, 0.78);
+  --ambient: rgba(229, 92, 168, 0.09);
+  --viewer-panel: rgba(29, 13, 24, 0.8);
   --tile-hue: 326.72;
   --tile-saturation: 50%;
   --tile-lightness: 28%;
@@ -33,15 +35,15 @@ html[data-theme="bubblegum"][data-mode="light"] {
   --text: #3b1830;
   --muted: #8f4f73;
   --faint: #b97999;
-  --line: rgba(108,42,80,.14);
-  --line-strong: rgba(108,42,80,.26);
+  --line: rgba(108, 42, 80, 0.14);
+  --line-strong: rgba(108, 42, 80, 0.26);
   --accent: #d84396;
   --accent-2: #eb6fb1;
-  --accent-soft: rgba(216,67,150,.12);
+  --accent-soft: rgba(216, 67, 150, 0.12);
   --danger: #b84848;
-  --overlay: rgba(84,35,64,.38);
-  --ambient: rgba(216,67,150,.08);
-  --viewer-panel: rgba(255,241,248,.88);
+  --overlay: rgba(84, 35, 64, 0.38);
+  --ambient: rgba(216, 67, 150, 0.08);
+  --viewer-panel: rgba(255, 241, 248, 0.88);
   --tile-hue: 326.58;
   --tile-saturation: 46%;
   --tile-lightness: 80%;

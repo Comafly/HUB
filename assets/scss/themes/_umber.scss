@@ -1,3 +1,5 @@
+// themes/umber: consolidated rules. Compile through style.scss.
+
 html[data-theme="umber"][data-mode="dark"] {
   --bg: #180e09;
   --bg-elevated: #21120b;
@@ -7,15 +9,15 @@ html[data-theme="umber"][data-mode="dark"] {
   --text: #f8e8c2;
   --muted: #ba9468;
   --faint: #7c5c3f;
-  --line: rgba(211,152,84,.17);
-  --line-strong: rgba(211,152,84,.30);
+  --line: rgba(211, 152, 84, 0.17);
+  --line-strong: rgba(211, 152, 84, 0.3);
   --accent: #c36d2e;
   --accent-2: #e39a53;
-  --accent-soft: rgba(195,109,46,.16);
+  --accent-soft: rgba(195, 109, 46, 0.16);
   --danger: #d77d64;
-  --overlay: rgba(18,9,5,.76);
-  --ambient: rgba(180,92,42,.055);
-  --viewer-panel: rgba(24,14,9,.72);
+  --overlay: rgba(18, 9, 5, 0.76);
+  --ambient: rgba(180, 92, 42, 0.055);
+  --viewer-panel: rgba(24, 14, 9, 0.72);
   --tile-hue: 25.37;
   --tile-saturation: 43%;
   --tile-lightness: 28%;
@@ -33,15 +35,15 @@ html[data-theme="umber"][data-mode="light"] {
   --text: #2c180e;
   --muted: #7f5331;
   --faint: #ad815d;
-  --line: rgba(80,43,21,.16);
-  --line-strong: rgba(80,43,21,.28);
+  --line: rgba(80, 43, 21, 0.16);
+  --line-strong: rgba(80, 43, 21, 0.28);
   --accent: #a85520;
   --accent-2: #c76f2d;
-  --accent-soft: rgba(168,85,32,.12);
+  --accent-soft: rgba(168, 85, 32, 0.12);
   --danger: #a34230;
-  --overlay: rgba(59,36,20,.42);
-  --ambient: rgba(168,85,32,.07);
-  --viewer-panel: rgba(247,236,216,.86);
+  --overlay: rgba(59, 36, 20, 0.42);
+  --ambient: rgba(168, 85, 32, 0.07);
+  --viewer-panel: rgba(247, 236, 216, 0.86);
   --tile-hue: 23.38;
   --tile-saturation: 48%;
   --tile-lightness: 80%;

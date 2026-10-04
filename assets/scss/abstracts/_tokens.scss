@@ -1,22 +1,42 @@
+// abstracts/tokens: consolidated rules. Compile through style.scss.
+
 :root {
   --radius-xs: 10px;
   --radius-sm: 14px;
   --radius-md: 20px;
   --radius-lg: 28px;
-  --shadow-soft: 0 18px 60px rgba(0, 0, 0, .18);
+  --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.18);
   --speed-fast: 180ms;
   --speed-med: 320ms;
   --speed-slow: 520ms;
-  --ease: cubic-bezier(.2, .8, .2, 1);
-  --ease-pop: cubic-bezier(.18, .89, .32, 1.28);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-pop: cubic-bezier(0.18, 0.89, 0.32, 1.28);
   /* Keep saved indices 0–2 stable while extending each colour harmony. */
-  --tile-color-0: hsl(calc(var(--tile-hue) + 30) var(--tile-saturation) var(--tile-lightness));
-  --tile-color-1: hsl(calc(var(--tile-hue) + 180) var(--tile-saturation) var(--tile-lightness));
-  --tile-color-2: hsl(calc(var(--tile-hue) + 120) var(--tile-saturation) var(--tile-lightness));
-  --tile-color-3: hsl(calc(var(--tile-hue) - 30) var(--tile-saturation) var(--tile-lightness));
-  --tile-color-4: hsl(calc(var(--tile-hue) - 60) var(--tile-saturation) var(--tile-lightness));
-  --tile-color-5: hsl(calc(var(--tile-hue) + 180) var(--tile-saturation) var(--tile-lightness-deep));
-  --tile-color-6: hsl(calc(var(--tile-hue) + 180) calc(var(--tile-saturation) * .65) var(--tile-lightness-soft));
-  --tile-color-7: hsl(calc(var(--tile-hue) + 240) var(--tile-saturation) var(--tile-lightness));
+  --tile-color-0: hsl(
+    calc(var(--tile-hue) + 30) var(--tile-saturation) var(--tile-lightness)
+  );
+  --tile-color-1: hsl(
+    calc(var(--tile-hue) + 180) var(--tile-saturation) var(--tile-lightness)
+  );
+  --tile-color-2: hsl(
+    calc(var(--tile-hue) + 120) var(--tile-saturation) var(--tile-lightness)
+  );
+  --tile-color-3: hsl(
+    calc(var(--tile-hue) - 30) var(--tile-saturation) var(--tile-lightness)
+  );
+  --tile-color-4: hsl(
+    calc(var(--tile-hue) - 60) var(--tile-saturation) var(--tile-lightness)
+  );
+  --tile-color-5: hsl(
+    calc(var(--tile-hue) + 180) var(--tile-saturation)
+      var(--tile-lightness-deep)
+  );
+  --tile-color-6: hsl(
+    calc(var(--tile-hue) + 180) calc(var(--tile-saturation) * 0.65)
+      var(--tile-lightness-soft)
+  );
+  --tile-color-7: hsl(
+    calc(var(--tile-hue) + 240) var(--tile-saturation) var(--tile-lightness)
+  );
   --tile-color-8: var(--bg-elevated);
 }

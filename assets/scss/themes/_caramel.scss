@@ -1,3 +1,5 @@
+// themes/caramel: consolidated rules. Compile through style.scss.
+
 html[data-theme="caramel"][data-mode="dark"] {
   --bg: #1b120b;
   --bg-elevated: #26190f;
@@ -7,15 +9,15 @@ html[data-theme="caramel"][data-mode="dark"] {
   --text: #f8e8cf;
   --muted: #c7a379;
   --faint: #8a6747;
-  --line: rgba(213,154,87,.18);
-  --line-strong: rgba(213,154,87,.31);
+  --line: rgba(213, 154, 87, 0.18);
+  --line-strong: rgba(213, 154, 87, 0.31);
   --accent: #b96b2b;
   --accent-2: #df9854;
-  --accent-soft: rgba(185,107,43,.17);
+  --accent-soft: rgba(185, 107, 43, 0.17);
   --danger: #d66f5a;
-  --overlay: rgba(20,12,6,.78);
-  --ambient: rgba(185,107,43,.08);
-  --viewer-panel: rgba(27,18,11,.80);
+  --overlay: rgba(20, 12, 6, 0.78);
+  --ambient: rgba(185, 107, 43, 0.08);
+  --viewer-panel: rgba(27, 18, 11, 0.8);
   --tile-hue: 27.04;
   --tile-saturation: 44%;
   --tile-lightness: 28%;
@@ -33,15 +35,15 @@ html[data-theme="caramel"][data-mode="light"] {
   --text: #352113;
   --muted: #845731;
   --faint: #ae7d4f;
-  --line: rgba(85,49,23,.15);
-  --line-strong: rgba(85,49,23,.27);
+  --line: rgba(85, 49, 23, 0.15);
+  --line-strong: rgba(85, 49, 23, 0.27);
   --accent: #a95f23;
   --accent-2: #c87b35;
-  --accent-soft: rgba(169,95,35,.12);
+  --accent-soft: rgba(169, 95, 35, 0.12);
   --danger: #a74a36;
-  --overlay: rgba(62,37,19,.40);
-  --ambient: rgba(169,95,35,.07);
-  --viewer-panel: rgba(250,236,216,.88);
+  --overlay: rgba(62, 37, 19, 0.4);
+  --ambient: rgba(169, 95, 35, 0.07);
+  --viewer-panel: rgba(250, 236, 216, 0.88);
   --tile-hue: 26.87;
   --tile-saturation: 46%;
   --tile-lightness: 80%;

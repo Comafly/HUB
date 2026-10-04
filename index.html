@@ -1,308 +1,764 @@
 <!doctype html>
 <html lang="en" data-theme="umber" data-mode="dark">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#1a0f0a" />
-  <title>COMMA HUB</title>
-  <!-- build: collections-ui-v4-chevron -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261004-6" />
-</head>
-<body>
-  <div class="app-shell" id="app">
-    <header class="topbar">
-      <section class="top-links" aria-label="Top links" id="topLinks"></section>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#1a0f0a" />
+    <title>COMMA HUB</title>
+    <!-- build: collections-ui-v4-chevron -->
+    <link rel="stylesheet" href="assets/css/style.css?v=20261004-refactor-1" />
+  </head>
+  <body>
+    <div class="app-shell" id="app">
+      <header class="topbar">
+        <section
+          class="top-links"
+          aria-label="Top links"
+          id="topLinks"
+        ></section>
 
-      <nav class="main-nav" aria-label="Primary">
-        <button class="nav-tab is-active" data-section="dashboard">Dashboard</button>
-        <button class="nav-tab" data-section="projects">Projects</button>
-        <button class="nav-tab" data-section="resources">Resources</button>
-      </nav>
+        <nav class="main-nav" aria-label="Primary"></nav>
 
-      <div class="header-tools"><time id="todayDate"></time>
-      <button class="icon-btn settings-btn" id="settingsButton" aria-label="Open settings" data-tooltip="Settings">
-        <span aria-hidden="true">⚙</span>
-      </button>
-      </div>
-    </header>
+        <div class="header-tools">
+          <time id="todayDate"></time>
+          <button
+            class="icon-btn settings-btn"
+            id="settingsButton"
+            aria-label="Open settings"
+            data-tooltip="Settings"
+          >
+            <span aria-hidden="true">⚙</span>
+          </button>
+        </div>
+      </header>
 
-    <main class="workspace">
-      <aside class="tags-panel" aria-label="Tags">
-        <div class="tag-list" id="tagList"></div>
-      </aside>
+      <main class="workspace">
+        <aside class="tags-panel" aria-label="Tags">
+          <div class="tag-list" id="tagList"></div>
+        </aside>
 
-      <section class="content-column">
-        <section class="calendar-module" id="calendarModule" aria-label="Upcoming calendar events" hidden>
-          <div class="calendar-ranges" id="calendarRanges"></div>
-          <div class="calendar-empty" id="calendarEmpty" hidden>
-            <span>No events in the next four weeks</span>
+        <section class="content-column">
+          <section
+            class="calendar-module"
+            id="calendarModule"
+            aria-label="Upcoming calendar events"
+            hidden
+          >
+            <div class="calendar-ranges" id="calendarRanges"></div>
+            <div class="calendar-empty" id="calendarEmpty" hidden>
+              <span>No events in the next four weeks</span>
+            </div>
+          </section>
+
+          <div class="content-toolbar">
+            <button
+              class="icon-btn grid-layout-button"
+              id="gridLayoutToggle"
+              type="button"
+              aria-label="Switch to equal grid"
+              aria-pressed="false"
+              data-tooltip="Switch to equal grid"
+            ></button>
+            <div class="search-wrap">
+              <span class="search-icon" aria-hidden="true">⌕</span>
+              <input
+                id="searchInput"
+                class="search-input"
+                type="search"
+                autocomplete="off"
+                placeholder="Search Dashboard"
+                aria-label="Search content"
+              />
+              <button
+                id="clearSearch"
+                class="search-clear"
+                type="button"
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            </div>
+
+            <button
+              class="content-add-button"
+              id="contentAddButton"
+              type="button"
+              data-tooltip="Add New Content"
+              aria-label="Add New Content"
+            >
+              Add
+            </button>
+          </div>
+
+          <input id="contentFilePicker" type="file" hidden multiple />
+          <div class="collection-filter-bar" id="collectionFilterBar" hidden>
+            <span>Collection: <strong id="collectionFilterName"></strong></span>
+            <button
+              class="capsule-x collection-filter-clear"
+              id="collectionFilterClear"
+              type="button"
+              aria-label="Show all content"
+            ></button>
+          </div>
+          <div
+            class="collection-grid-drop-overlay"
+            id="collectionGridDropOverlay"
+            aria-hidden="true"
+          >
+            <span>Drop the collection to display it</span>
+          </div>
+          <div class="tile-grid" id="tileGrid" aria-live="polite"></div>
+          <div class="empty-state" id="emptyState" hidden>
+            <h2>No matching content</h2>
+            <p>Change the search or filter, or use Add to create content.</p>
           </div>
         </section>
 
-        <div class="content-toolbar">
-        <button class="icon-btn grid-layout-button" id="gridLayoutToggle" type="button" aria-label="Switch to equal grid" aria-pressed="false" data-tooltip="Switch to equal grid"></button>
-        <div class="search-wrap">
-          <span class="search-icon" aria-hidden="true">⌕</span>
-          <input id="searchInput" class="search-input" type="search" autocomplete="off" placeholder="Search the hub" aria-label="Search content" />
-          <button id="clearSearch" class="search-clear" type="button" aria-label="Clear search">×</button>
+        <aside
+          class="bookmarks-panel"
+          id="bookmarksPanel"
+          aria-label="Collections"
+        >
+          <div class="bookmarks-header">
+            <div>
+              <div class="eyebrow">Collections</div>
+            </div>
+            <div class="collections-header-actions">
+              <button
+                class="collection-add-button"
+                id="collectionAddButton"
+                type="button"
+                aria-label="Create collection"
+                data-tooltip="New collection"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="bookmark-dropzone" id="bookmarkList"></div>
+          <p class="bookmark-hint">
+            Drag tiles into a collection. Drag collections, and their contents,
+            to reorder.
+          </p>
+        </aside>
+      </main>
+    </div>
+
+    <div class="drag-overlay" id="dragOverlay" aria-hidden="true">
+      <div class="drag-overlay-card">
+        <div class="drag-plus">+</div>
+        <h2>Add to COMMA HUB</h2>
+        <p>Drop text, links, images, video, audio, fonts, or files.</p>
+      </div>
+    </div>
+
+    <dialog class="modal content-type-modal" id="contentTypeModal">
+      <div class="modal-card modal-card--chooser">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">Add content</div>
+            <h2>What are you adding?</h2>
+          </div>
+          <button
+            class="icon-btn modal-close"
+            type="button"
+            data-close="contentTypeModal"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div class="content-type-grid">
+          <button
+            class="content-type-choice"
+            type="button"
+            data-content-choice="media"
+          >
+            <span class="content-type-icon">▧</span><strong>Media</strong
+            ><small>Image, video, audio, font, or file</small>
+          </button>
+          <button
+            class="content-type-choice"
+            type="button"
+            data-content-choice="link"
+          >
+            <span class="content-type-icon">↗</span><strong>Link</strong
+            ><small>Add a web link</small>
+          </button>
+          <button
+            class="content-type-choice"
+            type="button"
+            data-content-choice="text"
+          >
+            <span class="content-type-icon">Aa</span><strong>Text</strong
+            ><small>Create a formatted text tile</small>
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="contentModal">
+      <form
+        class="modal-card modal-card--wide"
+        id="contentForm"
+        method="dialog"
+      >
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" id="contentTypeEyebrow">New content</div>
+            <h2 id="contentModalTitle">Add tile</h2>
+          </div>
+          <button
+            class="icon-btn modal-close"
+            type="button"
+            data-close="contentModal"
+            aria-label="Close"
+          >
+            ×
+          </button>
         </div>
 
-        <button class="content-add-button" id="contentAddButton" type="button" data-tooltip="Add New Content" aria-label="Add New Content">Add</button>
+        <div class="form-grid content-form-grid">
+          <div id="linkFields" class="field--wide" hidden></div>
+          <label class="field content-label-field">
+            <span>Label</span>
+            <input name="label" type="text" placeholder="Optional label" />
+          </label>
+          <label class="field content-description-field">
+            <span>Description</span>
+            <textarea
+              name="description"
+              rows="3"
+              placeholder="Optional description"
+            ></textarea>
+          </label>
+          <label class="field field--wide"
+            ><span>Location</span
+            ><input name="location" type="text" placeholder="Optional location"
+          /></label>
+          <div class="field field--wide tag-field">
+            <span>Tags</span>
+            <div class="tag-editor" id="tagEditor">
+              <div class="tag-capsules" id="tagCapsules"></div>
+              <input
+                id="tagInput"
+                type="text"
+                placeholder="Type a tag"
+                autocomplete="off"
+              />
+            </div>
+            <input name="tags" type="hidden" />
+            <div class="preset-tags" id="presetTags"></div>
+            <div
+              class="metadata-tags"
+              id="metadataTags"
+              aria-live="polite"
+            ></div>
+          </div>
+
+          <div class="field tile-size-field">
+            <span>Tile size</span
+            ><input type="hidden" name="size" value="medium" />
+            <div class="tile-size-controls" role="group" aria-label="Tile size">
+              <button
+                type="button"
+                class="tile-control"
+                data-tile-size="small"
+                data-tooltip="Small"
+                aria-label="Small"
+                aria-pressed="false"
+              >
+                <svg viewBox="0 0 32 32" aria-hidden="true">
+                  <rect x="10" y="10" width="12" height="12" rx="2" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="tile-control"
+                data-tile-size="medium"
+                data-tooltip="Medium"
+                aria-label="Medium"
+                aria-pressed="true"
+              >
+                <svg viewBox="0 0 32 32" aria-hidden="true">
+                  <rect x="9" y="5" width="14" height="22" rx="2" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="tile-control"
+                data-tile-size="large"
+                data-tooltip="Large"
+                aria-label="Large"
+                aria-pressed="false"
+              >
+                <svg viewBox="0 0 32 32" aria-hidden="true">
+                  <rect x="5" y="5" width="22" height="22" rx="2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="field tile-orientation-field">
+            <span>Orientation</span
+            ><input type="hidden" name="orientation" value="landscape" /><button
+              type="button"
+              class="tile-control orientation-control"
+              id="orientationButton"
+              data-tooltip="Rotate to Portrait"
+              aria-label="Rotate to Portrait"
+              aria-pressed="false"
+            >
+              <svg viewBox="0 0 64 64" aria-hidden="true">
+                <rect
+                  class="orientation-outline"
+                  x="5"
+                  y="15"
+                  width="54"
+                  height="34"
+                  rx="2"
+                />
+                <path
+                  d="M22 32a10 10 0 0 1 17-7l4 4m0-7v7h-7M42 32a10 10 0 0 1-17 7l-4-4m0 7v-7h7"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div class="dynamic-fields field--wide" id="dynamicFields"></div>
         </div>
 
-        <input id="contentFilePicker" type="file" hidden multiple />
-        <div class="collection-filter-bar" id="collectionFilterBar" hidden>
-          <span>Collection: <strong id="collectionFilterName"></strong></span>
-          <button class="capsule-x collection-filter-clear" id="collectionFilterClear" type="button" aria-label="Show all content"></button>
-        </div>
-        <div class="collection-grid-drop-overlay" id="collectionGridDropOverlay" aria-hidden="true"><span>Drop the collection to display it</span></div>
-        <div class="tile-grid" id="tileGrid" aria-live="polite"></div>
-        <div class="empty-state" id="emptyState" hidden>
-          <h2>No matching content</h2>
-          <p>Change the search or tag filter, or drag something into the window to add it.</p>
-        </div>
-      </section>
+        <input type="hidden" name="type" />
+        <input type="hidden" name="existingFiles" />
 
-      <aside class="bookmarks-panel" id="bookmarksPanel" aria-label="Collections">
-        <div class="bookmarks-header">
+        <div class="modal-actions">
+          <button
+            class="btn btn--danger"
+            id="deleteContentButton"
+            type="button"
+            hidden
+          >
+            Delete content
+          </button>
+          <button
+            class="btn btn--ghost"
+            type="button"
+            data-close="contentModal"
+          >
+            Cancel
+          </button>
+          <button class="btn btn--primary" id="saveContentButton" type="submit">
+            Add content
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="topLinkModal">
+      <form class="modal-card" id="topLinkForm" method="dialog">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">Quick access</div>
+            <h2>Add top link</h2>
+          </div>
+          <button
+            class="icon-btn modal-close"
+            type="button"
+            data-close="topLinkModal"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div class="form-grid">
+          <label class="field field--wide"
+            ><span>Label</span><input name="label" required
+          /></label>
+          <label class="field field--wide"
+            ><span>URL</span
+            ><input
+              name="url"
+              type="text"
+              inputmode="url"
+              required
+              placeholder="website.com"
+          /></label>
+          <div class="field field--wide">
+            <span>Image</span>
+            <div id="topLinkImagePicker"></div>
+            <small>Optional. Favicon is used when no image is uploaded.</small>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button
+            class="btn btn--ghost"
+            type="button"
+            data-close="topLinkModal"
+          >
+            Cancel
+          </button>
+          <button class="btn btn--primary" type="submit">Add link</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="settingsModal">
+      <div class="modal-card">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">Preferences</div>
+            <h2>Settings</h2>
+          </div>
+          <button
+            class="icon-btn modal-close"
+            type="button"
+            data-close="settingsModal"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <section class="settings-section">
+          <div class="settings-copy">
+            <h3>Themes</h3>
+            <p>
+              Choose a visual style, then switch between its dark and light
+              modes.
+            </p>
+          </div>
+          <div class="theme-grid" id="themeGrid">
+            <button
+              class="theme-card"
+              type="button"
+              data-theme-choice="umber"
+              aria-pressed="true"
+            >
+              <span class="theme-swatch theme-swatch--umber" aria-hidden="true"
+                ><span></span><span></span><span></span
+              ></span>
+              <span class="theme-meta"
+                ><strong>Umber</strong><span>Warm brown and cream</span></span
+              >
+            </button>
+            <button
+              class="theme-card"
+              type="button"
+              data-theme-choice="midnight-blue"
+              aria-pressed="false"
+            >
+              <span
+                class="theme-swatch theme-swatch--midnight-blue"
+                aria-hidden="true"
+                ><span></span><span></span><span></span
+              ></span>
+              <span class="theme-meta"
+                ><strong>Midnight Blue</strong
+                ><span>Deep navy and steel blue</span></span
+              >
+            </button>
+            <button
+              class="theme-card"
+              type="button"
+              data-theme-choice="bubblegum"
+              aria-pressed="false"
+            >
+              <span
+                class="theme-swatch theme-swatch--bubblegum"
+                aria-hidden="true"
+                ><span></span><span></span><span></span
+              ></span>
+              <span class="theme-meta"
+                ><strong>Bubblegum</strong
+                ><span>Berry, pink, and blush</span></span
+              >
+            </button>
+            <button
+              class="theme-card"
+              type="button"
+              data-theme-choice="caramel"
+              aria-pressed="false"
+            >
+              <span
+                class="theme-swatch theme-swatch--caramel"
+                aria-hidden="true"
+                ><span></span><span></span><span></span
+              ></span>
+              <span class="theme-meta"
+                ><strong>Caramel</strong
+                ><span>Toffee, tan, and cream</span></span
+              >
+            </button>
+            <button
+              class="theme-card"
+              type="button"
+              data-theme-choice="marble"
+              aria-pressed="false"
+            >
+              <span class="theme-swatch theme-swatch--marble" aria-hidden="true"
+                ><span></span><span></span><span></span
+              ></span>
+              <span class="theme-meta"
+                ><strong>Marble</strong
+                ><span>Stone, graphite, and chalk</span></span
+              >
+            </button>
+            <button
+              class="theme-card"
+              type="button"
+              data-theme-choice="carbon-lavender"
+              aria-pressed="false"
+            >
+              <span
+                class="theme-swatch theme-swatch--carbon-lavender"
+                aria-hidden="true"
+                ><span></span><span></span><span></span
+              ></span>
+              <span class="theme-meta"
+                ><strong>Carbon Lavender</strong
+                ><span>Washed carbon and muted purple</span></span
+              >
+            </button>
+          </div>
+        </section>
+        <section class="settings-section settings-toggle-section">
+          <div class="settings-copy">
+            <h3><label for="modeToggle">Dark/Light Mode</label></h3>
+            <p id="modeLabel">Dark mode</p>
+          </div>
+          <label class="switch" aria-label="Toggle dark or light mode"
+            ><input id="modeToggle" type="checkbox" checked /><span></span
+          ></label>
+        </section>
+        <section class="settings-section settings-toggle-section">
+          <div class="settings-copy">
+            <h3>
+              <label for="tileDetailsToggle">Always Show Tile Details</label>
+            </h3>
+            <p>Keep labels and descriptions visible.</p>
+          </div>
+          <label class="switch" aria-label="Always Show Tile Details"
+            ><input id="tileDetailsToggle" type="checkbox" /><span></span
+          ></label>
+        </section>
+        <section class="settings-section">
+          <div class="settings-copy">
+            <h3>Calendar</h3>
+            <p>
+              Load upcoming events from an ICS calendar file stored in the data
+              folder.
+            </p>
+          </div>
+          <div class="calendar-settings" id="calendarSettings">
+            <div class="calendar-file-row" id="calendarFileRow" hidden>
+              <div class="calendar-file-meta">
+                <span class="calendar-file-icon" aria-hidden="true">◫</span>
+                <div>
+                  <strong id="calendarFileName">calendar.ics</strong
+                  ><small id="calendarFileStatus">Calendar loaded</small>
+                </div>
+              </div>
+              <button
+                class="capsule-x calendar-file-delete"
+                id="calendarDeleteButton"
+                type="button"
+                aria-label="Delete calendar file"
+              ></button>
+            </div>
+            <div class="calendar-upload-row" id="calendarUploadRow">
+              <input
+                id="calendarFileInput"
+                type="file"
+                accept=".ics,text/calendar"
+                hidden
+              />
+              <button
+                class="btn btn--primary"
+                id="calendarUploadButton"
+                type="button"
+              >
+                Upload ICS
+              </button>
+              <small
+                >One calendar file is stored at a time. Uploading a new file
+                replaces the current one.</small
+              >
+            </div>
+          </div>
+        </section>
+        <section class="settings-section">
+          <div class="settings-copy">
+            <h3>Content Backup</h3>
+            <p>
+              Download saved content, collections, settings, and uploaded files.
+              Extract the ZIP into the project folder to restore its data/ and
+              uploads/ directories.
+            </p>
+          </div>
+          <button
+            class="btn btn--primary"
+            id="downloadContentButton"
+            type="button"
+          >
+            Download Content
+          </button>
+        </section>
+      </div>
+    </dialog>
+
+    <dialog class="modal" id="collectionModal">
+      <form class="modal-card" id="collectionForm" method="dialog">
+        <div class="modal-head">
           <div>
             <div class="eyebrow">Collections</div>
+            <h2>Create folder</h2>
           </div>
-          <div class="collections-header-actions"><button class="collection-add-button" id="collectionAddButton" type="button" aria-label="Create collection" data-tooltip="New collection">+</button></div>
+          <button
+            class="icon-btn modal-close"
+            type="button"
+            data-close="collectionModal"
+            aria-label="Close"
+          >
+            ×
+          </button>
         </div>
-        <div class="bookmark-dropzone" id="bookmarkList"></div>
-        <p class="bookmark-hint">Drag tiles into a collection. Drag collections, and their contents, to reorder.</p>
-      </aside>
-    </main>
-    <section class="development-panel" id="developmentPanel" hidden aria-labelledby="developmentTitle">
-      <div class="eyebrow" id="developmentTitle">Projects</div>
-      <h1>Under Development</h1>
-    </section>
-  </div>
-
-  <div class="drag-overlay" id="dragOverlay" aria-hidden="true">
-    <div class="drag-overlay-card">
-      <div class="drag-plus">+</div>
-      <h2>Add to COMMA HUB</h2>
-      <p>Drop text, links, images, video, audio, fonts, or files.</p>
-    </div>
-  </div>
-
-  <dialog class="modal content-type-modal" id="contentTypeModal">
-    <div class="modal-card modal-card--chooser">
-      <div class="modal-head">
-        <div><div class="eyebrow">Add content</div><h2>What are you adding?</h2></div>
-        <button class="icon-btn modal-close" type="button" data-close="contentTypeModal" aria-label="Close">×</button>
-      </div>
-      <div class="content-type-grid">
-        <button class="content-type-choice" type="button" data-content-choice="media"><span class="content-type-icon">▧</span><strong>Media</strong><small>Image, video, audio, font, or file</small></button>
-        <button class="content-type-choice" type="button" data-content-choice="link"><span class="content-type-icon">↗</span><strong>Link</strong><small>Add a web link</small></button>
-        <button class="content-type-choice" type="button" data-content-choice="text"><span class="content-type-icon">Aa</span><strong>Text</strong><small>Create a formatted text tile</small></button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog class="modal" id="contentModal">
-    <form class="modal-card modal-card--wide" id="contentForm" method="dialog">
-      <div class="modal-head">
-        <div>
-          <div class="eyebrow" id="contentTypeEyebrow">New content</div>
-          <h2 id="contentModalTitle">Add tile</h2>
+        <div class="form-grid">
+          <label class="field field--wide"
+            ><span>Folder name</span
+            ><input
+              name="name"
+              required
+              maxlength="60"
+              placeholder="Inspiration"
+              autocomplete="off"
+          /></label>
         </div>
-        <button class="icon-btn modal-close" type="button" data-close="contentModal" aria-label="Close">×</button>
-      </div>
+        <div class="modal-actions">
+          <button
+            class="btn btn--ghost"
+            type="button"
+            data-close="collectionModal"
+          >
+            Cancel
+          </button>
+          <button class="btn btn--primary" type="submit">Create folder</button>
+        </div>
+      </form>
+    </dialog>
 
-      <div class="form-grid content-form-grid">
-        <div id="linkFields" class="field--wide" hidden></div>
-        <label class="field content-label-field">
-          <span>Label</span>
-          <input name="label" type="text" placeholder="Optional label" />
-        </label>
-        <label class="field content-description-field">
-          <span>Description</span>
-          <textarea name="description" rows="3" placeholder="Optional description"></textarea>
-        </label>
-        <label class="field field--wide"><span>Location</span><input name="location" type="text" placeholder="Optional location" /></label>
-        <div class="field field--wide tag-field">
-          <span>Tags</span>
-          <div class="tag-editor" id="tagEditor">
-            <div class="tag-capsules" id="tagCapsules"></div>
-            <input id="tagInput" type="text" placeholder="Type a tag" autocomplete="off" />
+    <dialog class="modal" id="deleteCollectionModal">
+      <div class="modal-card modal-card--confirm">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">Collections</div>
+            <h2>Delete collection?</h2>
           </div>
-          <input name="tags" type="hidden" />
-          <div class="preset-tags" id="presetTags"></div>
-          <div class="metadata-tags" id="metadataTags" aria-live="polite"></div>
-        </div>
-
-        <div class="field tile-size-field"><span>Tile size</span><input type="hidden" name="size" value="medium"><div class="tile-size-controls" role="group" aria-label="Tile size">
-          <button type="button" class="tile-control" data-tile-size="small" data-tooltip="Small" aria-label="Small" aria-pressed="false"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="10" y="10" width="12" height="12" rx="2"/></svg></button>
-          <button type="button" class="tile-control" data-tile-size="medium" data-tooltip="Medium" aria-label="Medium" aria-pressed="true"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="9" y="5" width="14" height="22" rx="2"/></svg></button>
-          <button type="button" class="tile-control" data-tile-size="large" data-tooltip="Large" aria-label="Large" aria-pressed="false"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="5" width="22" height="22" rx="2"/></svg></button>
-        </div></div>
-        <div class="field tile-orientation-field"><span>Orientation</span><input type="hidden" name="orientation" value="landscape"><button type="button" class="tile-control orientation-control" id="orientationButton" data-tooltip="Rotate to Portrait" aria-label="Rotate to Portrait" aria-pressed="false"><svg viewBox="0 0 64 64" aria-hidden="true"><rect class="orientation-outline" x="5" y="15" width="54" height="34" rx="2"/><path d="M22 32a10 10 0 0 1 17-7l4 4m0-7v7h-7M42 32a10 10 0 0 1-17 7l-4-4m0 7v-7h7"/></svg></button></div>
-
-        <div class="dynamic-fields field--wide" id="dynamicFields"></div>
-      </div>
-
-      <input type="hidden" name="type" />
-      <input type="hidden" name="existingFiles" />
-
-      <div class="modal-actions">
-        <button class="btn btn--danger" id="deleteContentButton" type="button" hidden>Delete content</button>
-        <button class="btn btn--ghost" type="button" data-close="contentModal">Cancel</button>
-        <button class="btn btn--primary" id="saveContentButton" type="submit">Add content</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog class="modal" id="topLinkModal">
-    <form class="modal-card" id="topLinkForm" method="dialog">
-      <div class="modal-head">
-        <div><div class="eyebrow">Quick access</div><h2>Add top link</h2></div>
-        <button class="icon-btn modal-close" type="button" data-close="topLinkModal" aria-label="Close">×</button>
-      </div>
-      <div class="form-grid">
-        <label class="field field--wide"><span>Label</span><input name="label" required /></label>
-        <label class="field field--wide"><span>URL</span><input name="url" type="text" inputmode="url" required placeholder="website.com" /></label>
-        <div class="field field--wide"><span>Image</span><div id="topLinkImagePicker"></div><small>Optional. Favicon is used when no image is uploaded.</small></div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn--ghost" type="button" data-close="topLinkModal">Cancel</button>
-        <button class="btn btn--primary" type="submit">Add link</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog class="modal" id="settingsModal">
-    <div class="modal-card">
-      <div class="modal-head">
-        <div><div class="eyebrow">Preferences</div><h2>Settings</h2></div>
-        <button class="icon-btn modal-close" type="button" data-close="settingsModal" aria-label="Close">×</button>
-      </div>
-      <section class="settings-section">
-        <div class="settings-copy"><h3>Themes</h3><p>Choose a visual style, then switch between its dark and light modes.</p></div>
-        <div class="theme-grid" id="themeGrid">
-          <button class="theme-card" type="button" data-theme-choice="umber" aria-pressed="true">
-            <span class="theme-swatch theme-swatch--umber" aria-hidden="true"><span></span><span></span><span></span></span>
-            <span class="theme-meta"><strong>Umber</strong><span>Warm brown and cream</span></span>
-          </button>
-          <button class="theme-card" type="button" data-theme-choice="midnight-blue" aria-pressed="false">
-            <span class="theme-swatch theme-swatch--midnight-blue" aria-hidden="true"><span></span><span></span><span></span></span>
-            <span class="theme-meta"><strong>Midnight Blue</strong><span>Deep navy and steel blue</span></span>
-          </button>
-          <button class="theme-card" type="button" data-theme-choice="bubblegum" aria-pressed="false">
-            <span class="theme-swatch theme-swatch--bubblegum" aria-hidden="true"><span></span><span></span><span></span></span>
-            <span class="theme-meta"><strong>Bubblegum</strong><span>Berry, pink, and blush</span></span>
-          </button>
-          <button class="theme-card" type="button" data-theme-choice="caramel" aria-pressed="false">
-            <span class="theme-swatch theme-swatch--caramel" aria-hidden="true"><span></span><span></span><span></span></span>
-            <span class="theme-meta"><strong>Caramel</strong><span>Toffee, tan, and cream</span></span>
-          </button>
-          <button class="theme-card" type="button" data-theme-choice="marble" aria-pressed="false">
-            <span class="theme-swatch theme-swatch--marble" aria-hidden="true"><span></span><span></span><span></span></span>
-            <span class="theme-meta"><strong>Marble</strong><span>Stone, graphite, and chalk</span></span>
-          </button>
-          <button class="theme-card" type="button" data-theme-choice="carbon-lavender" aria-pressed="false">
-            <span class="theme-swatch theme-swatch--carbon-lavender" aria-hidden="true"><span></span><span></span><span></span></span>
-            <span class="theme-meta"><strong>Carbon Lavender</strong><span>Washed carbon and muted purple</span></span>
+          <button
+            class="icon-btn modal-close"
+            type="button"
+            data-close="deleteCollectionModal"
+            aria-label="Close"
+          >
+            ×
           </button>
         </div>
-      </section>
-      <section class="settings-section settings-toggle-section">
-        <div class="settings-copy"><h3><label for="modeToggle">Dark/Light Mode</label></h3><p id="modeLabel">Dark mode</p></div>
-        <label class="switch" aria-label="Toggle dark or light mode"><input id="modeToggle" type="checkbox" checked /><span></span></label>
-      </section>
-      <section class="settings-section settings-toggle-section">
-        <div class="settings-copy"><h3><label for="tileDetailsToggle">Always Show Tile Details</label></h3><p>Keep labels and descriptions visible.</p></div>
-        <label class="switch" aria-label="Always Show Tile Details"><input id="tileDetailsToggle" type="checkbox" /><span></span></label>
-      </section>
-      <section class="settings-section">
-        <div class="settings-copy"><h3>Calendar</h3><p>Load upcoming events from an ICS calendar file stored in the data folder.</p></div>
-        <div class="calendar-settings" id="calendarSettings">
-          <div class="calendar-file-row" id="calendarFileRow" hidden>
-            <div class="calendar-file-meta">
-              <span class="calendar-file-icon" aria-hidden="true">◫</span>
-              <div><strong id="calendarFileName">calendar.ics</strong><small id="calendarFileStatus">Calendar loaded</small></div>
+        <p class="confirm-copy">
+          This will delete the collection list, but not the content itself.
+        </p>
+        <div class="modal-actions">
+          <button
+            class="btn btn--ghost"
+            type="button"
+            data-close="deleteCollectionModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn--danger"
+            id="confirmDeleteCollection"
+            type="button"
+          >
+            Delete collection
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="modal media-viewer" id="mediaViewer">
+      <div class="viewer-shell">
+        <section class="viewer-main">
+          <div class="viewer-media" id="viewerMedia"></div>
+          <div
+            class="viewer-thumbnails"
+            id="viewerThumbnails"
+            aria-label="Gallery media"
+          ></div>
+        </section>
+        <aside class="viewer-sidebar">
+          <div class="viewer-sidebar-toolbar">
+            <div class="viewer-actions" id="viewerActions"></div>
+            <div class="viewer-sidebar-controls">
+              <button
+                class="tile-action viewer-edit"
+                id="viewerEditButton"
+                type="button"
+                aria-label="Edit content"
+                data-tooltip="Edit content"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5" />
+                </svg>
+              </button>
+              <button
+                class="capsule-x viewer-close"
+                type="button"
+                data-close="mediaViewer"
+                aria-label="Close viewer"
+              ></button>
             </div>
-            <button class="capsule-x calendar-file-delete" id="calendarDeleteButton" type="button" aria-label="Delete calendar file"></button>
           </div>
-          <div class="calendar-upload-row" id="calendarUploadRow">
-            <input id="calendarFileInput" type="file" accept=".ics,text/calendar" hidden />
-            <button class="btn btn--primary" id="calendarUploadButton" type="button">Upload ICS</button>
-            <small>One calendar file is stored at a time. Uploading a new file replaces the current one.</small>
-          </div>
+          <div class="viewer-meta" id="viewerMeta"></div>
+        </aside>
+      </div>
+    </dialog>
+
+    <dialog
+      class="submission-modal"
+      id="submissionModal"
+      aria-labelledby="submissionMessage"
+      aria-modal="true"
+    >
+      <div class="submission-heading">
+        <span class="submission-spinner" aria-hidden="true"></span>
+        <p id="submissionMessage" role="status" aria-live="polite">Adding...</p>
+      </div>
+      <div class="submission-progress" id="submissionProgress" hidden>
+        <div class="submission-progress-track">
+          <span id="submissionProgressBar"></span>
         </div>
-      </section>
-      <section class="settings-section">
-        <div class="settings-copy"><h3>Content Backup</h3><p>Download saved content, collections, settings, and uploaded files. Extract the ZIP into the project folder to restore its data/ and uploads/ directories.</p></div>
-        <button class="btn btn--primary" id="downloadContentButton" type="button">Download Content</button>
-      </section>
-    </div>
-  </dialog>
-
-  <dialog class="modal" id="collectionModal">
-    <form class="modal-card" id="collectionForm" method="dialog">
-      <div class="modal-head">
-        <div><div class="eyebrow">Collections</div><h2>Create folder</h2></div>
-        <button class="icon-btn modal-close" type="button" data-close="collectionModal" aria-label="Close">×</button>
-      </div>
-      <div class="form-grid">
-        <label class="field field--wide"><span>Folder name</span><input name="name" required maxlength="60" placeholder="Inspiration" autocomplete="off" /></label>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn--ghost" type="button" data-close="collectionModal">Cancel</button>
-        <button class="btn btn--primary" type="submit">Create folder</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog class="modal" id="deleteCollectionModal">
-    <div class="modal-card modal-card--confirm">
-      <div class="modal-head">
-        <div><div class="eyebrow">Collections</div><h2>Delete collection?</h2></div>
-        <button class="icon-btn modal-close" type="button" data-close="deleteCollectionModal" aria-label="Close">×</button>
-      </div>
-      <p class="confirm-copy">This will delete the collection list, but not the content itself.</p>
-      <div class="modal-actions">
-        <button class="btn btn--ghost" type="button" data-close="deleteCollectionModal">Cancel</button>
-        <button class="btn btn--danger" id="confirmDeleteCollection" type="button">Delete collection</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog class="modal media-viewer" id="mediaViewer">
-    <div class="viewer-shell">
-      <section class="viewer-main">
-        <div class="viewer-media" id="viewerMedia"></div>
-        <div class="viewer-thumbnails" id="viewerThumbnails" aria-label="Gallery media"></div>
-      </section>
-      <aside class="viewer-sidebar">
-        <div class="viewer-sidebar-toolbar">
-          <div class="viewer-actions" id="viewerActions"></div>
-          <div class="viewer-sidebar-controls">
-            <button class="tile-action viewer-edit" id="viewerEditButton" type="button" aria-label="Edit content" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button>
-            <button class="capsule-x viewer-close" type="button" data-close="mediaViewer" aria-label="Close viewer"></button>
-          </div>
+        <div class="submission-progress-copy">
+          <span id="submissionProgressAmount">0.00 MB / 0.00 MB</span
+          ><span id="submissionProgressPercent">0%</span>
         </div>
-        <div class="viewer-meta" id="viewerMeta"></div>
-      </aside>
-    </div>
-  </dialog>
+      </div>
+      <button
+        class="btn btn--ghost submission-cancel"
+        id="submissionCancel"
+        type="button"
+        hidden
+      >
+        Cancel
+      </button>
+    </dialog>
 
-  <dialog class="submission-modal" id="submissionModal" aria-labelledby="submissionMessage" aria-modal="true">
-    <div class="submission-heading">
-      <span class="submission-spinner" aria-hidden="true"></span>
-      <p id="submissionMessage" role="status" aria-live="polite">Adding...</p>
-    </div>
-    <div class="submission-progress" id="submissionProgress" hidden>
-      <div class="submission-progress-track"><span id="submissionProgressBar"></span></div>
-      <div class="submission-progress-copy"><span id="submissionProgressAmount">0.00 MB / 0.00 MB</span><span id="submissionProgressPercent">0%</span></div>
-    </div>
-    <button class="btn btn--ghost submission-cancel" id="submissionCancel" type="button" hidden>Cancel</button>
-  </dialog>
+    <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
-
-  <script type="module" src="assets/js/app.js?v=20261004-6"></script>
-</body>
+    <script type="module" src="assets/js/app.js?v=20261004-refactor-1"></script>
+  </body>
 </html>

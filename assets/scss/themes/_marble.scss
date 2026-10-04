@@ -1,3 +1,5 @@
+// themes/marble: consolidated rules. Compile through style.scss.
+
 html[data-theme="marble"][data-mode="dark"] {
   --bg: #111315;
   --bg-elevated: #191c1f;
@@ -7,15 +9,15 @@ html[data-theme="marble"][data-mode="dark"] {
   --text: #f2f4f5;
   --muted: #b4bcc3;
   --faint: #7b858d;
-  --line: rgba(177,190,199,.17);
-  --line-strong: rgba(177,190,199,.30);
+  --line: rgba(177, 190, 199, 0.17);
+  --line-strong: rgba(177, 190, 199, 0.3);
   --accent: #8e9da8;
   --accent-2: #c1cbd1;
-  --accent-soft: rgba(142,157,168,.16);
+  --accent-soft: rgba(142, 157, 168, 0.16);
   --danger: #d27373;
-  --overlay: rgba(9,11,12,.80);
-  --ambient: rgba(193,203,209,.045);
-  --viewer-panel: rgba(17,19,21,.82);
+  --overlay: rgba(9, 11, 12, 0.8);
+  --ambient: rgba(193, 203, 209, 0.045);
+  --viewer-panel: rgba(17, 19, 21, 0.82);
   --tile-hue: 205.38;
   --tile-saturation: 28%;
   --tile-lightness: 28%;
@@ -33,15 +35,15 @@ html[data-theme="marble"][data-mode="light"] {
   --text: #242728;
   --muted: #676e70;
   --faint: #969c9d;
-  --line: rgba(45,52,54,.14);
-  --line-strong: rgba(45,52,54,.26);
+  --line: rgba(45, 52, 54, 0.14);
+  --line-strong: rgba(45, 52, 54, 0.26);
   --accent: #6d7a80;
   --accent-2: #909da2;
-  --accent-soft: rgba(109,122,128,.12);
+  --accent-soft: rgba(109, 122, 128, 0.12);
   --danger: #a54d4d;
-  --overlay: rgba(44,48,49,.38);
-  --ambient: rgba(109,122,128,.05);
-  --viewer-panel: rgba(247,247,245,.90);
+  --overlay: rgba(44, 48, 49, 0.38);
+  --ambient: rgba(109, 122, 128, 0.05);
+  --viewer-panel: rgba(247, 247, 245, 0.9);
   --tile-hue: 198.95;
   --tile-saturation: 28%;
   --tile-lightness: 80%;

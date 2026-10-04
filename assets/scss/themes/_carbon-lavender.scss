@@ -1,3 +1,5 @@
+// themes/carbon-lavender: consolidated rules. Compile through style.scss.
+
 html[data-theme="carbon-lavender"][data-mode="dark"] {
   --bg: #171619;
   --bg-elevated: #1e1d21;
@@ -7,19 +9,19 @@ html[data-theme="carbon-lavender"][data-mode="dark"] {
   --text: #eeeaf1;
   --muted: #b7afbd;
   --faint: #817989;
-  --line: rgba(190, 157, 220, .17);
-  --line-strong: rgba(190, 157, 220, .32);
+  --line: rgba(190, 157, 220, 0.17);
+  --line-strong: rgba(190, 157, 220, 0.32);
 
   --accent: #a477c2;
   --accent-2: #cf9ff0;
-  --accent-soft: rgba(164, 119, 194, .24);
+  --accent-soft: rgba(164, 119, 194, 0.24);
 
   --danger: #c8787f;
-  --overlay: rgba(16, 15, 18, .80);
-  --ambient: rgba(207, 159, 240, .085);
-  --viewer-panel: rgba(25, 23, 28, .86);
+  --overlay: rgba(16, 15, 18, 0.8);
+  --ambient: rgba(207, 159, 240, 0.085);
+  --viewer-panel: rgba(25, 23, 28, 0.86);
 
-  --tile-hue: 276.0;
+  --tile-hue: 276;
   --tile-saturation: 28%;
   --tile-lightness: 28%;
   --tile-lightness-deep: 20%;
@@ -36,17 +38,17 @@ html[data-theme="carbon-lavender"][data-mode="light"] {
   --text: #29262d;
   --muted: #675f6e;
   --faint: #8d8494;
-  --line: rgba(113, 72, 139, .17);
-  --line-strong: rgba(113, 72, 139, .30);
+  --line: rgba(113, 72, 139, 0.17);
+  --line-strong: rgba(113, 72, 139, 0.3);
 
   --accent: #8757a6;
   --accent-2: #a86bc9;
-  --accent-soft: rgba(135, 87, 166, .18);
+  --accent-soft: rgba(135, 87, 166, 0.18);
 
   --danger: #a6535d;
-  --overlay: rgba(45, 41, 48, .38);
-  --ambient: rgba(135, 87, 166, .08);
-  --viewer-panel: rgba(229, 225, 232, .91);
+  --overlay: rgba(45, 41, 48, 0.38);
+  --ambient: rgba(135, 87, 166, 0.08);
+  --viewer-panel: rgba(229, 225, 232, 0.91);
 
   --tile-hue: 276.46;
   --tile-saturation: 28%;

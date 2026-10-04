@@ -1,29 +1,35 @@
-/* Content metadata and local appearance updates. */
+// components/metadata: consolidated rules. Compile through style.scss.
+
 .top-link-edit.capsule-x::before,
 .top-link-edit.capsule-x::after {
   content: none;
 }
+
 .header-tools {
   display: flex;
   align-items: center;
   gap: 14px;
   justify-self: end;
 }
+
 #todayDate {
   font-size: 14px;
   color: var(--text-muted);
   text-align: right;
 }
+
 .metadata-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   font-size: 12px;
 }
+
 .metadata-label {
   flex-basis: 100%;
   opacity: 0.65;
 }
+
 .metadata-tag,
 .viewer-tags.metadata-tags span {
   padding: 5px 9px;
@@ -31,34 +37,21 @@
   background: color-mix(in srgb, var(--accent-2) 15%, var(--bg-elevated));
   border: 1px solid color-mix(in srgb, var(--accent-2) 45%, transparent);
 }
+
 .viewer-properties {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 8px 16px;
   font-size: 13px;
 }
+
 .viewer-properties dt {
   opacity: 0.65;
 }
+
 .viewer-properties dd {
   margin: 0;
   overflow-wrap: anywhere;
-}
-@media (max-width: 700px) {
-  .header-tools {
-    gap: 8px;
-  }
-  #todayDate {
-    max-width: 160px;
-    font-size: 10px;
-  }
-}
-
-@media (max-width: 620px) {
-  .header-tools {
-    grid-column: 2;
-    grid-row: 1;
-  }
 }
 
 .metadata-filter-row {
@@ -67,9 +60,11 @@
   gap: 6px;
   margin-top: 10px;
 }
+
 .tag-btn.metadata-filter {
   background: color-mix(in srgb, var(--accent-2) 14%, var(--bg-elevated));
 }
+
 .tag-btn.metadata-filter.is-active {
   background: var(--accent-2);
   color: var(--bg);

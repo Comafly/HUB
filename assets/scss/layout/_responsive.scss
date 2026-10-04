@@ -1,5 +1,24 @@
+// layout/responsive: consolidated rules. Compile through style.scss.
+
+@media (max-width: 680px) {
+  .content-type-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .content-type-choice {
+    min-height: 120px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.is-detach-jiggle,
+  .tile-ghost {
+    animation: none !important;
+  }
+}
+
 @media (max-width: 1180px) {
-.workspace {
+  .workspace {
     grid-template-columns: 150px minmax(0, 1fr) 220px;
     gap: 20px;
   }
@@ -18,7 +37,7 @@
 }
 
 @media (max-width: 900px) {
-.app-shell {
+  .app-shell {
     width: min(100% - 28px, 1000px);
   }
 
@@ -73,7 +92,7 @@
 }
 
 @media (max-width: 680px) {
-.app-shell {
+  .app-shell {
     width: calc(100% - 20px);
   }
 
@@ -108,16 +127,6 @@
 
   .workspace {
     padding-top: 20px;
-  }
-
-  .section-heading {
-    display: block;
-    padding-top: 30px;
-  }
-
-  .section-heading p {
-    width: 100%;
-    margin-top: 14px;
   }
 
   .tile-grid {
@@ -156,88 +165,291 @@
     grid-column: auto;
   }
 
-  .theme-grid {
-    grid-template-columns: 1fr;
-  }
-
   .bookmark-dropzone {
     grid-template-columns: 1fr;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-*,
+  *,
   *::before,
   *::after {
-    animation-duration: .01ms !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }
 
-@media(max-width:900px) {
-.section-heading-actions {
-    width: auto
-  }
-
+@media (max-width: 900px) {
   .viewer-shell {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(55vh, 1fr) auto
   }
 
   .viewer-meta {
     border-left: 0;
-    border-top: 1px solid rgba(255, 255, 255, .12);
-    padding: 24px 22px
-  }
-
-  .viewer-media {
-    padding: 24px
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 24px 22px;
   }
 
   .viewer-close {
     top: 14px;
-    right: 14px
-  }
-}
-
-@media(max-width:680px) {
-.section-heading-actions {
-    align-items: center;
-    margin-top: 14px;
-    width: 100%
-  }
-
-  .section-heading-actions #sectionDescription {
-    margin-top: 0
-  }
-
-  .content-add-button {
-    width: 46px;
-    height: 46px
-  }
-
-  .gallery-picker {
-    grid-template-columns: repeat(3, 1fr)
-  }
-
-  .viewer-text {
-    padding: 24px
+    right: 14px;
   }
 }
 
 @media (max-width: 680px) {
-.theme-grid {
+  .content-add-button {
+    width: 46px;
+    height: 46px;
+  }
+
+  .gallery-picker {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .viewer-text {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 680px) {
+  .theme-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (min-width: 681px) and (max-width: 900px) {
-.bookmark-dropzone { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bookmark-dropzone {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-.tile-media img, .tile-media video { transition: none; }
-  .submission-spinner { animation: none; }
+  .tile-media img,
+  .tile-media video {
+    transition: none;
+  }
+  .submission-spinner {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .header-tools {
+    gap: 8px;
+  }
+  #todayDate {
+    max-width: 160px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 620px) {
+  .header-tools {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .viewer-thumbnails {
+    justify-content: flex-start;
+  }
+  .viewer-actions {
+    top: 14px;
+    left: 14px;
+  }
+  .viewer-meta {
+    padding-top: 22px;
+  }
+}
+
+@media (max-width: 560px) {
+  .viewer-action-button {
+    width: 38px;
+    height: 38px;
+  }
+  .viewer-thumb {
+    width: 60px;
+    height: 44px;
+  }
+  .viewer-meta h2 {
+    font-size: 25px;
+  }
+  .submission-progress-copy {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .viewer-sidebar {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .viewer-sidebar .viewer-meta {
+    padding: 18px 22px 24px;
+  }
+  .viewer-edit {
+    top: 14px;
+    right: 68px;
+  }
+}
+
+@media (max-width: 900px) {
+  .viewer-sidebar-toolbar {
+    padding: 18px 22px 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .viewer-sidebar-toolbar {
+    gap: 8px;
+  }
+  .viewer-sidebar-toolbar .viewer-actions,
+  .viewer-sidebar-controls {
+    gap: 8px;
+  }
+  .viewer-sidebar-toolbar .viewer-action-button,
+  .viewer-sidebar-toolbar .viewer-edit,
+  .viewer-sidebar-toolbar .viewer-close {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    flex-basis: 38px;
+  }
+}
+
+@media (max-width: 900px) {
+  .viewer-shell {
+    min-height: 0;
+  }
+
+  .viewer-main:has(.viewer-thumbnails:not([hidden])) {
+    grid-template-rows: minmax(0, 1fr) 80px;
+  }
+
+  .viewer-thumbnails {
+    height: 80px;
+    min-height: 80px;
+    max-height: 80px;
+    padding: 10px 18px 20px;
+  }
+}
+
+@media (max-width: 620px) {
+  .text-format-row {
+    grid-template-columns: minmax(0, 1fr) 74px;
+  }
+
+  .text-format-row .text-style-field {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .viewer-main > .viewer-thumbnails {
+    height: 96px;
+    min-height: 96px;
+    max-height: 96px;
+    padding: 10px 18px 28px;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 1180px) {
+  .calendar-ranges {
+    gap: 20px;
+  }
+  .calendar-range {
+    --calendar-day-width: 122px;
+  }
+  .calendar-range:has(.calendar-day.is-compact) {
+    --calendar-day-width: 112px;
+  }
+  .calendar-range:has(.calendar-day.is-dense) {
+    --calendar-day-width: 102px;
+  }
+}
+
+@media (max-width: 900px) {
+  .calendar-module {
+    margin-bottom: 16px;
+  }
+  .calendar-ranges {
+    padding-bottom: 12px;
+  }
+  .calendar-range {
+    --calendar-day-width: 128px;
+  }
+  .calendar-range:has(.calendar-day.is-compact) {
+    --calendar-day-width: 116px;
+  }
+  .calendar-range:has(.calendar-day.is-dense) {
+    --calendar-day-width: 106px;
+  }
+}
+
+@media (max-width: 680px) {
+  .calendar-range-label {
+    gap: 9px;
+  }
+  .calendar-day {
+    height: 106px;
+    border-radius: 16px;
+  }
+  .calendar-upload-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .url-background-options {
+    gap: 7px;
+  }
+}
+
+@media (max-width: 700px) {
+  .tile-grid.tile-grid--equal {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .tile-grid.tile-grid--equal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .content-toolbar {
+    gap: 8px;
+  }
+  .grid-layout-button {
+    flex-basis: 46px;
+    width: 46px;
+  }
+  .content-toolbar .search-wrap {
+    padding-left: 10px;
+    padding-right: 8px;
+    gap: 7px;
+  }
+}
+
+@media (max-width: 600px) {
+  #contentForm .content-form-grid {
+    grid-template-columns: minmax(0, 1fr) 150px;
+    gap: 16px;
+  }
+  .tile-size-controls {
+    gap: 5px;
+  }
+  .tile-size-controls .tile-control {
+    width: 43px;
+  }
+  .link-field-row {
+    grid-template-columns: minmax(0, 1fr) 60px;
+    gap: 16px;
+  }
+  .url-background-options {
+    flex-wrap: wrap;
+  }
 }

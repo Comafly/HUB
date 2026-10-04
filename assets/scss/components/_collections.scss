@@ -1,3 +1,5 @@
+// components/collections: consolidated rules. Compile through style.scss.
+
 .tile {
   transform-origin: 50% 50%;
   touch-action: none;
@@ -11,7 +13,7 @@
 }
 
 .tile.is-source-dragging {
-  opacity: .4;
+  opacity: 0.4;
   transform: none;
   transition: none;
 }
@@ -21,8 +23,8 @@
 }
 
 .tile.tile-ghost {
-  opacity: .94;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, .26);
+  opacity: 0.94;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.26);
   animation: none;
   transition: none;
   will-change: transform;
@@ -43,13 +45,12 @@
   opacity: 1;
 }
 
-.tile-ghost .tile-media>*,
-.tile.is-source-dragging .tile-media>* {
+.tile-ghost .tile-media > *,
+.tile.is-source-dragging .tile-media > * {
   transform: none;
 }
 
 @keyframes tileDetachJiggle {
-
   0%,
   100% {
     transform: rotate(0);
@@ -80,7 +81,10 @@
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
-  transition: transform var(--speed-fast) var(--ease-pop), background var(--speed-fast) var(--ease), border-color var(--speed-fast) var(--ease);
+  transition:
+    transform var(--speed-fast) var(--ease-pop),
+    background var(--speed-fast) var(--ease),
+    border-color var(--speed-fast) var(--ease);
 }
 
 .collection-add-button:hover {
@@ -103,7 +107,11 @@
   border-radius: 14px;
   background: color-mix(in srgb, var(--panel) 84%, transparent);
   overflow: visible;
-  transition: transform 220ms var(--ease-pop), border-color 180ms var(--ease), background 180ms var(--ease), box-shadow 220ms var(--ease);
+  transition:
+    transform 220ms var(--ease-pop),
+    border-color 180ms var(--ease),
+    background 180ms var(--ease),
+    box-shadow 220ms var(--ease);
   min-width: 0;
   max-width: 100%;
 }
@@ -115,12 +123,12 @@
 .collection-folder.is-tile-hover {
   border-color: var(--accent);
   background: var(--accent-soft);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, .15);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
 }
 
 .collection-folder.is-dragging {
-  opacity: .35;
-  transform: scale(.98);
+  opacity: 0.35;
+  transform: scale(0.98);
 }
 
 .collection-folder.drop-before::before,
@@ -157,34 +165,6 @@
   cursor: grab;
 }
 
-.collection-chevron {
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
-  border: 1px solid var(--line);
-  color: var(--accent-2);
-  transition: transform 260ms var(--ease-pop), background 180ms var(--ease), box-shadow 180ms var(--ease);
-}
-
-.collection-folder.is-collapsed .collection-chevron {
-  transform: rotate(-90deg);
-}
-
-.collection-folder-count {
-  min-width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--panel-3);
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 900;
-}
-
 .collection-items {
   display: grid;
   gap: 7px;
@@ -192,7 +172,11 @@
   max-height: none;
   opacity: 1;
   transform-origin: top;
-  transition: max-height 360ms var(--ease), opacity 180ms var(--ease), padding 300ms var(--ease), transform 300ms var(--ease-pop);
+  transition:
+    max-height 360ms var(--ease),
+    opacity 180ms var(--ease),
+    padding 300ms var(--ease),
+    transform 300ms var(--ease-pop);
   min-width: 0;
   max-width: 100%;
   grid-template-columns: minmax(0, 1fr);
@@ -203,7 +187,7 @@
   opacity: 0;
   padding-top: 0;
   padding-bottom: 0;
-  transform: scaleY(.94);
+  transform: scaleY(0.94);
   overflow: hidden;
 }
 
@@ -215,7 +199,9 @@
   border-radius: 10px;
   color: var(--faint);
   font-size: 10px;
-  transition: background 180ms var(--ease), border-color 180ms var(--ease);
+  transition:
+    background 180ms var(--ease),
+    border-color 180ms var(--ease);
 }
 
 .collection-folder.is-tile-hover .collection-empty {
@@ -226,20 +212,15 @@
 .collection-item {
   margin: 0;
   background: var(--panel-2);
-  transition: filter var(--speed-fast) var(--ease), transform var(--speed-fast) var(--ease), background var(--speed-fast) var(--ease);
+  transition:
+    filter var(--speed-fast) var(--ease),
+    transform var(--speed-fast) var(--ease),
+    background var(--speed-fast) var(--ease);
 }
 
 .collection-item:hover {
   transform: none;
   filter: brightness(1.2);
-}
-
-@media (prefers-reduced-motion: reduce) {
-
-  .tile.is-detach-jiggle,
-  .tile-ghost {
-    animation: none !important;
-  }
 }
 
 .bookmarks-panel {
@@ -291,7 +272,10 @@
   color: var(--muted);
   box-shadow: none;
   transform: none;
-  transition: background 160ms var(--ease), color 160ms var(--ease), transform 260ms var(--ease-pop);
+  transition:
+    background 160ms var(--ease),
+    color 160ms var(--ease),
+    transform 260ms var(--ease-pop);
 }
 
 .collection-chevron span {
@@ -327,7 +311,9 @@
   transform: translateX(-1px) rotate(-45deg);
 }
 
-.collection-folder.is-collapsed .collection-folder-head:hover .collection-chevron {
+.collection-folder.is-collapsed
+  .collection-folder-head:hover
+  .collection-chevron {
   background: color-mix(in srgb, var(--accent-soft) 56%, transparent);
   transform: none;
 }
@@ -339,7 +325,7 @@
   gap: 6px;
 }
 
-.bookmark-item>div {
+.bookmark-item > div {
   min-width: 0;
   max-width: 100%;
 }
@@ -370,8 +356,10 @@
 .collection-folder-delete {
   opacity: 0;
   pointer-events: none;
-  transform: scale(.88);
-  transition: opacity var(--speed-fast) var(--ease), transform var(--speed-fast) var(--ease-pop);
+  transform: scale(0.88);
+  transition:
+    opacity var(--speed-fast) var(--ease),
+    transform var(--speed-fast) var(--ease-pop);
 }
 
 .collection-folder-head:hover .collection-folder-delete {
@@ -389,7 +377,9 @@
 .collection-folder.is-active-filter {
   border-color: color-mix(in srgb, var(--accent) 68%, var(--line));
   background: color-mix(in srgb, var(--accent-soft) 58%, var(--panel));
-  box-shadow: inset 3px 0 0 var(--accent), 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .collection-folder.is-active-filter .collection-folder-toggle strong {
@@ -399,8 +389,10 @@
 .collection-item .bookmark-remove {
   opacity: 0;
   pointer-events: none;
-  transform: scale(.88);
-  transition: opacity var(--speed-fast) var(--ease), transform var(--speed-fast) var(--ease-pop);
+  transform: scale(0.88);
+  transition:
+    opacity var(--speed-fast) var(--ease),
+    transform var(--speed-fast) var(--ease-pop);
 }
 
 .collection-item:hover .bookmark-remove {
@@ -455,7 +447,6 @@
 }
 
 .collection-grid-drop-overlay {
-  position: absolute;
   z-index: 40;
   inset: 70px 0 0;
   display: grid;
@@ -466,8 +457,10 @@
   backdrop-filter: blur(10px);
   opacity: 0;
   pointer-events: none;
-  transform: scale(.985);
-  transition: opacity var(--speed-fast) var(--ease), transform var(--speed-fast) var(--ease-pop), border-color var(--speed-fast) var(--ease);
+  transition:
+    opacity var(--speed-fast) var(--ease),
+    transform var(--speed-fast) var(--ease-pop),
+    border-color var(--speed-fast) var(--ease);
 }
 
 .collection-grid-drop-overlay span {
@@ -482,6 +475,5 @@
 
 .collection-grid-drop-overlay.is-visible {
   opacity: 1;
-  transform: scale(1);
   border-color: var(--accent);
 }

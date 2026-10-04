@@ -1,3 +1,5 @@
+// components/modals: consolidated rules. Compile through style.scss.
+
 .modal {
   width: 100%;
   max-width: none;
@@ -80,8 +82,8 @@
   grid-column: 1 / -1;
 }
 
-.field>span,
-.field>label>span {
+.field > span,
+.field > label > span {
   font-size: 11px;
   font-weight: 850;
   text-transform: uppercase;
@@ -169,12 +171,12 @@
   cursor: pointer;
 }
 
-.format-toggle input:checked+span {
+.format-toggle input:checked + span {
   background: var(--text);
   color: var(--bg);
 }
 
-.format-toggle input:focus-visible+span {
+.format-toggle input:focus-visible + span {
   outline: 2px solid var(--accent-2);
   outline-offset: 2px;
 }
@@ -226,67 +228,16 @@
   border-color: var(--text);
 }
 
-.settings-section {
-  display: grid;
-  gap: 14px;
-}
-
 .settings-copy {
   border-top: 1px solid var(--line);
   padding-top: 1rem;
 }
 
-.settings-copy h3 {
-  margin: 0;
-  font-size: 15px;
-}
-
-.settings-copy p {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.switch {
-  position: relative;
-  width: 48px;
-  height: 28px;
-}
-
-.switch input {
-  position: absolute;
-  opacity: 0;
-}
-
-.switch span {
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  background: var(--panel-3);
-  border: 1px solid var(--line-strong);
-  cursor: pointer;
-  transition: background var(--speed-med) var(--ease);
-}
-
-.switch span::after {
-  content: "";
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  top: 3px;
-  left: 3px;
-  background: var(--muted);
-  transition:
-    transform var(--speed-med) var(--ease-pop),
-    background var(--speed-med) var(--ease);
-}
-
-.switch input:checked+span {
+.switch input:checked + span {
   background: var(--accent-soft);
 }
 
-.switch input:checked+span::after {
+.switch input:checked + span::after {
   transform: translateX(20px);
   background: var(--accent-2);
 }
@@ -450,16 +401,6 @@
   transition:
     font-size var(--speed-fast) var(--ease),
     background var(--speed-fast) var(--ease);
-}
-
-@media (max-width: 680px) {
-  .content-type-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .content-type-choice {
-    min-height: 120px;
-  }
 }
 
 .field textarea.text-live-preview-input {

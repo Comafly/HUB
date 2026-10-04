@@ -10,6 +10,7 @@ const FONT_DIR = __DIR__ . '/assets/fonts';
 const FONT_URL = 'assets/fonts';
 const CALENDAR_DIR = __DIR__ . '/data';
 require_once __DIR__ . '/metadata.php';
+require_once __DIR__ . '/tab-config.php';
 // Remote media helpers are bundled so a missing optional file cannot break the API.
 /** Fetch only public HTTP(S) addresses, pin DNS, and revalidate each redirect. */
 function fetchPublicMedia(string $url, int $limit = 2097152, bool $headOnly = false, int $timeout = 45): array {
@@ -125,7 +126,7 @@ function parsePageMetadata(string $html, string $url): array {
 }
 
 function urlBackgrounds(): array {
-    $files = glob(__DIR__.'/assets/url-bgs/*.{jpg,jpeg,JPG,JPEG}', GLOB_BRACE) ?: [];
+    $files = array_filter(glob(__DIR__.'/assets/url-bgs/*') ?: [], static fn($path) => (bool)preg_match('/\.jpe?g$/i', $path));
     natsort($files);
     return array_values(array_map(static fn($path) => 'assets/url-bgs/'.basename($path), array_filter($files, 'is_file')));
 }
@@ -404,6 +405,7 @@ try {
             });
             $data['calendar'] = calendarPayload();
             $data['urlBackgrounds'] = urlBackgrounds();
+            $data['tabs'] = tabDefinitions();
             response($data);
 
         case 'metadata.inspect':
@@ -522,17 +524,25 @@ try {
                 if (!$existing) fail('Content no longer exists', 404);
             }
             $type = preg_replace('/[^a-z]/', '', $input['type'] ?? 'file');
-            if (!in_array($type, ['link','text','image','video','audio','file','font'], true)) fail('Invalid content type');
+            if (!in_array($type, ['link','text','image','video','audio','file','font','entry'], true)) fail('Invalid content type');
             if ($editing && $type !== $existing['type'] && !($existing['type'] === 'link' && in_array($type, ['image','video'], true))) fail('Content type cannot be changed');
+            $section = $existing['section'] ?? (string)($input['section'] ?? 'dashboard');
+            $tab = tabDefinition($section);
+            if (!$tab) fail('Unknown tab');
+            if ($type === 'entry' && ($tab['editor'] ?? 'content') !== 'entry') fail('This tab does not accept entries');
+            if (($tab['editor'] ?? 'content') === 'entry' && $type !== 'entry') fail('This tab requires an entry');
+            $customFields = validateTabFields($tab, $input);
+            if ($type === 'entry' && trim((string)($input['label'] ?? '')) === '') fail('Name is required');
             $tileId = $existing['id'] ?? id('tile');
             $tile = [
-                'id'=>$tileId, 'section'=>in_array($input['section'] ?? '', ['dashboard','projects','resources'], true) ? $input['section'] : 'dashboard',
+                'id'=>$tileId, 'section'=>$section,
                 'location'=>in_array($type, ['text','link'], true) ? '' : trim($input['location'] ?? ''),
                 'dateAdded'=>$existing['dateAdded'] ?? $existing['createdAt'] ?? date(DATE_ATOM),
                 'type'=>$type, 'label'=>trim($input['label'] ?? ''), 'description'=>trim($input['description'] ?? ''),
                 'tags'=>cleanTags($input['tags'] ?? ''), 'size'=>in_array($input['size'] ?? '', ['small','medium','large'], true) ? $input['size'] : 'medium',
                 'orientation'=>in_array($input['orientation'] ?? '', ['landscape','portrait'], true) ? $input['orientation'] : 'landscape', 'createdAt'=>$existing['createdAt'] ?? date(DATE_ATOM),
             ];
+            $tile = array_merge($tile, $customFields);
             $retained = json_decode((string)($input['existingFiles'] ?? '[]'), true);
             if (!is_array($retained)) fail('Invalid saved file list');
             foreach ($retained as $path) if (!is_string($path) || !in_array($path, $existing['files'] ?? [], true)) fail('Invalid saved file reference');
@@ -542,7 +552,7 @@ try {
             if (in_array($type, ['image','video','audio','file','font'], true) && !$files) fail('Choose at least one file');
             $thumbnail = normalizedFiles('thumbnail');
             $thumbPath = $thumbnail ? storeUpload($thumbnail[0], $tileId) : null;
-            if (in_array($type, ['text','link'], true) && $files) fail('Text and URL content accept one thumbnail only');
+            if (in_array($type, ['text','link','entry'], true) && $files) fail('Text and URL content accept one thumbnail only');
             if ($files) $tile['files'] = $files;
             $tile['fileMetadata'] = [];
             $metadataTags = [];
@@ -663,12 +673,19 @@ try {
         case 'collections.update':
             $input = bodyJson(); $collections = $input['collections'] ?? []; if (!is_array($collections)) fail('collections must be an array');
             $saved = mutateData(function (&$data) use ($collections) {
-                $known = array_column($data['tiles'], 'id'); $out = [];
-                foreach (array_slice($collections, 0, 40) as $i => $collection) {
+                $out = []; $ids = [];
+                $tilesById = array_column($data['tiles'], null, 'id');
+                foreach (array_slice($collections, 0, 200) as $i => $collection) {
                     if (!is_array($collection)) continue; $name = trim((string)($collection['name'] ?? 'Collection')); if ($name === '') $name = 'Collection';
                     $cid = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($collection['id'] ?? '')) ?: id('collection');
-                    $items = array_values(array_unique(array_filter($collection['items'] ?? [], fn($tileId) => in_array($tileId, $known, true))));
-                    $out[] = ['id'=>$cid,'name'=>substr($name,0,60),'collapsed'=>(bool)($collection['collapsed'] ?? false),'items'=>$items];
+                    $section = (string)($collection['section'] ?? 'dashboard');
+                    if (!tabDefinition($section)) fail('Unknown collection tab');
+                    if (isset($ids[$cid])) fail('Duplicate collection ID');
+                    $ids[$cid] = true;
+                    $rawItems = $collection['items'] ?? [];
+                    if (!is_array($rawItems)) fail('Collection items must be an array');
+                    $items = array_values(array_unique(array_filter($rawItems, fn($tileId) => is_string($tileId) && isset($tilesById[$tileId]) && ($tilesById[$tileId]['section'] ?? 'dashboard') === $section))); 
+                    $out[] = ['id'=>$cid,'section'=>$section,'name'=>substr($name,0,60),'collapsed'=>(bool)($collection['collapsed'] ?? false),'items'=>$items];
                 }
                 $data['collections'] = $out; return $out;
             }); response($saved);

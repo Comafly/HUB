@@ -1,0 +1,75 @@
+[
+  {
+    "id": "dashboard",
+    "title": "Dashboard",
+    "filters": [
+      "Photography",
+      "Film",
+      "Animation",
+      "Audio",
+      "Design",
+      "Typography",
+      "Inspiration",
+      "History",
+      "Funny"
+    ],
+    "collections": true,
+    "calendar": true,
+    "views": ["asymmetric", "equal"],
+    "editor": "content",
+    "metadataFilters": true
+  },
+  {
+    "id": "projects",
+    "title": "Projects",
+    "filters": ["Design", "Planning", "In progress", "Completed"],
+    "collections": true,
+    "views": ["asymmetric", "equal", "list"],
+    "editor": "content",
+    "metadataFilters": true
+  },
+  {
+    "id": "resources",
+    "title": "Resources",
+    "filters": ["Typography", "Design", "Audio", "Tools", "Tutorials"],
+    "collections": true,
+    "views": ["asymmetric", "equal", "list"],
+    "editor": "content",
+    "metadataFilters": true
+  },
+  {
+    "id": "watchlist",
+    "title": "Watchlist",
+    "filters": ["Movies", "Series", "Music", "Books", "Games"],
+    "filterField": "mediaType",
+    "collections": true,
+    "views": ["asymmetric", "equal", "list"],
+    "editor": "entry",
+    "nameLabel": "Name",
+    "fields": [
+      {
+        "name": "mediaType",
+        "label": "Media type",
+        "type": "select",
+        "options": ["Movies", "Series", "Music", "Books", "Games"],
+        "required": true
+      },
+      {
+        "name": "author",
+        "label": "Author / creator",
+        "type": "text"
+      },
+      {
+        "name": "releaseDate",
+        "label": "Release date",
+        "type": "date"
+      },
+      {
+        "name": "watchedStatus",
+        "label": "Watched status",
+        "type": "select",
+        "options": ["Not started", "In progress", "Completed"]
+      }
+    ]
+  }
+]
