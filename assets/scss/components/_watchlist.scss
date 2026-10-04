@@ -276,22 +276,10 @@
   grid-column: 1 / -1;
   grid-row: 6;
 }
-#contentModal.is-watchlist .tile-size-field {
-  grid-column: 1;
-  grid-row: 7;
-}
+// Keep the hidden form values for saving, while omitting shared tile controls.
+#contentModal.is-watchlist .tile-size-field,
 #contentModal.is-watchlist .tile-orientation-field {
-  grid-column: 2;
-  grid-row: 7;
-}
-#contentModal.is-watchlist .orientation-control {
-  margin-inline: 0;
-  width: 48px;
-  height: 46px;
-}
-#contentModal.is-watchlist .orientation-control svg {
-  width: 32px;
-  height: 32px;
+  display: none;
 }
 .tile-control:disabled {
   opacity: 0.4;
@@ -439,14 +427,6 @@
   }
   #contentModal.is-watchlist .watchlist-thumbnail-field {
     grid-row: 7;
-  }
-  #contentModal.is-watchlist .tile-size-field {
-    grid-column: 1;
-    grid-row: 8;
-  }
-  #contentModal.is-watchlist .tile-orientation-field {
-    grid-column: 1;
-    grid-row: 9;
   }
   .tmdb-result {
     grid-template-columns: 1fr;
