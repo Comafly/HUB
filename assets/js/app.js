@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261004-5";
+import { api } from "./api.js?v=20261004-6";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -3231,6 +3231,20 @@ function setupTooltips() {
   document.addEventListener("scroll", hide, true);
   window.addEventListener("resize", hide);
 }
+
+// Use the rendered navbar height so the sticky toolbar follows wrapped mobile navigation.
+function setupStickyNavbar() {
+  const navbar = document.querySelector('.topbar');
+  if (!navbar) return;
+  const update = () => {
+    const height = Math.ceil(navbar.getBoundingClientRect().height);
+    if (height > 0) document.documentElement.style.setProperty('--navbar-height', `${height}px`);
+  };
+  new ResizeObserver(update).observe(navbar);
+  window.addEventListener('resize', update);
+  update();
+}
+setupStickyNavbar();
 
 async function init() {
   try {
