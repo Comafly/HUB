@@ -167,20 +167,31 @@ export class TabController {
   }
 
   renderList(items) {
+    const watchlist = this.current.form === "watchlist";
+    const dateValue = (tile) =>
+      watchlist
+        ? tile.releaseDate || ""
+        : tile.dateAdded || tile.createdAt || "";
     const date = (tile) => {
-      const value = tile.dateAdded || tile.createdAt;
-      if (!value || Number.isNaN(Date.parse(value))) return "—";
+      const value = dateValue(tile);
+      // Date-only releases use local noon to retain their calendar day in any timezone.
+      const parsed = new Date(watchlist && value ? `${value}T12:00:00` : value);
+      if (!value || Number.isNaN(parsed.getTime())) return "—";
       return new Intl.DateTimeFormat(undefined, {
         year: "numeric",
         month: "short",
         day: "numeric",
-      }).format(new Date(value));
+      }).format(parsed);
     };
     els.tileGrid.innerHTML = items
-      .map(
-        (tile) =>
-          `<article class="watchlist-row${this.current.form === "watchlist" ? " watchlist-row--media" : ""}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0" aria-label="${escapeHtml(tile.label || "Untitled")}">${this.current.form === "watchlist" ? `<div class="watchlist-row-poster">${this.services.board.tileMedia(tile)}</div>` : ""}<div class="watchlist-row-name"><span class="list-field-label">Name</span><strong>${escapeHtml(tile.label || "Untitled")}</strong></div><div class="watchlist-row-description"><span class="list-field-label">Description</span><p>${escapeHtml(tile.description || "—")}</p></div><div><span class="list-field-label">Media type</span><span>${escapeHtml(tile.mediaType || tile.type)}</span></div><div><span class="list-field-label">Date added</span><time datetime="${escapeHtml(tile.dateAdded || tile.createdAt || "")}">${escapeHtml(date(tile))}</time></div><div class="watchlist-row-actions">${this.current.form === "watchlist" ? this.services.watchlist.watchedButton(tile) : ""}<button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit ${escapeHtml(tile.label || "content")}">✎</button></div></article>`,
-      )
+      .map((tile) => {
+        const tags =
+          watchlist && tile.tags?.length
+            ? `<div class="viewer-tags watchlist-row-tags">${tile.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>`
+            : "";
+        const edit = `<button class="tile-action${watchlist ? " watchlist-row-edit" : ""}" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit ${escapeHtml(tile.label || "content")}" data-tooltip="Edit content">✎</button>`;
+        return `<article class="watchlist-row${watchlist ? " watchlist-row--media" : ""}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0" aria-label="${escapeHtml(tile.label || "Untitled")}">${watchlist ? `<div class="watchlist-row-poster">${this.services.board.tileMedia(tile)}</div>` : ""}<div class="watchlist-row-name">${watchlist ? "" : '<span class="list-field-label">Name</span>'}<strong>${escapeHtml(tile.label || "Untitled")}</strong>${tags}</div><div class="watchlist-row-description"><span class="list-field-label">Description</span><p>${escapeHtml(tile.description || "—")}</p></div><div><span class="list-field-label">Media type</span><span>${escapeHtml(tile.mediaType || tile.type)}</span></div><div><span class="list-field-label">${watchlist ? "Release date" : "Date added"}</span><time datetime="${escapeHtml(dateValue(tile))}">${escapeHtml(date(tile))}</time></div><div class="watchlist-row-actions">${watchlist ? this.services.watchlist.watchedButton(tile) : edit}</div>${watchlist ? edit : ""}</article>`;
+      })
       .join("");
     els.emptyState.hidden = items.length > 0;
   }
