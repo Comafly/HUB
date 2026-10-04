@@ -83,9 +83,62 @@ export class Watchlist extends Feature {
     return `<button type="button" class="tile-action watched-toggle${onTile ? " watched-toggle--tile" : ""}" data-watch-status="${escapeHtml(tile.id)}" aria-pressed="${watched}" aria-label="${watched ? "Mark as unwatched" : "Mark as watched"}: ${escapeHtml(tile.label || "item")}" data-tooltip="${watched ? "Watched" : "Not watched"}" ${this.pendingStatus.has(tile.id) ? "disabled" : ""}>${EYE}</button>`;
   }
 
+  updateStatusButtons(tile) {
+    const watched = tile.watchedStatus === "Completed";
+    for (const button of $$("[data-watch-status]")) {
+      if (button.dataset.watchStatus !== tile.id) continue;
+      button.disabled = this.pendingStatus.has(tile.id);
+      button.setAttribute("aria-pressed", String(watched));
+      button.setAttribute(
+        "aria-label",
+        `${watched ? "Mark as unwatched" : "Mark as watched"}: ${tile.label || "item"}`,
+      );
+      button.dataset.tooltip = watched ? "Watched" : "Not watched";
+    }
+  }
+
+  mediaTypeLabel(value) {
+    return MEDIA.find(([stored]) => stored === value)?.[1] || value || "Media";
+  }
+
+  viewerActionsMarkup(tile) {
+    let page =
+      /^https:\/\/www\.themoviedb\.org\/(movie|tv)\/[1-9][0-9]{0,9}$/.test(
+        tile.tmdbUrl || "",
+      )
+        ? tile.tmdbUrl
+        : "";
+    if (
+      !page &&
+      /^(movie|tv)$/.test(tile.tmdbType || "") &&
+      /^[1-9][0-9]{0,9}$/.test(String(tile.tmdbId || ""))
+    )
+      page = `https://www.themoviedb.org/${tile.tmdbType}/${tile.tmdbId}`;
+    const trailer =
+      /^https:\/\/www\.youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}$/.test(
+        tile.trailerUrl || "",
+      )
+        ? tile.trailerUrl
+        : "";
+    const linkIcon = icon(
+      '<path d="M10 13a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7M14 11a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.7-1.7"/>',
+    );
+    const playIcon = icon(
+      '<path d="m8 5 11 7-11 7z" fill="currentColor" stroke="none"/>',
+    );
+    return (
+      (page
+        ? `<a class="viewer-action-button" href="${escapeHtml(page)}" target="_blank" rel="noopener noreferrer" data-tooltip="Open TMDB page" aria-label="Open TMDB page">${linkIcon}</a>`
+        : "") +
+      (trailer
+        ? `<a class="viewer-action-button" href="${escapeHtml(trailer)}" target="_blank" rel="noopener noreferrer" data-tooltip="Watch trailer on YouTube" aria-label="Watch trailer on YouTube">${playIcon}</a>`
+        : "")
+    );
+  }
+
   fieldsMarkup(pending) {
     const media = pending.mediaType || "Movies";
-    return `<div class="watchlist-media-status"><div class="field"><span>Media type</span><input name="mediaType" type="hidden" value="${escapeHtml(media)}"><div class="watchlist-media-types" role="group" aria-label="Media type">${MEDIA.map(([value, label, svg]) => `<button type="button" class="tile-control watchlist-media-button" data-media-type="${value}" aria-label="${label}" data-tooltip="${label}" aria-pressed="${value === media}">${svg}</button>`).join("")}</div></div><div class="field watchlist-status-field"><span>Watch status</span><input name="watchedStatus" type="hidden" value="${escapeHtml(pending.watchedStatus || "Not started")}"><button type="button" class="tile-control watched-toggle" id="watchlistDraftStatus" aria-label="Mark as watched" aria-pressed="false">${EYE}</button></div></div><label class="field watchlist-release-field"><span>Release date</span><input name="releaseDate" type="date" value="${escapeHtml(pending.releaseDate || "")}"></label><label class="field watchlist-author-field"><span>Author / creator</span><input name="author" type="text" value="${escapeHtml(pending.author || "")}"></label><div class="field watchlist-thumbnail-field"><span>Thumbnail</span><div class="tile-background-picker">${this.services.editor.singleImagePickerMarkup()}<button type="button" id="retrieveWatchlistThumbnail" class="icon-btn retrieve-link-thumbnail" aria-label="Retrieve Thumbnail from TMDB" data-tooltip="Retrieve Thumbnail">${DOWNLOAD}</button></div><small class="watchlist-lookup-help"></small></div><input name="tmdbId" type="hidden" value="${escapeHtml(pending.tmdbId || "")}"><input name="tmdbType" type="hidden" value="${escapeHtml(pending.tmdbType || "")}">`;
+    return `<div class="watchlist-media-status"><div class="field"><span>Media type</span><input name="mediaType" type="hidden" value="${escapeHtml(media)}"><div class="watchlist-media-types" role="group" aria-label="Media type">${MEDIA.map(([value, label, svg]) => `<button type="button" class="tile-control watchlist-media-button" data-media-type="${value}" aria-label="${label}" data-tooltip="${label}" aria-pressed="${value === media}">${svg}</button>`).join("")}</div></div><div class="field watchlist-status-field"><span>Watch status</span><input name="watchedStatus" type="hidden" value="${escapeHtml(pending.watchedStatus || "Not started")}"><button type="button" class="tile-control watched-toggle" id="watchlistDraftStatus" aria-label="Mark as watched" aria-pressed="false">${EYE}</button></div></div><label class="field watchlist-release-field"><span>Release date</span><input name="releaseDate" type="date" value="${escapeHtml(pending.releaseDate || "")}"></label><label class="field watchlist-author-field"><span>Author / creator</span><input name="author" type="text" value="${escapeHtml(pending.author || "")}"></label><div class="field watchlist-thumbnail-field"><span>Thumbnail</span><div class="tile-background-picker">${this.services.editor.singleImagePickerMarkup()}<button type="button" id="retrieveWatchlistThumbnail" class="icon-btn retrieve-link-thumbnail" aria-label="Retrieve Thumbnail from TMDB" data-tooltip="Retrieve Thumbnail">${DOWNLOAD}</button></div><small class="watchlist-lookup-help"></small></div><input name="tmdbId" type="hidden" value="${escapeHtml(pending.tmdbId || "")}"><input name="tmdbType" type="hidden" value="${escapeHtml(pending.tmdbType || "")}"><input name="tmdbUrl" type="hidden" value="${escapeHtml(pending.tmdbUrl || "")}"><input name="trailerUrl" type="hidden" value="${escapeHtml(pending.trailerUrl || "")}">`;
   }
 
   syncEditor() {
@@ -133,7 +186,7 @@ export class Watchlist extends Feature {
   }
 
   clearMatch() {
-    for (const name of ["tmdbId", "tmdbType"]) {
+    for (const name of ["tmdbId", "tmdbType", "tmdbUrl", "trailerUrl"]) {
       const input = els.contentForm.elements[name];
       if (input) input.value = "";
     }
@@ -168,20 +221,41 @@ export class Watchlist extends Feature {
     const type = this.providerType();
     if (!query || !type) return;
     const draft = state.pendingDrop;
-    const response = await this.withProgress("Searching TMDB…", (signal) =>
-      api.searchTmdb(query, type, page, signal),
-    );
-    if (!response || state.pendingDrop !== draft || !els.contentModal.open)
-      return;
-    this.lookup = {
-      query,
-      type,
-      thumbnailOnly,
+    let session = this.lookup;
+    if (
+      !session ||
+      session.query !== query ||
+      session.type !== type ||
+      session.draft !== draft ||
+      session.thumbnailOnly !== thumbnailOnly
+    ) {
+      session = { query, type, thumbnailOnly, draft, cache: new Map() };
+      this.lookup = session;
+    }
+    let response = session.cache.get(page);
+    if (!response) {
+      this.searchingSession = session;
+      try {
+        response = await this.withProgress("Searching TMDB…", (signal) =>
+          api.searchTmdb(query, type, page, signal),
+        );
+      } finally {
+        if (this.searchingSession === session) this.searchingSession = null;
+      }
+      if (
+        !response ||
+        this.lookup !== session ||
+        state.pendingDrop !== draft ||
+        !els.contentModal.open
+      )
+        return;
+      session.cache.set(page, response);
+    }
+    Object.assign(session, {
       page: response.page,
       pages: response.pages,
       results: response.results,
-      draft,
-    };
+    });
     $(".tmdb-results-hint").textContent = thumbnailOnly
       ? "Select a title to retrieve its poster. Your other fields will stay as entered."
       : "Select a title to use its name, description, release date, director or creator, and poster.";
@@ -230,7 +304,19 @@ export class Watchlist extends Feature {
       f.description.value = result.description;
       f.author.value = result.author;
       f.releaseDate.value = result.releaseDate;
+      this.services.editor.commitTagInput();
+      for (const tag of result.tags || []) {
+        if (
+          !state.pendingTags.some(
+            (existing) => existing.toLowerCase() === tag.toLowerCase(),
+          )
+        )
+          state.pendingTags.push(tag);
+      }
+      this.services.editor.renderTagEditor();
     }
+    f.tmdbUrl.value = result.tmdbUrl || "";
+    f.trailerUrl.value = result.trailerUrl || "";
     f.tmdbId.value = String(result.id);
     f.tmdbType.value = lookup.type;
     if (poster) state.pendingThumbnail = poster;
@@ -267,14 +353,19 @@ export class Watchlist extends Feature {
     );
     if (!tile) return;
     this.pendingStatus.add(id);
-    this.services.board.renderTiles();
+    this.updateStatusButtons(tile);
     try {
       const updated = await api.setWatchStatus(
         id,
         tile.watchedStatus === "Completed" ? "Not started" : "Completed",
       );
       const index = state.tiles.findIndex((item) => item.id === id);
-      if (index !== -1) state.tiles[index] = updated;
+      if (index !== -1)
+        state.tiles[index] = {
+          ...state.tiles[index],
+          watchedStatus: updated.watchedStatus,
+          updatedAt: updated.updatedAt,
+        };
       document.dispatchEvent(
         new CustomEvent("hub:content-change", {
           detail: { action: "update", tile: updated },
@@ -282,8 +373,9 @@ export class Watchlist extends Feature {
       );
     } finally {
       this.pendingStatus.delete(id);
-      this.services.board.renderTiles();
-      this.services.collections.renderBookmarks();
+      this.updateStatusButtons(
+        state.tiles.find((item) => item.id === id) || tile,
+      );
     }
   }
 
@@ -297,12 +389,12 @@ export class Watchlist extends Feature {
     }
     try {
       if (statusId) return await this.toggleStatus(statusId);
-      if (target.id === "tmdbPrevious")
+      if (target.id === "tmdbPrevious" && this.lookup)
         return await this.search(
           this.lookup.thumbnailOnly,
           this.lookup.page - 1,
         );
-      if (target.id === "tmdbNext")
+      if (target.id === "tmdbNext" && this.lookup)
         return await this.search(
           this.lookup.thumbnailOnly,
           this.lookup.page + 1,
@@ -360,6 +452,11 @@ export class Watchlist extends Feature {
     });
     $("#submissionModal").addEventListener("cancel", (event) => {
       if (this.controller) event.preventDefault();
+    });
+    $("#tmdbResultsModal").addEventListener("close", () => {
+      if (this.searchingSession && this.searchingSession === this.lookup)
+        this.controller?.abort();
+      this.lookup = null;
     });
     $("#tmdbResultsModal").addEventListener("click", (event) => {
       if (event.target === $("#tmdbResultsModal"))

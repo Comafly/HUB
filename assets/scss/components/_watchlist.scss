@@ -132,7 +132,18 @@
   height: 100%;
   object-fit: cover;
 }
+.watched-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
 .watched-toggle svg {
+  display: block;
+  flex: none;
+  margin: 0;
   width: 24px;
   height: 24px;
 }
@@ -445,4 +456,25 @@
     grid-column: 3;
     grid-row: 1;
   }
+}
+
+.media-viewer--watchlist .viewer-tags {
+  margin: 14px 0 20px;
+}
+.media-viewer--watchlist .viewer-properties {
+  margin-top: 24px;
+}
+.media-viewer--watchlist .viewer-sidebar-toolbar .viewer-action-button {
+  padding: 0;
+}
+.viewer-watchlist-empty {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+}
+.viewer-watchlist-empty strong {
+  color: var(--text);
+  font-size: 24px;
 }

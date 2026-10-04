@@ -63,10 +63,10 @@ final class TmdbClient {
 
     private function details(string $type, mixed $id): array {
         $id = self::validateIdentity($type, $id);
-        return $this->request('/'.$type.'/'.$id, ['append_to_response'=>'credits']);
+        return $this->request('/'.$type.'/'.$id, ['append_to_response'=>'credits,videos']);
     }
 
-    private function normalize(array $item, string $type): array {
+    private function normalize(array $item, string $type, array $genreIds = []): array {
         $authors = [];
         foreach ($item['credits']['crew'] ?? [] as $person) if (($person['job'] ?? '') === 'Director') $authors[] = $person['name'];
         if ($type === 'tv') {
@@ -75,8 +75,20 @@ final class TmdbClient {
         }
         $date = (string)($item[$type === 'movie' ? 'release_date' : 'first_air_date'] ?? '');
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) $date = '';
+        if (!$genreIds) $genreIds = array_column($item['genres'] ?? [], 'id');
+        $genreIds = array_values(array_unique(array_map('intval', $genreIds)));
+        $genreNames = array_column($item['genres'] ?? [], 'name', 'id');
+        if (array_diff($genreIds, array_keys($genreNames))) {
+            $genreNames += array_column($this->request('/genre/'.$type.'/list')['genres'] ?? [], 'name', 'id');
+        }
+        $tags = [];
+        foreach ($genreIds as $genreId) if (isset($genreNames[$genreId])) $tags[] = $genreNames[$genreId];
+        $videos = array_values(array_filter($item['videos']['results'] ?? [], static fn($video) => ($video['site'] ?? '') === 'YouTube' && ($video['type'] ?? '') === 'Trailer' && preg_match('/^[a-zA-Z0-9_-]{11}$/D', $video['key'] ?? '') === 1));
+        $rank = static fn($video) => [(int)($video['official'] ?? false), (int)(($video['iso_639_1'] ?? '') === 'en'), strtotime($video['published_at'] ?? '') ?: 0];
+        usort($videos, static fn($a, $b) => $rank($b) <=> $rank($a));
+        $trailerUrl = $videos ? 'https://www.youtube.com/watch?v='.$videos[0]['key'] : '';
         $poster = $item['poster_path'] ?? '';
-        return ['id'=>(int)$item['id'], 'name'=>(string)($item[$type === 'movie' ? 'title' : 'name'] ?? ''), 'description'=>(string)($item['overview'] ?? ''), 'releaseDate'=>$date, 'year'=>$date ? substr($date,0,4) : '', 'author'=>implode(', ', array_unique($authors)), 'hasPoster'=>is_string($poster) && preg_match('~^/[a-zA-Z0-9_-]+\.(jpg|png|webp)$~', $poster) === 1];
+        return ['id'=>(int)$item['id'], 'name'=>(string)($item[$type === 'movie' ? 'title' : 'name'] ?? ''), 'description'=>(string)($item['overview'] ?? ''), 'releaseDate'=>$date, 'year'=>$date ? substr($date,0,4) : '', 'author'=>implode(', ', array_unique($authors)), 'genreIds'=>$genreIds, 'tags'=>array_values(array_unique($tags)), 'tmdbUrl'=>'https://www.themoviedb.org/'.$type.'/'.$item['id'], 'trailerUrl'=>$trailerUrl, 'hasPoster'=>is_string($poster) && preg_match('~^/[a-zA-Z0-9_-]+\.(jpg|png|webp)$~', $poster) === 1];
     }
 
     public function search(string $query, string $type, int $page = 1): array {
@@ -95,7 +107,7 @@ final class TmdbClient {
                 if ($error->getCode() === 404) continue;
                 throw $error;
             }
-            $results[] = $this->normalize($details, $type);
+            $results[] = $this->normalize($details, $type, $item['genre_ids'] ?? []);
         }
         $total = min((int)($response['total_results'] ?? 0), 10000);
         // TMDB serves 20 records per provider page; the last local page has six.

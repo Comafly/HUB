@@ -80,6 +80,16 @@
         "label": "TMDB type",
         "type": "select",
         "options": ["movie", "tv"]
+      },
+      {
+        "name": "tmdbUrl",
+        "label": "TMDB page",
+        "type": "text"
+      },
+      {
+        "name": "trailerUrl",
+        "label": "YouTube trailer",
+        "type": "text"
       }
     ],
     "orientation": "portrait",

@@ -576,6 +576,11 @@ try {
             if ($section === 'watchlist' && ($tile['tmdbId'] ?? '') !== '') {
                 TmdbClient::validateIdentity($tile['tmdbType'] ?? '', $tile['tmdbId']);
                 if (($tile['mediaType'] === 'Movies' ? 'movie' : ($tile['mediaType'] === 'Series' ? 'tv' : '')) !== $tile['tmdbType']) fail('TMDB match does not match this media type');
+                $tile['tmdbUrl'] = 'https://www.themoviedb.org/'.$tile['tmdbType'].'/'.$tile['tmdbId'];
+            }
+            if ($section === 'watchlist') {
+                if (($tile['tmdbUrl'] ?? '') !== '' && !preg_match('~^https://www\.themoviedb\.org/(movie|tv)/[1-9][0-9]{0,9}$~D', $tile['tmdbUrl'])) fail('Invalid TMDB page URL');
+                if (($tile['trailerUrl'] ?? '') !== '' && !preg_match('~^https://www\.youtube\.com/watch\?v=[a-zA-Z0-9_-]{11}$~D', $tile['trailerUrl'])) fail('Invalid YouTube trailer URL');
             }
             $retained = json_decode((string)($input['existingFiles'] ?? '[]'), true);
             if (!is_array($retained)) fail('Invalid saved file list');

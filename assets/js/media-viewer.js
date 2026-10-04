@@ -17,6 +17,10 @@ export class MediaViewer extends Feature {
     this.gallerySwipeCleanup = () => {};
   }
 
+  isWatchlist(tile) {
+    return tile.type === "entry" && tile.section === "watchlist";
+  }
+
   viewerSelectedFile(tile) {
     return tile.files?.[state.viewerIndex] || tile.files?.[0] || "";
   }
@@ -33,6 +37,11 @@ export class MediaViewer extends Feature {
   }
 
   viewerMediaMarkup(tile) {
+    if (this.isWatchlist(tile)) {
+      return tile.thumbnail
+        ? `<div class="viewer-stage"><img class="viewer-zoom-target" src="${escapeHtml(tile.thumbnail)}" alt="${escapeHtml(tile.label || "Media poster")}" draggable="false"></div>`
+        : `<div class="viewer-watchlist-empty"><strong>${escapeHtml(tile.label || "Untitled")}</strong><span>No cover added</span></div>`;
+    }
     if (tile.type === "link" && tile.embedUrl)
       return `<div class="viewer-embed"><iframe src="${escapeHtml(tile.embedUrl)}" title="${escapeHtml(tile.label || "Embedded media")}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
     if (["image", "video"].includes(tile.type) && tile.files?.length)
@@ -121,6 +130,16 @@ export class MediaViewer extends Feature {
   }
 
   viewerPropertiesMarkup(tile) {
+    if (this.isWatchlist(tile)) {
+      const release = tile.releaseDate
+        ? new Date(`${tile.releaseDate}T12:00:00`)
+        : null;
+      const date =
+        release && !Number.isNaN(release.getTime())
+          ? new Intl.DateTimeFormat("en-AU").format(release)
+          : "Unavailable";
+      return `<dl class="viewer-properties"><dt>Release date</dt><dd>${escapeHtml(date)}</dd><dt>Author / creator</dt><dd>${escapeHtml(tile.author || "Unavailable")}</dd></dl>`;
+    }
     const date = tile.dateAdded || tile.createdAt;
     let html = `<dl class="viewer-properties"><dt>Date added</dt><dd>${escapeHtml(date ? new Date(date).toLocaleString("en-AU") : "Unavailable")}</dd>${tile.location ? `<dt>Location</dt><dd>${escapeHtml(tile.location)}</dd>` : ""}</dl>`;
     if (["image", "video"].includes(tile.type) && tile.files?.length) {
@@ -140,6 +159,8 @@ export class MediaViewer extends Feature {
   }
 
   viewerActionsMarkup(tile) {
+    if (this.isWatchlist(tile))
+      return this.services.watchlist.viewerActionsMarkup(tile);
     if (tile.type === "link" && tile.url)
       return `<a class="viewer-action-button viewer-original-link" href="${escapeHtml(tile.url)}" target="_blank" rel="noopener noreferrer" data-tooltip="Open Original Link" aria-label="Open Original Link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.7 1.7M14 11a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.7-1.7"/></svg></a>`;
     if (!tile.files?.length || ["text", "link"].includes(tile.type)) return "";
@@ -277,6 +298,10 @@ export class MediaViewer extends Feature {
   }
 
   renderViewerSelection(tile) {
+    els.mediaViewer.classList.toggle(
+      "media-viewer--watchlist",
+      this.isWatchlist(tile),
+    );
     this.gallerySwipeCleanup();
     this.instagramViewerCleanup();
     els.viewerMedia.classList.toggle(
@@ -310,7 +335,17 @@ export class MediaViewer extends Feature {
       background.alt = "";
       els.viewerMedia.prepend(background);
     }
-    els.viewerMeta.innerHTML = `<div class="eyebrow">${escapeHtml(tile.type)}</div><h2>${escapeHtml(tile.label || defaultTileLabel(tile))}</h2>${tile.description ? `<p>${escapeHtml(tile.description)}</p>` : ""}${tile.tags?.length ? `<div class="viewer-tags">${tile.tags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${tile.metadataTags?.length ? `<div class="viewer-tags metadata-tags">${tile.metadataTags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${this.viewerPropertiesMarkup(tile)}${this.viewerFontLinkMarkup(tile)}`;
+    const description = tile.description
+      ? `<p>${escapeHtml(tile.description)}</p>`
+      : "";
+    const tags = tile.tags?.length
+      ? `<div class="viewer-tags">${tile.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>`
+      : "";
+    const watchlist = this.isWatchlist(tile);
+    const typeLabel = watchlist
+      ? this.services.watchlist.mediaTypeLabel(tile.mediaType)
+      : tile.type;
+    els.viewerMeta.innerHTML = `<div class="eyebrow">${escapeHtml(typeLabel)}</div><h2>${escapeHtml(tile.label || defaultTileLabel(tile))}</h2>${watchlist ? tags + description : description + tags}${tile.metadataTags?.length ? `<div class="viewer-tags metadata-tags">${tile.metadataTags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}${this.viewerPropertiesMarkup(tile)}${this.viewerFontLinkMarkup(tile)}`;
     this.resetViewerTransform();
     if (tile.type === "image" && tile.files?.length > 1) {
       for (const index of [state.viewerIndex - 1, state.viewerIndex + 1])
@@ -356,6 +391,10 @@ export class MediaViewer extends Feature {
     }
     if (tile.type === "link" && tile.url) {
       window.open(tile.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (this.isWatchlist(tile)) {
+      this.openViewer(tile);
       return;
     }
     if (tile.type === "entry") {
