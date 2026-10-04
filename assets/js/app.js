@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261004-2";
+import { api } from "./api.js?v=20261004-3";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -422,7 +422,7 @@ function tileMedia(tile) {
     return `<div class="gallery gallery--${tile.files.length > 1 ? 4 : 1}">${imgs}</div>${tile.files.length > 1 ? `<span class="gallery-count" aria-label="${tile.files.length} images">+${tile.files.length}</span>` : ""}`;
   }
   if (tile.type === "video" && tile.files?.[0])
-    return `<video src="${escapeHtml(tile.files[0])}" muted loop playsinline preload="metadata"></video>`;
+    return `<video src="${escapeHtml(tile.files[0])}"${tile.thumbnail ? ` poster="${escapeHtml(tile.thumbnail)}"` : ""} muted loop playsinline preload="${tile.thumbnail ? "metadata" : "auto"}"></video>`;
   if (
     (tile.type === "audio" || tile.type === "file" || tile.type === "font") &&
     tile.thumbnail
@@ -1174,6 +1174,7 @@ function fieldMarkup(type, pending = {}) {
     return `<div class="text-format-row"><div class="field text-font-field"><span>Font</span><div class="font-picker-row"><select name="font">${fontOptionsMarkup()}</select><button type="button" class="font-upload-btn" id="fontUploadButton" aria-label="Upload a font file" data-tooltip="Upload font">${FONT_UPLOAD_ICON}</button></div><input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2,.ttc,.otc,.eot" hidden /></div><label class="field text-size-field"><span>Size</span><input name="fontSize" class="scrub-input" type="number" min="12" max="96" value="28" /></label><div class="field text-style-field"><span>Style</span><div class="format-row"><label class="format-toggle"><input name="bold" type="checkbox" /><span>B</span></label><label class="format-toggle"><input name="italic" type="checkbox" /><span><i>I</i></span></label><label class="format-toggle"><input name="underline" type="checkbox" /><span><u>U</u></span></label><input name="align" type="hidden" value="left" /><button type="button" class="align-toggle" id="alignToggle" data-align-cycle aria-label="Text alignment: left" data-tooltip="Align: left"></button></div></div></div><label class="field field--wide"><span>Text</span><textarea class="text-live-preview-input" name="text" rows="1" required placeholder="Type text for your tile preview...">${escapeHtml(pending.text || "")}</textarea></label><div class="field field--wide"><span>Thumbnail image / colour</span>${tileBackgroundPickerMarkup()}</div>`;
   if (type === "image")
     return `<div class="field field--wide"><span>Gallery images</span>${media}<small>Drop or paste images anywhere in this modal to add them to the gallery.</small></div>`;
+  if (type === "video") return `<div class="field field--wide"><span>Video</span>${media}<small>The first frame of the first video is used as the tile thumbnail.</small></div>`;
   const mediaLabel = {video: "Video", audio: "Audio", font: "Font files", file: "Files"}[type] || "Files";
   return `<div class="field field--wide"><span>${mediaLabel}</span>${media}</div><div class="field field--wide"><span>Tile image</span>${singleImagePickerMarkup()}</div>`;
 }
@@ -1377,6 +1378,8 @@ async function openContentModal(pending, editing = false) {
   state.pendingDrop = { ...pending, autoLabel: !editing || !pending.label || pending.label === pending.linkTitle || pending.label === safeHostname(pending.url), autoDescription: !editing || !pending.description || pending.description === pending.url, checkedUrl: editing ? pending.url : undefined, files: [...(pending.files || [])] };
   state.pendingThumbnail = null;
   state.pendingTags = [];
+  els.contentModal.querySelector(".modal-card")?.classList.remove("is-modal-drop-target");
+  videoPosterCache.clear();
   els.contentForm.reset();
   els.contentForm.elements.size.value = pending.size || "medium";
   els.contentForm.elements.orientation.value = pending.orientation || "landscape";
@@ -1585,6 +1588,50 @@ function setContentBusy(busy) {
   $("#saveContentButton").disabled = busy;
   $("#deleteContentButton").disabled = busy;
 }
+const videoPosterCache = new Map();
+function firstVideoFrame(file) {
+  if (videoPosterCache.has(file)) return videoPosterCache.get(file);
+  const result = new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    const local = file instanceof File;
+    const src = local ? URL.createObjectURL(file) : file;
+    let finished = false;
+    const cleanup = () => {
+      clearTimeout(timer);
+      video.removeEventListener('loadeddata', capture);
+      video.removeEventListener('error', fail);
+      video.pause();video.removeAttribute('src');video.load();
+      if (local) URL.revokeObjectURL(src);
+    };
+    const fail = () => {
+      if (finished) return;
+      finished = true;cleanup();reject(new Error('Unable to read the first video frame.'));
+    };
+    const capture = async () => {
+      if (finished || !video.videoWidth || !video.videoHeight) return;
+      finished = true;
+      try {
+        const scale = Math.min(1, 1920 / video.videoWidth, 1080 / video.videoHeight);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        let poster = new File([await encode(canvas, .85)], 'video-first-frame.jpg', { type: 'image/jpeg' });
+        if (poster.size > IMAGE_LIMIT) poster = await compressImage(poster);
+        resolve(poster);
+      } catch (error) { reject(error); }
+      finally { cleanup(); }
+    };
+    const timer = setTimeout(fail, 15000);
+    video.muted = true;video.playsInline = true;video.preload = 'auto';
+    video.addEventListener('loadeddata', capture);video.addEventListener('error', fail);
+    video.src = src;video.load();
+  });
+  videoPosterCache.set(file, result);
+  result.catch(() => videoPosterCache.delete(file));
+  return result;
+}
 async function handleContentSubmit(event) {
   event.preventDefault();
   if (state.savingContent) return;
@@ -1592,6 +1639,18 @@ async function handleContentSubmit(event) {
   try {
     if (await processContentUrl() === false) return;
     if (state.pendingDrop?.type === "link") { clearTimeout(linkMetadataTimer); await fetchLinkDetails(); }
+    if (state.pendingDrop?.type === 'video' && pendingFiles()[0]) {
+      const draft = state.pendingDrop, first = pendingFiles()[0];
+      const showingStatus = beginSubmission('Preparing video thumbnail...');
+      try {
+        const poster = await firstVideoFrame(first);
+        if (state.pendingDrop !== draft || !els.contentModal.open) return;
+        state.pendingThumbnail = poster;
+      } catch (error) {
+        // A playable video remains uploadable even if the browser cannot export a frame.
+        if (state.pendingDrop === draft) state.pendingThumbnail = null;
+      } finally { if (showingStatus) endSubmission(); }
+    }
   } finally { setContentBusy(false); }
   const type = state.pendingDrop?.type;
   if (type === "media") {
@@ -2912,9 +2971,6 @@ function bindEvents() {
     if (!state.pendingDrop) return;
     e.preventDefault();
     e.stopPropagation();
-    els.contentModal
-      .querySelector(".modal-card")
-      ?.classList.add("is-modal-drop-target");
   });
   els.contentModal.addEventListener("dragleave", (e) => {
     if (!els.contentModal.contains(e.relatedTarget))
@@ -3000,6 +3056,8 @@ function bindEvents() {
     resetViewerTransform();
   });
   els.contentModal.addEventListener("close", () => {
+    els.contentModal.querySelector(".modal-card")?.classList.remove("is-modal-drop-target");
+    videoPosterCache.clear();
     clearTimeout(linkMetadataTimer);
     revokePreviewUrls();
     state.pendingTags = [];

@@ -267,12 +267,6 @@
     line-height: 1.5
 }
 
-.modal-card--wide.is-modal-drop-target {
-    outline: 2px dashed var(--accent);
-    outline-offset: -10px;
-    background: color-mix(in srgb, var(--bg-elevated) 92%, var(--accent) 8%)
-}
-
 .gallery-picker--single {
     grid-template-columns: minmax(0, 96px);
     justify-content: start;
