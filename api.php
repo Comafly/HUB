@@ -127,48 +127,50 @@ function resolveSocialMedia(string $url): array {
     if (!$info) throw new RuntimeException('This URL does not provide a supported media embed.');
     $data = []; $page = null;
     if ($info['provider'] === 'youtube') {
-        $data = json_decode(fetchPublicMedia('https://www.youtube.com/oembed?format=json&url='.rawurlencode($info['url']))['body'], true) ?: [];
+        $data = json_decode(fetchPublicMedia('https://www.youtube.com/oembed?format=json&url='.rawurlencode($info['url']), 2097152, false, 12)['body'], true) ?: [];
     } elseif ($info['provider'] === 'tiktok') {
-        $data = json_decode(fetchPublicMedia('https://www.tiktok.com/oembed?url='.rawurlencode($url))['body'], true) ?: [];
+        $data = json_decode(fetchPublicMedia('https://www.tiktok.com/oembed?url='.rawurlencode($url), 2097152, false, 12)['body'], true) ?: [];
     } else {
         $token = getenv('HUB_INSTAGRAM_OEMBED_TOKEN');
-        if ($token) $data = json_decode(fetchPublicMedia('https://graph.facebook.com/instagram_oembed?url='.rawurlencode($info['url']).'&access_token='.rawurlencode($token))['body'], true) ?: [];
+        if ($token) { try { $data = json_decode(fetchPublicMedia('https://graph.facebook.com/instagram_oembed?url='.rawurlencode($info['url']).'&access_token='.rawurlencode($token), 2097152, false, 12)['body'], true) ?: []; } catch (Throwable $error) { /* Try the public embed page independently. */ } }
         // Public embed pages can supply a poster when oEmbed omits it.
-        $page = fetchPublicMedia($info['embedUrl']);
+        $page = fetchPublicMedia($info['embedUrl'], 2097152, false, 12);
         $meta = parsePageMetadata($page['body'], $page['url']);
         $framePolicy = strtolower($page['headers']['x-frame-options'] ?? '');
         if (str_contains($page['url'], '/accounts/') || in_array($framePolicy, ['deny','sameorigin'], true) || preg_match("~frame-ancestors\s+'none'~i", $page['headers']['content-security-policy'] ?? '')) throw new RuntimeException('The owner or provider does not allow embedding.');
-        if (!$meta['thumbnail']) {
-            $post = fetchPublicMedia($info['url']);
-            $meta = parsePageMetadata($post['body'], $post['url']);
-        }
-        if (!$data) $data = ['html'=>$meta['thumbnail'] ? 'public-embed' : '', 'thumbnail_url'=>$meta['thumbnail'], 'title'=>$meta['title']];
+        if (!$data) $data = ['html'=>preg_match('~(?:EmbeddedMedia|Embed\b|instagram-media)~i', $page['body']) ? 'public-embed' : '', 'thumbnail_url'=>$meta['thumbnail'], 'title'=>$meta['title']];
         if (empty($data['thumbnail_url'])) $data['thumbnail_url'] = $meta['thumbnail'];
     }
     if (empty($data['html']) || !empty($data['error']) || !empty($data['error_code'])) throw new RuntimeException('The owner or provider does not allow embedding.');
-    $info['thumbnail'] = publicHttpUrl((string)($data['thumbnail_url'] ?? ''));
+    $info['thumbnail'] = publicHttpUrl((string)($data['thumbnail_url'] ?? $info['thumbnail'] ?? ''));
     $info['title'] = cleanPageTitle((string)($data['title'] ?? ''));
     $info['faviconUrl'] = absolutePageUrl($info['url'], '/favicon.ico');
-    if (!$info['thumbnail']) throw new RuntimeException('The provider did not supply a poster.');
+    $info['embedWidth'] = max(0, (int)($data['width'] ?? 0));
+    $info['embedHeight'] = max(0, (int)($data['height'] ?? 0));
     return $info;
 }
 
 function inspectLinkMetadata(string $url): array {
     $url = publicHttpUrl($url);
     if (!$url) throw new RuntimeException('Enter a valid HTTP or HTTPS URL.');
-    $info = socialMediaInfo($url);
-    if ($info && in_array($info['provider'], ['youtube','tiktok'], true)) {
+    $social = socialMediaInfo($url);
+    $result = ['title'=>'', 'faviconUrl'=>absolutePageUrl($url, '/favicon.ico'), 'thumbnail'=>$social['thumbnail'] ?? '', 'embedAllowed'=>false, 'embedUrl'=>'', 'provider'=>$social['provider'] ?? ''];
+    // A failed embed check must never stop independent page/poster discovery.
+    if ($social || preg_match('~^https?://(?:vm|vt)\.tiktok\.com/~i', $url)) {
         try {
-            $endpoint = $info['provider'] === 'youtube' ? 'https://www.youtube.com/oembed?format=json&url=' : 'https://www.tiktok.com/oembed?url=';
-            $data = json_decode(fetchPublicMedia($endpoint.rawurlencode($info['url']), 2097152, false, 12)['body'], true) ?: [];
-            if (!empty($data['title'])) return ['title'=>cleanPageTitle((string)$data['title']), 'faviconUrl'=>absolutePageUrl($info['url'], '/favicon.ico')];
-        } catch (Throwable $error) { /* Fall back to ordinary page metadata. */ }
+            $embed = resolveSocialMedia($url);
+            $result = array_merge($result, $embed, ['embedAllowed'=>true]);
+        } catch (Throwable $error) { /* Embedding is optional. */ }
     }
-    $page = fetchPublicMedia($url, 2097152, false, 12);
-    $meta = parsePageMetadata($page['body'], $page['url']);
-    return ['title'=>$meta['title'], 'faviconUrl'=>$meta['faviconUrl']];
+    if (!$result['thumbnail'] || !$result['title']) {
+        try {
+            $page = fetchPublicMedia($url, 2097152, false, 12);
+            $meta = parsePageMetadata($page['body'], $page['url']);
+            foreach (['title','thumbnail','faviconUrl'] as $key) if (!empty($meta[$key]) && (empty($result[$key]) || $key === 'faviconUrl')) $result[$key] = $meta[$key];
+        } catch (Throwable $error) { /* Keep any independent poster or embed result. */ }
+    }
+    return $result;
 }
-
 
 function response(mixed $data = null, int $status = 200): never {
     http_response_code($status);
@@ -558,6 +560,10 @@ try {
                 if (!$social || $social['embedUrl'] !== $input['embedUrl']) fail('Invalid media embed URL');
                 $tile['embedUrl'] = $social['embedUrl'];
                 $tile['provider'] = $social['provider'];
+                $tile['embedWidth'] = max(0, min(10000, (int)($input['embedWidth'] ?? 0)));
+                $tile['embedHeight'] = max(0, min(10000, (int)($input['embedHeight'] ?? 0)));
+                $tile['mediaWidth'] = max(0, min(20000, (int)($input['mediaWidth'] ?? 0)));
+                $tile['mediaHeight'] = max(0, min(20000, (int)($input['mediaHeight'] ?? 0)));
             }
             if ($type === 'text') {
                 $tile['text'] = $input['text'] ?? '';

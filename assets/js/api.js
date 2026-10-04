@@ -81,7 +81,7 @@ function tileRequest(action, form, options = {}) {
 export const api = {
   inspectLink: async (url) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 14000);
+    const timer = setTimeout(() => controller.abort(), 45000);
     try { return await request('links.inspect', { method: 'POST', body: JSON.stringify({ url }), signal: controller.signal }); }
     finally { clearTimeout(timer); }
   },

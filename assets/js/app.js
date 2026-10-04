@@ -1,4 +1,4 @@
-import { api } from "./api.js?v=20261003-17";
+import { api } from "./api.js?v=20261004-1";
 
 // Media helpers are bundled here to avoid a separate module fetch.
 const IMAGE_LIMIT = 2 * 1024 * 1024;
@@ -76,12 +76,31 @@ function askMedia(message, names = []) {
   });
 }
 
+function chooseImagesToCompress(files) {
+  return new Promise(resolve => {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'modal compression-picker';
+    const previews = files.map(file => URL.createObjectURL(file));
+    dialog.innerHTML = `<div class="modal-card modal-card--confirm"><h2>Each of these images are over 5mb? Would you like to compress them?</h2><div class="compression-image-list">${files.map((file, i) => `<label class="compression-image"><img src="${escapeHtml(previews[i])}" alt=""><span>${escapeHtml(file.name)}</span><input type="checkbox" checked data-compress-index="${i}" aria-label="Compress ${escapeHtml(file.name)}"></label>`).join('')}</div><div class="modal-actions"><button type="button" class="btn btn--ghost" data-compression-no>No</button><button type="button" class="btn btn--primary" data-compression-yes>Yes</button></div></div>`;
+    let selected = [];
+    dialog.querySelector('[data-compression-no]').onclick = () => dialog.close();
+    dialog.querySelector('[data-compression-yes]').onclick = () => {
+      selected = [...dialog.querySelectorAll('[data-compress-index]:checked')].map(input => files[Number(input.dataset.compressIndex)]);
+      dialog.close();
+    };
+    dialog.addEventListener('close', () => { previews.forEach(url => URL.revokeObjectURL(url)); dialog.remove(); resolve(selected); }, { once: true });
+    document.body.append(dialog);dialog.showModal();
+  });
+}
+
 // Serialize prompts so a batch never opens competing dialogs.
 let preparation = Promise.resolve();
 function prepareImages(files) {
   const run = async () => {
-    const oversized = files.filter(file => file instanceof File && file.type.startsWith('image/') && file.size > IMAGE_LIMIT);
-    if (!oversized.length || !await askMedia('These images are over 5mb, would you like to compress?', oversized.map(file => file.name))) return files;
+    let oversized = files.filter(file => file instanceof File && file.type.startsWith('image/') && file.size > IMAGE_LIMIT);
+    if (!oversized.length) return files;
+    oversized = await chooseImagesToCompress(oversized);
+    if (!oversized.length) return files;
     if (!beginSubmission('Compressing 1 / ' + oversized.length)) throw new Error('Another operation is in progress. Please try again.');
     const started = performance.now();
     let completed = 0, current = 1;
@@ -122,7 +141,7 @@ const TAGS = [
   "Audio",
   "Design",
   "Typography",
-  "Concepts",
+  "Inspiration",
   "History",
   "Funny",
 ];
@@ -373,7 +392,7 @@ function defaultUrlBackground(tile = {}) {
 }
 function urlBackgroundPickerMarkup() {
   const selected = state.pendingDrop.urlBackground || defaultUrlBackground(state.pendingDrop);
-  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<div class="url-background-options" role="group" aria-label="Link backgrounds">${(state.urlBackgrounds || []).map((src, i) => `<button type="button" class="tile-color-option url-background-option" data-url-background="${escapeHtml(src)}" aria-label="Link background ${i + 1}" aria-pressed="${!state.pendingThumbnail && selected === src}"><img src="${escapeHtml(src)}" alt="" /></button>`).join('')}</div></div><small>Choose one thumbnail or a background image.</small>`;
+  return `<div class="tile-background-picker">${singleImagePickerMarkup()}<button type="button" id="retrieveLinkThumbnail" class="icon-btn retrieve-link-thumbnail" data-tooltip="Retrieve Link Thumbnail" aria-label="Retrieve Link Thumbnail" ${!state.pendingDrop?.url || state.savingContent ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17H5a4 4 0 0 1-.4-8A6 6 0 0 1 16 6a4 4 0 0 1 3 7.8M12 10v11m-4-4 4 4 4-4"/></svg></button><div class="url-background-options" role="group" aria-label="Link backgrounds">${(state.urlBackgrounds || []).map((src, i) => `<button type="button" class="tile-color-option url-background-option" data-url-background="${escapeHtml(src)}" aria-label="Link background ${i + 1}" aria-pressed="${!state.pendingThumbnail && selected === src}"><img src="${escapeHtml(src)}" alt="" /></button>`).join('')}</div></div><small>Choose one thumbnail or a background image.</small>`;
 }
 const EMBED_BUTTON_ICON = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4H4v16h16v-8M11 13 21 3M14 3h7v7"/></svg>';
 
@@ -1145,7 +1164,7 @@ function fieldMarkup(type, pending = {}) {
   if (type === "media")
     return `<div class="field field--wide"><span>Media</span><div class="media-empty-drop"><strong>Drop media here</strong><small>Drag files into this modal, paste an image, or choose files manually.</small><button class="upload-button" type="button" id="chooseMediaButton"><span class="upload-button-icon">＋</span><span>Choose media</span></button></div></div>`;
   if (type === "link")
-    return `<div class="field field--wide"><label for="contentUrlInput">Link</label><div class="url-input-row"><input id="contentUrlInput" name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(pending.url || "")}" /><button type="button" id="embedUrlButton" class="icon-btn embed-url-button" aria-label="Embed media and fetch thumbnail" data-tooltip="Embed media / fetch thumbnail" ${!pending.url?.trim() || state.savingContent ? 'disabled' : ''}>${EMBED_BUTTON_ICON}</button></div></div><div class="field field--wide"><span>Thumbnail image / background</span>${urlBackgroundPickerMarkup()}</div>`;
+    return `<div class="field field--wide"><span>Thumbnail image / background</span>${urlBackgroundPickerMarkup()}</div>`;
   if (type === "text")
     return `<div class="text-format-row"><div class="field text-font-field"><span>Font</span><div class="font-picker-row"><select name="font">${fontOptionsMarkup()}</select><button type="button" class="font-upload-btn" id="fontUploadButton" aria-label="Upload a font file" data-tooltip="Upload font">${FONT_UPLOAD_ICON}</button></div><input id="fontFileInput" type="file" accept=".ttf,.otf,.woff,.woff2,.ttc,.otc,.eot" hidden /></div><label class="field text-size-field"><span>Size</span><input name="fontSize" class="scrub-input" type="number" min="12" max="96" value="28" /></label><div class="field text-style-field"><span>Style</span><div class="format-row"><label class="format-toggle"><input name="bold" type="checkbox" /><span>B</span></label><label class="format-toggle"><input name="italic" type="checkbox" /><span><i>I</i></span></label><label class="format-toggle"><input name="underline" type="checkbox" /><span><u>U</u></span></label><input name="align" type="hidden" value="left" /><button type="button" class="align-toggle" id="alignToggle" data-align-cycle aria-label="Text alignment: left" data-tooltip="Align: left"></button></div></div></div><label class="field field--wide"><span>Text</span><textarea class="text-live-preview-input" name="text" rows="1" required placeholder="Type text for your tile preview...">${escapeHtml(pending.text || "")}</textarea></label><div class="field field--wide"><span>Thumbnail image / colour</span>${tileBackgroundPickerMarkup()}</div>`;
   if (type === "image")
@@ -1164,6 +1183,12 @@ function refreshDynamicFields() {
   location.closest(".field").hidden = hideLocation;
   location.disabled = hideLocation;
   refreshMetadataTags();
+  const linkFields = $('#linkFields');
+  linkFields.hidden = state.pendingDrop.type !== 'link';
+  if (state.pendingDrop.type === 'link') {
+    if (!linkFields.querySelector('[name="url"]')) linkFields.innerHTML = `<div class="link-field-row"><label class="field"><span>Link</span><input id="contentUrlInput" name="url" type="text" inputmode="url" required placeholder="website.com" value="${escapeHtml(state.pendingDrop.url || '')}"></label><label class="field embed-field"><span>Embed</span><input type="checkbox" id="embedUrlToggle" class="embed-switch" role="switch" disabled aria-label="Embed link"></label></div>`;
+  } else linkFields.replaceChildren();
+  syncTileControls();
   const draft = new FormData(els.contentForm);
   const preserve =
     els.contentForm.elements.type.value === state.pendingDrop.type;
@@ -1348,7 +1373,10 @@ async function openContentModal(pending, editing = false) {
   state.pendingThumbnail = null;
   state.pendingTags = [];
   els.contentForm.reset();
+  els.contentForm.elements.size.value = pending.size || "medium";
+  els.contentForm.elements.orientation.value = pending.orientation || "landscape";
   els.dynamicFields.replaceChildren();
+  $("#linkFields").replaceChildren();
   els.contentForm.elements.type.value = pending.type;
   els.contentTypeEyebrow.textContent = `${pending.type} content`;
   els.contentModalTitle.textContent = `Add ${pending.type}`;
@@ -1394,11 +1422,19 @@ async function openEditModal(tileId) {
 }
 let urlProcessing = null;
 let linkMetadataTimer;
-const EMBED_FAILURE_MESSAGE = "We couldn't get the poster, or the user does not allow embedding. This is now a regular URL link.";
 function currentContentUrl() { return normalizeUrl(els.contentForm.elements.url?.value || ''); }
+function syncTileControls() {
+  const f = els.contentForm.elements;
+  $$('[data-tile-size]', els.contentForm).forEach(button => button.setAttribute('aria-pressed', String(button.dataset.tileSize === f.size.value)));
+  const button = $('#orientationButton'), portrait = f.orientation.value === 'portrait';
+  button.classList.toggle('is-portrait', portrait);
+  button.dataset.tooltip = button.ariaLabel = `Rotate to ${portrait ? 'Landscape' : 'Portrait'}`;
+  button.setAttribute('aria-pressed', String(portrait));
+}
 function syncEmbedButton() {
-  const button = $('#embedUrlButton');
-  if (button) button.disabled = !els.contentForm.elements.url?.value.trim() || state.savingContent;
+  const draft = state.pendingDrop, toggle = $('#embedUrlToggle'), retrieve = $('#retrieveLinkThumbnail');
+  if (toggle) { toggle.disabled = !draft?.embedAllowed || state.savingContent; toggle.checked = !!draft?.embedUrl; }
+  if (retrieve) retrieve.disabled = !currentContentUrl() || state.savingContent;
 }
 function applyLinkDetails(draft, info) {
   if (info.title) {
@@ -1407,32 +1443,88 @@ function applyLinkDetails(draft, info) {
   }
   if (info.faviconUrl) draft.faviconUrl = info.faviconUrl;
 }
-function fetchLinkDetails(draft = state.pendingDrop) {
-  if (!draft || draft.type !== 'link') return Promise.resolve();
+function fetchLinkDetails(draft = state.pendingDrop, force = false) {
+  if (!draft || draft.type !== 'link') return Promise.resolve(null);
   const url = currentContentUrl();
-  if (!url) return Promise.resolve();
-  if (draft.detailsUrl === url) return draft.detailsPromise || Promise.resolve();
+  if (!url) return Promise.resolve(null);
+  if (!force && draft.detailsUrl === url) return draft.detailsPromise || Promise.resolve(null);
   draft.detailsUrl = url;
   const revision = (draft.detailsRevision || 0) + 1; draft.detailsRevision = revision;
   draft.detailsPromise = api.inspectLink(url).then(info => {
-    if (state.pendingDrop === draft && els.contentModal.open && currentContentUrl() === url && draft.detailsRevision === revision) applyLinkDetails(draft, info);
-  }).catch(() => { /* Title discovery is optional; a regular URL remains saveable. */ });
+    if (state.pendingDrop !== draft || !els.contentModal.open || currentContentUrl() !== url || draft.detailsRevision !== revision) return null;
+    applyLinkDetails(draft, info);
+    draft.linkInfo = info; draft.embedAllowed = !!info.embedAllowed && !!info.embedUrl;
+    if (!draft.embedAllowed) draft.embedUrl = '';
+    draft.embedWidth = Number(info.embedWidth || 0); draft.embedHeight = Number(info.embedHeight || 0);
+    syncEmbedButton();
+    return info;
+  }).catch(() => {
+    if (state.pendingDrop === draft && currentContentUrl() === url && draft.detailsRevision === revision) { draft.embedAllowed = false; draft.embedUrl = ''; syncEmbedButton(); }
+    return null;
+  });
   return draft.detailsPromise;
+}
+async function downloadLinkThumbnail(draft, info, url, revision) {
+  if (!info?.thumbnail) throw new Error('No thumbnail was provided.');
+  let file = await api.downloadMedia(info.thumbnail);
+  if (file.size > IMAGE_LIMIT) file = await compressImage(file);
+  if (!file.type.startsWith('image/')) throw new Error('The thumbnail is not an image.');
+  const posterUrl = URL.createObjectURL(file);
+  let dimensions;
+  try { const image = new Image(); image.src = posterUrl; await image.decode(); dimensions = [image.naturalWidth, image.naturalHeight]; }
+  finally { URL.revokeObjectURL(posterUrl); }
+  if (state.pendingDrop !== draft || !els.contentModal.open || currentContentUrl() !== url || draft.thumbnailRevision !== revision) return false;
+  draft.mediaWidth = dimensions[0] || 0; draft.mediaHeight = dimensions[1] || 0;
+  state.pendingThumbnail = file;
+  refreshDynamicFields();
+  return true;
+}
+async function retrieveLinkThumbnail(manual = true) {
+  const draft = state.pendingDrop, url = currentContentUrl();
+  if (!draft || draft.type !== 'link' || !url || (manual && state.savingContent)) return;
+  const revision = (draft.thumbnailRevision || 0) + 1; draft.thumbnailRevision = revision;
+  if (manual && !beginSubmission('Retrieving link thumbnail...')) return;
+  const started = performance.now();
+  if (manual) { setContentBusy(true); setEmbedProgress(.1, 'Retrieving link thumbnail...', 'Thumbnail retrieval progress'); }
+  try {
+    const info = await fetchLinkDetails(draft, manual);
+    if (manual) setEmbedProgress(.5, 'Downloading thumbnail...', 'Thumbnail retrieval progress');
+    await downloadLinkThumbnail(draft, info, url, revision);
+    if (manual) setEmbedProgress(1, 'Thumbnail ready', 'Thumbnail retrieval progress');
+  } catch (error) {
+    if (state.pendingDrop === draft && currentContentUrl() === url && draft.thumbnailRevision === revision) toast("We couldn't retrieve the link thumbnail. You can still upload an image or use a background.", 'error');
+    if (manual) setEmbedProgress(1, 'Thumbnail unavailable', 'Thumbnail retrieval progress');
+  } finally {
+    if (manual) {
+      await new Promise(resolve => setTimeout(resolve, Math.max(0, 2000 - (performance.now() - started))));
+      endSubmission(); setContentBusy(false);
+    }
+  }
 }
 function contentUrlChanged() {
   if (state.pendingDrop?.type !== 'link') return;
   const draft = state.pendingDrop, url = currentContentUrl();
-  if (draft.url !== url) {
-    draft.embedUrl = ''; draft.provider = ''; draft.linkTitle = ''; draft.faviconUrl = '';
-    draft.checkedUrl = undefined; draft.detailsUrl = undefined;
+  const changed = draft.url !== url;
+  if (changed) {
+    draft.embedUrl = ''; draft.embedAllowed = false; draft.provider = ''; draft.linkInfo = null; draft.embedWidth = draft.embedHeight = draft.mediaWidth = draft.mediaHeight = 0; draft.linkTitle = ''; draft.faviconUrl = '';
+    draft.needsAutoThumbnail = true;
+    draft.checkedUrl = undefined; draft.detailsUrl = undefined; draft.thumbnailRevision = (draft.thumbnailRevision || 0) + 1;
   }
   draft.url = url;
   if (draft.autoDescription || !els.contentForm.elements.description.value.trim()) els.contentForm.elements.description.value = url;
   if (!url && draft.autoLabel) els.contentForm.elements.label.value = '';
   syncEmbedButton();
   clearTimeout(linkMetadataTimer);
-  if (url) linkMetadataTimer = setTimeout(() => fetchLinkDetails(draft), 450);
+  if (url) linkMetadataTimer = setTimeout(async () => {
+    const info = await fetchLinkDetails(draft);
+    if (info && state.pendingDrop === draft && currentContentUrl() === url && !draft.autoThumbnailUrls?.has(url)) {
+      (draft.autoThumbnailUrls ||= new Set()).add(url);
+      // Existing edit thumbnails remain intact until URL changes or the user retrieves explicitly.
+      if (info.thumbnail && (!state.pendingThumbnail || draft.needsAutoThumbnail)) { draft.needsAutoThumbnail = false; await retrieveLinkThumbnail(false); }
+    }
+  }, 450);
 }
+
 function setEmbedProgress(ratio, message, label = 'Embedding progress') {
   $('#submissionMessage').textContent = message;
   $('#submissionProgress').hidden = false;
@@ -1443,54 +1535,14 @@ function setEmbedProgress(ratio, message, label = 'Embedding progress') {
   track.setAttribute('role', 'progressbar'); track.setAttribute('aria-label', label);
   track.setAttribute('aria-valuemin', '0'); track.setAttribute('aria-valuemax', '100'); track.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
 }
-async function embedContentUrl() {
-  const draft = state.pendingDrop, url = currentContentUrl();
-  if (!draft || draft.type !== 'link' || !url || state.savingContent) return;
-  clearTimeout(linkMetadataTimer);
-  if (!beginSubmission('Fetching embed data...')) return;
-  const started = performance.now();
-  setContentBusy(true);
-  draft.embedUrl = ''; draft.provider = '';
-  draft.detailsRevision = (draft.detailsRevision || 0) + 1; draft.detailsUrl = undefined;
-  let succeeded = false;
-  try {
-    setEmbedProgress(.15, 'Fetching embed data...');
-    const info = await api.resolveMedia(url);
-    if (!info.embedUrl || !info.thumbnail || info.warning) throw new Error('No supported embed or poster was returned.');
-    setEmbedProgress(.5, 'Downloading poster...');
-    let file = await api.downloadMedia(info.thumbnail);
-    if (file.size > IMAGE_LIMIT) file = await compressImage(file, ratio => setEmbedProgress(.55 + .4 * ratio, 'Preparing poster...'));
-    if (!file.type.startsWith('image/')) throw new Error('The poster is not an image.');
-    // Decode before committing, so an invalid or blocked poster rolls back the embed.
-    const posterUrl = URL.createObjectURL(file);
-    try { const image = new Image(); image.src = posterUrl; await image.decode(); }
-    finally { URL.revokeObjectURL(posterUrl); }
-    if (state.pendingDrop !== draft || !els.contentModal.open || currentContentUrl() !== url) throw new Error('The URL changed while embedding.');
-    draft.url = info.url || url; draft.embedUrl = info.embedUrl; draft.provider = info.provider || '';
-    draft.checkedUrl = draft.url;
-    if (info.title) { draft.detailsUrl = draft.url; draft.detailsPromise = Promise.resolve(); }
-    els.contentForm.elements.url.value = draft.url;
-    if (draft.autoDescription) els.contentForm.elements.description.value = draft.url;
-    applyLinkDetails(draft, info);
-    state.pendingThumbnail = file;
-    refreshDynamicFields();
-    succeeded = true;
-    setEmbedProgress(1, 'Embed and poster ready');
-  } catch (error) {
-    if (state.pendingDrop === draft) {
-      draft.embedUrl = ''; draft.provider = '';
-      state.pendingThumbnail = null;
-      refreshDynamicFields();
-    }
-    setEmbedProgress(1, 'Keeping a regular URL link');
-  } finally {
-    const remaining = 2000 - (performance.now() - started);
-    if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining));
-    endSubmission(); setContentBusy(false);
-    if (!succeeded) toast(EMBED_FAILURE_MESSAGE, 'error');
-  }
+function toggleLinkEmbedding() {
+  const draft = state.pendingDrop, toggle = $('#embedUrlToggle');
+  if (!draft || toggle.disabled) return;
+  draft.embedUrl = toggle.checked && draft.embedAllowed ? draft.linkInfo?.embedUrl || '' : '';
+  draft.provider = draft.embedUrl ? draft.linkInfo?.provider || '' : '';
+  syncEmbedButton();
 }
-// Direct-media conversion retains its own confirmation; embedding is button-only.
+// Direct-media conversion retains its confirmation; embedding uses the opt-in toggle.
 async function processContentUrl() {
   if (urlProcessing) return urlProcessing;
   if (state.pendingDrop?.type !== 'link') return;
@@ -1554,6 +1606,7 @@ async function handleContentSubmit(event) {
   form.set("section", state.tiles.find((tile) => tile.id === editingId)?.section || state.section);
   if (type === "link") {
     form.set("url", normalizeUrl(form.get("url"))); form.set("embedUrl", state.pendingDrop.embedUrl || "");
+    for (const name of ['embedWidth','embedHeight','mediaWidth','mediaHeight']) form.set(name, String(state.pendingDrop[name] || 0));
     form.set("urlBackground", state.pendingDrop.urlBackground || defaultUrlBackground(state.pendingDrop));
     form.set("faviconUrl", state.pendingDrop.faviconUrl || ''); form.set("linkTitle", state.pendingDrop.linkTitle || '');
   }
@@ -1690,6 +1743,37 @@ function viewerMediaMarkup(tile) {
     return `<div class="viewer-file"><div class="file-symbol">${tile.type === "font" ? "Aa" : "↗"}</div><a class="btn btn--primary" href="${escapeHtml(tile.files[0])}" target="_blank" rel="noreferrer">Open file</a></div>`;
   return "";
 }
+let instagramViewerCleanup = () => {};
+function setupInstagramViewer(tile) {
+  instagramViewerCleanup();
+  const wrapper = $('.viewer-embed', els.viewerMedia), iframe = wrapper.querySelector('iframe');
+  wrapper.classList.add('viewer-embed--instagram');
+  iframe.setAttribute('scrolling', 'no');
+  let nativeWidth = Math.max(320, Number(tile.embedWidth) || 540);
+  const ratio = Number(tile.mediaWidth) > 0 && Number(tile.mediaHeight) > 0 ? tile.mediaWidth / tile.mediaHeight : (/\/reel\//.test(tile.embedUrl) ? 9 / 16 : 1);
+  let nativeHeight = Number(tile.embedHeight) || nativeWidth / ratio + 120;
+  const fit = () => {
+    const width = wrapper.clientWidth, height = wrapper.clientHeight;
+    if (!width || !height) return;
+    const scale = Math.min(width / nativeWidth, height / nativeHeight);
+    Object.assign(iframe.style, { width: `${nativeWidth}px`, height: `${nativeHeight}px`, transform: `scale(${scale})`, left: `${(width - nativeWidth * scale) / 2}px`, top: `${(height - nativeHeight * scale) / 2}px` });
+  };
+  const observer = new ResizeObserver(fit); observer.observe(wrapper);
+  const message = event => {
+    if (event.source !== iframe.contentWindow || !/^https:\/\/(?:www\.)?instagram\.com$/.test(event.origin)) return;
+    let data = event.data;
+    if (typeof data === 'string') { try { data = JSON.parse(data); } catch { return; } }
+    const height = Number(data?.details?.height || data?.height);
+    if (height >= 100 && height <= 10000) { nativeHeight = height; fit(); }
+  };
+  window.addEventListener('message', message);iframe.addEventListener('load', fit);
+  // Old tiles can use their saved poster to recover the media proportions.
+  if (!tile.mediaWidth && tile.thumbnail) {
+    const image = new Image(); image.onload = () => { if (image.naturalWidth && image.naturalHeight) { nativeHeight = nativeWidth * image.naturalHeight / image.naturalWidth + 120; fit(); } }; image.src = tile.thumbnail;
+  }
+  fit();
+  instagramViewerCleanup = () => { observer.disconnect();window.removeEventListener('message', message);iframe.removeEventListener('load', fit);instagramViewerCleanup = () => {}; };
+}
 function viewerPropertiesMarkup(tile) {
   const date = tile.dateAdded || tile.createdAt;
   let html = `<dl class="viewer-properties"><dt>Date added</dt><dd>${escapeHtml(date ? new Date(date).toLocaleString("en-AU") : "Unavailable")}</dd>${tile.location ? `<dt>Location</dt><dd>${escapeHtml(tile.location)}</dd>` : ""}</dl>`;
@@ -1746,8 +1830,10 @@ function applyViewerTransform() {
   els.viewerMedia.classList.toggle("is-zoomed", state.viewerZoom > 1);
 }
 function renderViewerSelection(tile) {
+  instagramViewerCleanup();
   els.viewerMedia.classList.toggle("viewer-media--embed", tile.type === "link" && !!tile.embedUrl);
   els.viewerMedia.innerHTML = viewerMediaMarkup(tile);
+  if (tile.type === "link" && tile.embedUrl && (tile.provider === "instagram" || /instagram\.com/.test(tile.embedUrl))) setupInstagramViewer(tile);
   els.viewerActions.innerHTML = viewerActionsMarkup(tile);
   els.viewerThumbnails.innerHTML = viewerThumbnailsMarkup(tile);
   els.viewerThumbnails.hidden = !els.viewerThumbnails.innerHTML;
@@ -2454,10 +2540,15 @@ function bindEvents() {
       renderTagEditor();
       return;
     }
-    if (e.target.closest('#embedUrlButton')) { await embedContentUrl(); return; }
+    const sizeButton = e.target.closest('[data-tile-size]');
+    if (sizeButton) { els.contentForm.elements.size.value = sizeButton.dataset.tileSize; syncTileControls(); return; }
+    if (e.target.closest('#orientationButton')) { const field = els.contentForm.elements.orientation; field.value = field.value === 'portrait' ? 'landscape' : 'portrait'; syncTileControls(); return; }
+    if (e.target.closest('#retrieveLinkThumbnail')) { await retrieveLinkThumbnail(); return; }
     const background = e.target.closest('[data-url-background]');
     if (background && state.pendingDrop?.type === 'link') {
-      state.pendingDrop.urlBackground = background.dataset.urlBackground;
+      state.pendingDrop.thumbnailRevision = (state.pendingDrop.thumbnailRevision || 0) + 1;
+      (state.pendingDrop.autoThumbnailUrls ||= new Set()).add(currentContentUrl());
+  state.pendingDrop.urlBackground = background.dataset.urlBackground;
       state.pendingThumbnail = null; refreshDynamicFields(); return;
     }
     const color = e.target.closest("[data-tile-color]");
@@ -2514,6 +2605,8 @@ function bindEvents() {
       return;
     }
     if (e.target.closest("[data-remove-thumbnail]")) {
+      state.pendingDrop.thumbnailRevision = (state.pendingDrop.thumbnailRevision || 0) + 1;
+      (state.pendingDrop.autoThumbnailUrls ||= new Set()).add(currentContentUrl());
       state.pendingThumbnail = null;
       refreshDynamicFields();
       return;
@@ -2589,6 +2682,7 @@ function bindEvents() {
     }
   });
   document.addEventListener("change", async (e) => {
+    if (e.target.id === 'embedUrlToggle') { toggleLinkEmbedding(); return; }
     if (e.target.matches('#contentForm [name="url"]')) { contentUrlChanged(); await processContentUrl(); return; }
     let selectedFiles = [...(e.target.files || [])];
     if (["galleryFileInput", "thumbnailPickerInput", "replacementFileInput"].includes(e.target.id)) {
@@ -2629,6 +2723,8 @@ function bindEvents() {
       return;
     }
     if (e.target?.id === "thumbnailPickerInput" && e.target.files?.[0]) {
+      state.pendingDrop.thumbnailRevision = (state.pendingDrop.thumbnailRevision || 0) + 1;
+      (state.pendingDrop.autoThumbnailUrls ||= new Set()).add(currentContentUrl());
       state.pendingDrop.backgroundColor = null;
       state.pendingThumbnail = selectedFiles[0];
       refreshDynamicFields();
@@ -2892,6 +2988,7 @@ function bindEvents() {
     if (e.button === 1) e.preventDefault();
   });
   els.mediaViewer.addEventListener("close", () => {
+    instagramViewerCleanup();
     els.viewerMedia.replaceChildren();
     state.viewerTileId = null;
     state.viewerIndex = 0;

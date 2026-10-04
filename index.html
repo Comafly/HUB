@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1a0f0a" />
   <title>COMMA HUB</title>
   <!-- build: collections-ui-v4-chevron -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261003-17" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20261004-1" />
 </head>
 <body>
   <div class="app-shell" id="app">
@@ -112,12 +112,13 @@
         <button class="icon-btn modal-close" type="button" data-close="contentModal" aria-label="Close">×</button>
       </div>
 
-      <div class="form-grid">
-        <label class="field field--wide">
+      <div class="form-grid content-form-grid">
+        <div id="linkFields" class="field--wide" hidden></div>
+        <label class="field content-label-field">
           <span>Label</span>
           <input name="label" type="text" placeholder="Optional label" />
         </label>
-        <label class="field field--wide">
+        <label class="field content-description-field">
           <span>Description</span>
           <textarea name="description" rows="3" placeholder="Optional description"></textarea>
         </label>
@@ -133,21 +134,12 @@
           <div class="metadata-tags" id="metadataTags" aria-live="polite"></div>
         </div>
 
-        <label class="field">
-          <span>Tile size</span>
-          <select name="size">
-            <option value="small">Small</option>
-            <option value="medium" selected>Medium</option>
-            <option value="large">Large</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Orientation</span>
-          <select name="orientation">
-            <option value="landscape" selected>Landscape</option>
-            <option value="portrait">Portrait</option>
-          </select>
-        </label>
+        <div class="field tile-size-field"><span>Tile size</span><input type="hidden" name="size" value="medium"><div class="tile-size-controls" role="group" aria-label="Tile size">
+          <button type="button" class="tile-control" data-tile-size="small" data-tooltip="Small" aria-label="Small" aria-pressed="false"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="10" y="10" width="12" height="12" rx="2"/></svg></button>
+          <button type="button" class="tile-control" data-tile-size="medium" data-tooltip="Medium" aria-label="Medium" aria-pressed="true"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="9" y="5" width="14" height="22" rx="2"/></svg></button>
+          <button type="button" class="tile-control" data-tile-size="large" data-tooltip="Large" aria-label="Large" aria-pressed="false"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="5" y="5" width="22" height="22" rx="2"/></svg></button>
+        </div></div>
+        <div class="field tile-orientation-field"><span>Orientation</span><input type="hidden" name="orientation" value="landscape"><button type="button" class="tile-control orientation-control" id="orientationButton" data-tooltip="Rotate to Portrait" aria-label="Rotate to Portrait" aria-pressed="false"><svg viewBox="0 0 64 64" aria-hidden="true"><rect class="orientation-outline" x="5" y="15" width="54" height="34" rx="2"/><path d="M22 32a10 10 0 0 1 17-7l4 4m0-7v7h-7M42 32a10 10 0 0 1-17 7l-4-4m0 7v-7h7"/></svg></button></div>
 
         <div class="dynamic-fields field--wide" id="dynamicFields"></div>
       </div>
@@ -311,6 +303,6 @@
 
   <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
-  <script type="module" src="assets/js/app.js?v=20261003-17"></script>
+  <script type="module" src="assets/js/app.js?v=20261004-1"></script>
 </body>
 </html>
