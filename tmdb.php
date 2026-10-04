@@ -3,14 +3,15 @@ declare(strict_types=1);
 
 /** Fixed-host TMDB client. Credentials never enter browser responses or cache keys. */
 final class TmdbClient {
-    public function __construct(private string $key, private ?string $cacheDir = null, private $transport = null) {}
+    public function __construct(private string $readAccessToken, private ?string $cacheDir = null, private $transport = null) {}
 
     public static function configured(): self {
         $configFile = __DIR__.'/data/tmdb-config.php';
         $config = is_file($configFile) ? require $configFile : [];
-        $key = trim((string)(getenv('HUB_TMDB_API_KEY') ?: ($config['apiKey'] ?? '')));
-        if ($key === '') throw new RuntimeException('Configure the TMDB API key on the server.');
-        return new self($key, __DIR__.'/data/tmdb-cache');
+        $token = trim((string)(getenv('HUB_TMDB_READ_ACCESS_TOKEN') ?: ($config['readAccessToken'] ?? '')));
+        if ($token === '') throw new RuntimeException('Configure the TMDB read access token on the server.');
+        if (!preg_match('/^[A-Za-z0-9._~-]+$/D', $token)) throw new RuntimeException('Invalid TMDB read access token format.');
+        return new self($token, __DIR__.'/data/tmdb-cache');
     }
 
     public static function validateIdentity(string $type, mixed $id): int {
@@ -26,7 +27,10 @@ final class TmdbClient {
         }
         if ($this->transport) $payload = ($this->transport)($path, $params);
         else {
-            $remote = $this->download('https://api.themoviedb.org/3'.$path.'?'.http_build_query($params+['api_key'=>$this->key, 'language'=>'en-US']), 4194304);
+            $remote = $this->download('https://api.themoviedb.org/3'.$path.'?'.http_build_query($params+['language'=>'en-US']), 4194304, [
+                'Accept: application/json',
+                'Authorization: Bearer '.$this->readAccessToken,
+            ]);
             $payload = json_decode($remote, true);
             if (!is_array($payload)) throw new RuntimeException('TMDB returned an invalid response. Please try again.');
         }
@@ -37,16 +41,16 @@ final class TmdbClient {
         return $payload;
     }
 
-    private function download(string $url, int $limit): string {
+    private function download(string $url, int $limit, array $headers = ['Accept: image/*']): string {
         if (!function_exists('curl_init')) throw new RuntimeException('TMDB lookup requires the PHP cURL extension.');
         $ch = curl_init($url); $body = ''; $tooLarge = false;
-        curl_setopt_array($ch, [CURLOPT_FOLLOWLOCATION=>false, CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS, CURLOPT_CONNECTTIMEOUT=>5, CURLOPT_TIMEOUT=>10, CURLOPT_USERAGENT=>'COMMA-HUB/1.0', CURLOPT_HTTPHEADER=>['Accept: application/json'], CURLOPT_WRITEFUNCTION=>static function($ch, $chunk) use (&$body, &$tooLarge, $limit) {
+        curl_setopt_array($ch, [CURLOPT_FOLLOWLOCATION=>false, CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS, CURLOPT_CONNECTTIMEOUT=>5, CURLOPT_TIMEOUT=>10, CURLOPT_USERAGENT=>'COMMA-HUB/1.0', CURLOPT_HTTPHEADER=>$headers, CURLOPT_WRITEFUNCTION=>static function($ch, $chunk) use (&$body, &$tooLarge, $limit) {
             if (strlen($body)+strlen($chunk)>$limit) { $tooLarge=true; return 0; }
             $body .= $chunk; return strlen($chunk);
         }]);
         $ok = curl_exec($ch); $status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); curl_close($ch);
         if ($tooLarge) throw new RuntimeException('The TMDB response is too large.');
-        if ($status === 401 || $status === 403) throw new RuntimeException('TMDB rejected the configured API key. Check the server configuration.');
+        if ($status === 401 || $status === 403) throw new RuntimeException('TMDB rejected the configured read access token. Check the server configuration.');
         if ($status === 429) throw new RuntimeException('TMDB is temporarily limiting requests. Please try again shortly.');
         if ($ok === false || $status !== 200) throw new RuntimeException('Could not reach TMDB. Please try again.');
         return $body;
