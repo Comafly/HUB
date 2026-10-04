@@ -110,6 +110,44 @@ function tileRequest(action, form, options = {}) {
 }
 
 export const api = {
+  searchTmdb: (query, type, page = 1, signal) =>
+    request("tmdb.search", {
+      method: "POST",
+      body: JSON.stringify({ query, type, page }),
+      signal,
+    }),
+  tmdbPoster: async (type, id, signal) => {
+    const response = await fetch(
+      new URL("api.php?action=tmdb.poster", window.location.href),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, id }),
+        credentials: "same-origin",
+        signal,
+      },
+    );
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || "TMDB poster retrieval failed.");
+    }
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/"))
+      throw new Error("TMDB did not return an image.");
+    return new File(
+      [blob],
+      "tmdb-poster." +
+        ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[
+          blob.type
+        ] || "jpg"),
+      { type: blob.type },
+    );
+  },
+  setWatchStatus: (id, watchedStatus) =>
+    request("watchlist.status", {
+      method: "POST",
+      body: JSON.stringify({ id, watchedStatus }),
+    }),
   inspectLink: async (url) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 45000);

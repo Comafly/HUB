@@ -117,9 +117,10 @@ export class ContentEditor extends Feature {
       .join("");
     els.contentForm.elements.tags.value = state.pendingTags.join(",");
     els.presetTags.innerHTML = (
-      this.services.tabs.current.filterField
+      this.services.tabs.current.tagPresets ||
+      (this.services.tabs.current.filterField
         ? []
-        : this.services.tabs.current.filters || []
+        : this.services.tabs.current.filters || [])
     )
       .map(
         (tag) =>
@@ -275,6 +276,8 @@ export class ContentEditor extends Feature {
   }
 
   fieldMarkup(type, pending = {}) {
+    if (type === "entry" && this.services.tabs.current.form === "watchlist")
+      return this.services.watchlist.fieldsMarkup(pending);
     if (type === "entry")
       return (
         this.services.tabs.fieldsMarkup(pending) +
@@ -315,7 +318,9 @@ export class ContentEditor extends Feature {
       : "Label";
     label.placeholder = entry ? "Media name" : "Optional label";
     els.tagEditor.closest(".field").hidden =
-      entry && !!this.services.tabs.current.filterField;
+      entry &&
+      !!this.services.tabs.current.filterField &&
+      !this.services.tabs.current.showTags;
     const hideLocation = ["text", "link", "entry"].includes(
       state.pendingDrop.type,
     );
@@ -359,6 +364,7 @@ export class ContentEditor extends Feature {
     }
     if (state.pendingDrop.type === "text") this.updateTextPreview();
     this.syncEmbedButton();
+    this.services.watchlist?.syncEditor();
   }
 
   initScrubInputs() {
@@ -611,6 +617,7 @@ export class ContentEditor extends Feature {
       if (tile[name] != null) f[name].value = tile[name];
     this.refreshDynamicFields();
     if (tile.type === "entry") this.services.tabs.fillFields(tile);
+    this.services.watchlist?.syncEditor();
     if (tile.type === "text") {
       const style = tile.textStyle || {};
       for (const name of ["font", "fontSize", "align"])
@@ -649,11 +656,15 @@ export class ContentEditor extends Feature {
         String(button.dataset.tileSize === f.size.value),
       ),
     );
+    const locked = this.services.tabs.current.orientation;
+    if (locked) f.orientation.value = locked;
     const button = $("#orientationButton"),
       portrait = f.orientation.value === "portrait";
+    button.disabled = !!locked;
     button.classList.toggle("is-portrait", portrait);
-    button.dataset.tooltip =
-      button.ariaLabel = `Rotate to ${portrait ? "Landscape" : "Portrait"}`;
+    button.dataset.tooltip = button.ariaLabel = locked
+      ? `Orientation locked to ${locked}`
+      : `Rotate to ${portrait ? "Landscape" : "Portrait"}`;
     button.setAttribute("aria-pressed", String(portrait));
   }
 
@@ -981,6 +992,7 @@ export class ContentEditor extends Feature {
     this.syncEmbedButton();
     $("#saveContentButton").disabled = busy;
     $("#deleteContentButton").disabled = busy;
+    this.services.watchlist?.syncEditor();
   }
 
   firstVideoFrame(file) {
@@ -1309,6 +1321,7 @@ export class ContentEditor extends Feature {
       return;
     }
     if (e.target.closest("#orientationButton")) {
+      if (this.services.tabs.current.orientation) return;
       const field = els.contentForm.elements.orientation;
       field.value = field.value === "portrait" ? "landscape" : "portrait";
       this.syncTileControls();

@@ -40,10 +40,10 @@
   {
     "id": "watchlist",
     "title": "Watchlist",
-    "filters": ["Movies", "Series", "Music", "Books", "Games"],
+    "filters": ["Movies", "Series", "Music", "Games", "Books", "Manga"],
     "filterField": "mediaType",
     "collections": true,
-    "views": ["asymmetric", "equal", "list"],
+    "views": ["equal", "list"],
     "editor": "entry",
     "nameLabel": "Name",
     "fields": [
@@ -51,7 +51,7 @@
         "name": "mediaType",
         "label": "Media type",
         "type": "select",
-        "options": ["Movies", "Series", "Music", "Books", "Games"],
+        "options": ["Movies", "Series", "Music", "Games", "Books", "Manga"],
         "required": true
       },
       {
@@ -69,7 +69,32 @@
         "label": "Watched status",
         "type": "select",
         "options": ["Not started", "In progress", "Completed"]
+      },
+      {
+        "name": "tmdbId",
+        "label": "TMDB ID",
+        "type": "text"
+      },
+      {
+        "name": "tmdbType",
+        "label": "TMDB type",
+        "type": "select",
+        "options": ["movie", "tv"]
       }
+    ],
+    "orientation": "portrait",
+    "form": "watchlist",
+    "showTags": true,
+    "tagPresets": [
+      "Action",
+      "Adventure",
+      "Animation",
+      "Comedy",
+      "Documentary",
+      "Drama",
+      "Horror",
+      "SciFi",
+      "Thriller"
     ]
   }
 ]

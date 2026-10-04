@@ -14,6 +14,7 @@ function tabDefinitions(): array {
         $ids[$id] = true;
         if (empty($tab['title']) || !in_array($tab['editor'] ?? 'content', ['content','entry'], true)) throw new RuntimeException('Invalid tab title or editor.');
         if (empty($tab['views']) || array_diff($tab['views'], ['asymmetric','equal','list'])) throw new RuntimeException('Invalid tab views.');
+        if (isset($tab['orientation']) && !in_array($tab['orientation'], ['portrait','landscape'], true)) throw new RuntimeException('Invalid locked orientation.');
         $names = [];
         $reserved = ['id','section','type','label','description','location','dateAdded','createdAt','updatedAt','files','thumbnail','tags','metadataTags','fileMetadata','text','textStyle','url','embedUrl','size','orientation','existingFiles','existingThumbnail','backgroundColor','urlBackground','faviconUrl','linkTitle','font','fontSize','bold','italic','underline','align','embedWidth','embedHeight','mediaWidth','mediaHeight','metadata'];
         foreach ($tab['fields'] ?? [] as $field) {

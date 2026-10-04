@@ -2,7 +2,8 @@ import { state, els, $, $$, escapeHtml } from "./context.js";
 
 // Keep all view icons at the original 24 px size.
 const VIEW_ICON_PATHS = {
-  equal: "M2 2h5v5H2zm7 0h5v5H9zm7 0h5v5h-5zM2 9h5v5H2zm7 0h5v5H9zm7 0h5v5h-5zM2 16h5v5H2zm7 0h5v5H9zm7 0h5v5h-5z",
+  equal:
+    "M2 2h5v5H2zm7 0h5v5H9zm7 0h5v5h-5zM2 9h5v5H2zm7 0h5v5H9zm7 0h5v5h-5zM2 16h5v5H2zm7 0h5v5H9zm7 0h5v5h-5z",
   asymmetric: "M2 2h8v12H2zm10 0h10v6H12zm0 8h10v12H12zM2 16h8v6H2z",
   list: "M2 3h3v3H2zm5 0h15v3H7zM2 10h3v3H2zm5 0h15v3H7zM2 17h3v3H2zm5 0h15v3H7z",
 };
@@ -138,6 +139,10 @@ export class TabController {
       equal: "equal grid",
       list: "list view",
     };
+    els.tileGrid.classList.toggle(
+      "tile-grid--watchlist",
+      this.current.form === "watchlist",
+    );
     els.tileGrid.classList.toggle("tile-grid--equal", this.view === "equal");
     els.tileGrid.classList.toggle("tile-grid--list", this.view === "list");
     els.tileGrid.setAttribute(
@@ -145,10 +150,18 @@ export class TabController {
       `${this.current.title || "Content"}: ${labels[this.view]}`,
     );
     const button = els.gridLayoutToggle;
-    button.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" style="width:24px;height:24px;display:block" fill="currentColor" aria-hidden="true"><path d="${VIEW_ICON_PATHS[next]}"/></svg>`;
+    button.innerHTML = [this.view, next]
+      .map(
+        (view, i) =>
+          `<svg class="grid-view-icon grid-view-icon--${i ? "next" : "current"}" data-view="${view}" viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="${VIEW_ICON_PATHS[view]}"/></svg>`,
+      )
+      .join("");
     button.hidden = views.length < 2;
     button.removeAttribute("aria-pressed");
-    button.setAttribute("aria-label", `Switch to ${labels[next]}`);
+    button.setAttribute(
+      "aria-label",
+      `Current: ${labels[this.view]}. Switch to ${labels[next]}`,
+    );
     button.dataset.tooltip = `Switch to ${labels[next]}`;
     this.services.board.layoutTiles();
   }
@@ -166,7 +179,7 @@ export class TabController {
     els.tileGrid.innerHTML = items
       .map(
         (tile) =>
-          `<article class="watchlist-row" data-tile-id="${escapeHtml(tile.id)}" tabindex="0" aria-label="${escapeHtml(tile.label || "Untitled")}"><div class="watchlist-row-name"><span class="list-field-label">Name</span><strong>${escapeHtml(tile.label || "Untitled")}</strong></div><div class="watchlist-row-description"><span class="list-field-label">Description</span><p>${escapeHtml(tile.description || "—")}</p></div><div><span class="list-field-label">Media type</span><span>${escapeHtml(tile.mediaType || tile.type)}</span></div><div><span class="list-field-label">Date added</span><time datetime="${escapeHtml(tile.dateAdded || tile.createdAt || "")}">${escapeHtml(date(tile))}</time></div><button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit ${escapeHtml(tile.label || "content")}">✎</button></article>`,
+          `<article class="watchlist-row${this.current.form === "watchlist" ? " watchlist-row--media" : ""}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0" aria-label="${escapeHtml(tile.label || "Untitled")}">${this.current.form === "watchlist" ? `<div class="watchlist-row-poster">${this.services.board.tileMedia(tile)}</div>` : ""}<div class="watchlist-row-name"><span class="list-field-label">Name</span><strong>${escapeHtml(tile.label || "Untitled")}</strong></div><div class="watchlist-row-description"><span class="list-field-label">Description</span><p>${escapeHtml(tile.description || "—")}</p></div><div><span class="list-field-label">Media type</span><span>${escapeHtml(tile.mediaType || tile.type)}</span></div><div><span class="list-field-label">Date added</span><time datetime="${escapeHtml(tile.dateAdded || tile.createdAt || "")}">${escapeHtml(date(tile))}</time></div><div class="watchlist-row-actions">${this.current.form === "watchlist" ? this.services.watchlist.watchedButton(tile) : ""}<button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit ${escapeHtml(tile.label || "content")}">✎</button></div></article>`,
       )
       .join("");
     els.emptyState.hidden = items.length > 0;

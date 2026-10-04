@@ -11,6 +11,7 @@ const FONT_URL = 'assets/fonts';
 const CALENDAR_DIR = __DIR__ . '/data';
 require_once __DIR__ . '/metadata.php';
 require_once __DIR__ . '/tab-config.php';
+require_once __DIR__ . '/tmdb.php';
 // Remote media helpers are bundled so a missing optional file cannot break the API.
 /** Fetch only public HTTP(S) addresses, pin DNS, and revalidate each redirect. */
 function fetchPublicMedia(string $url, int $limit = 2097152, bool $headOnly = false, int $timeout = 45): array {
@@ -512,6 +513,35 @@ try {
             header('X-Content-Type-Options: nosniff');
             echo $remote['body']; exit;
 
+        case 'tmdb.search':
+            $input = bodyJson();
+            response(TmdbClient::configured()->search((string)($input['query'] ?? ''), (string)($input['type'] ?? ''), (int)($input['page'] ?? 1)));
+
+        case 'tmdb.poster':
+            $input = bodyJson();
+            $poster = TmdbClient::configured()->poster((string)($input['type'] ?? ''), $input['id'] ?? '');
+            header('Content-Type: '.$poster['mime']);
+            header('Content-Disposition: attachment; filename="tmdb-poster.'.$poster['extension'].'"');
+            header('Content-Length: '.strlen($poster['body']));
+            header('X-Content-Type-Options: nosniff');
+            echo $poster['body']; exit;
+
+        case 'watchlist.status':
+            $input = bodyJson();
+            $status = $input['watchedStatus'] ?? '';
+            if (!in_array($status, ['Not started','Completed'], true)) fail('Invalid watched status');
+            $updated = mutateData(function (&$data) use ($input, $status) {
+                foreach ($data['tiles'] as &$tile) {
+                    if (($tile['id'] ?? '') !== ($input['id'] ?? '')) continue;
+                    if (($tile['section'] ?? '') !== 'watchlist' || $tile['type'] !== 'entry') fail('This item is not a Watchlist entry');
+                    $tile['watchedStatus'] = $status;
+                    $tile['updatedAt'] = date(DATE_ATOM);
+                    return $tile;
+                }
+                fail('Content no longer exists', 404);
+            });
+            response($updated);
+
         case 'tiles.create':
         case 'tiles.update':
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('POST required', 405);
@@ -540,9 +570,13 @@ try {
                 'dateAdded'=>$existing['dateAdded'] ?? $existing['createdAt'] ?? date(DATE_ATOM),
                 'type'=>$type, 'label'=>trim($input['label'] ?? ''), 'description'=>trim($input['description'] ?? ''),
                 'tags'=>cleanTags($input['tags'] ?? ''), 'size'=>in_array($input['size'] ?? '', ['small','medium','large'], true) ? $input['size'] : 'medium',
-                'orientation'=>in_array($input['orientation'] ?? '', ['landscape','portrait'], true) ? $input['orientation'] : 'landscape', 'createdAt'=>$existing['createdAt'] ?? date(DATE_ATOM),
+                'orientation'=>$tab['orientation'] ?? (in_array($input['orientation'] ?? '', ['landscape','portrait'], true) ? $input['orientation'] : 'landscape'), 'createdAt'=>$existing['createdAt'] ?? date(DATE_ATOM),
             ];
             $tile = array_merge($tile, $customFields);
+            if ($section === 'watchlist' && ($tile['tmdbId'] ?? '') !== '') {
+                TmdbClient::validateIdentity($tile['tmdbType'] ?? '', $tile['tmdbId']);
+                if (($tile['mediaType'] === 'Movies' ? 'movie' : ($tile['mediaType'] === 'Series' ? 'tv' : '')) !== $tile['tmdbType']) fail('TMDB match does not match this media type');
+            }
             $retained = json_decode((string)($input['existingFiles'] ?? '[]'), true);
             if (!is_array($retained)) fail('Invalid saved file list');
             foreach ($retained as $path) if (!is_string($path) || !in_array($path, $existing['files'] ?? [], true)) fail('Invalid saved file reference');
@@ -692,6 +726,8 @@ try {
 
         default: fail('Unknown action', 404);
     }
+} catch (InvalidArgumentException $e) {
+    fail($e->getMessage(), 400);
 } catch (Throwable $e) {
     fail($e->getMessage(), 500);
 }

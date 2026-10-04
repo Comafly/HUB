@@ -6,6 +6,7 @@ import { MediaManager } from "./media-manager.js";
 import { CollectionManager } from "./collection-manager.js";
 import { Calendar } from "./calendar.js";
 import { MediaViewer } from "./media-viewer.js";
+import { Watchlist } from "./watchlist.js";
 import { TabController } from "./tabs.js";
 
 // Construct features before starting; dependencies are explicit and share one state.
@@ -18,4 +19,5 @@ services.collections = new CollectionManager(services);
 services.calendar = new Calendar(services);
 services.viewer = new MediaViewer(services);
 services.tabs = new TabController(services);
+services.watchlist = new Watchlist(services);
 services.application.init();

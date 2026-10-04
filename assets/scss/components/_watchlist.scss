@@ -1,0 +1,468 @@
+.workspace--without-collections {
+  grid-template-columns: 170px minmax(0, 1fr);
+}
+.main-nav {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.nav-tab {
+  flex-shrink: 0;
+}
+.tile-grid--list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.watchlist-row {
+  display: grid;
+  grid-template-columns:
+    minmax(100px, 1.2fr) minmax(120px, 2fr) minmax(70px, 0.7fr)
+    minmax(95px, 0.9fr) 32px;
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.watchlist-row:hover,
+.watchlist-row:focus-visible {
+  border-color: var(--accent);
+}
+.watchlist-row > div {
+  min-width: 0;
+}
+.watchlist-row p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+.watchlist-row time,
+.watchlist-row > div > span {
+  font-size: 12px;
+}
+.list-field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 10px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.watchlist-cover {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 28px;
+  color: var(--text);
+  text-align: center;
+}
+.watchlist-cover strong {
+  font-size: clamp(20px, 3vw, 38px);
+  overflow-wrap: anywhere;
+}
+.watchlist-cover > span {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+@media (max-width: 1180px) {
+  .workspace--without-collections {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .workspace--without-collections {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 680px) {
+  .main-nav {
+    justify-content: flex-start;
+  }
+  .watchlist-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+    gap: 16px 12px;
+  }
+  .watchlist-row-name {
+    grid-column: 1 / 3;
+  }
+  .watchlist-row-description {
+    grid-column: 1 / 3;
+    grid-row: 2;
+  }
+  .watchlist-row > button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+
+// The control shows the current layout; hover/focus previews the next layout.
+.grid-layout-button .grid-view-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+  grid-area: 1 / 1;
+}
+.grid-layout-button .grid-view-icon--next {
+  visibility: hidden;
+}
+.grid-layout-button:hover .grid-view-icon--current,
+.grid-layout-button:focus-visible .grid-view-icon--current {
+  visibility: hidden;
+}
+.grid-layout-button:hover .grid-view-icon--next,
+.grid-layout-button:focus-visible .grid-view-icon--next {
+  visibility: visible;
+}
+
+.tile-grid.tile-grid--watchlist.tile-grid--equal > .tile {
+  aspect-ratio: 2 / 3;
+}
+.tile-grid--watchlist .tile-media > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.watched-toggle svg {
+  width: 24px;
+  height: 24px;
+}
+.watched-toggle[aria-pressed="false"] {
+  color: var(--muted);
+  opacity: 0.45;
+}
+.watched-toggle[aria-pressed="true"] {
+  color: var(--text);
+  opacity: 1;
+}
+.watched-toggle:hover:not(:disabled) {
+  opacity: 1;
+}
+.watched-toggle--tile {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  background: var(--panel);
+}
+.watchlist-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.watchlist-row--media {
+  grid-template-columns:
+    56px minmax(100px, 1.1fr) minmax(120px, 2fr) minmax(75px, 0.7fr)
+    minmax(95px, 0.8fr) 74px;
+  column-gap: 26px;
+}
+.watchlist-row-poster {
+  width: 56px;
+  aspect-ratio: 2 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--input-bg, var(--bg-elevated));
+}
+.watchlist-row-poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.watchlist-row-poster .watchlist-cover {
+  gap: 4px;
+  padding: 4px;
+}
+.watchlist-row-poster .watchlist-cover strong {
+  font-size: 10px;
+}
+.watchlist-row-poster .watchlist-cover > span {
+  font-size: 7px;
+}
+.watchlist-row-poster .watchlist-cover small {
+  display: none;
+}
+
+.watchlist-name-row {
+  width: 100%;
+}
+.watchlist-name-row.is-lookup {
+  display: flex;
+  gap: 14px;
+}
+.watchlist-name-row input {
+  min-width: 0;
+  flex: 1;
+}
+.watchlist-name-row button {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 46px;
+}
+#contentModal.is-watchlist .modal-card {
+  width: min(640px, calc(100vw - 32px));
+}
+#contentModal.is-watchlist #contentForm .content-form-grid {
+  grid-template-columns: 182px minmax(0, 1fr);
+  gap: 18px 26px;
+}
+#contentModal.is-watchlist #contentForm .content-label-field {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+#contentModal.is-watchlist #contentForm .content-description-field {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+#contentModal.is-watchlist .content-description-field textarea {
+  min-height: 84px;
+}
+#contentModal.is-watchlist .dynamic-fields {
+  display: contents;
+}
+#contentModal.is-watchlist .watchlist-media-status {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.watchlist-media-types {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.watchlist-media-button,
+#watchlistDraftStatus {
+  width: 48px;
+  height: 46px;
+}
+.watchlist-media-button svg {
+  width: 26px;
+  height: 26px;
+}
+.watchlist-media-button[aria-pressed="true"] {
+  color: var(--text);
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--text);
+}
+.watchlist-status-field {
+  flex: 0 0 100px;
+}
+#contentModal.is-watchlist .tag-field {
+  grid-column: 1 / -1;
+  grid-row: 4;
+}
+#contentModal.is-watchlist .watchlist-release-field {
+  grid-column: 1;
+  grid-row: 5;
+}
+#contentModal.is-watchlist .watchlist-author-field {
+  grid-column: 2;
+  grid-row: 5;
+}
+#contentModal.is-watchlist .watchlist-thumbnail-field {
+  grid-column: 1 / -1;
+  grid-row: 6;
+}
+#contentModal.is-watchlist .tile-size-field {
+  grid-column: 1;
+  grid-row: 7;
+}
+#contentModal.is-watchlist .tile-orientation-field {
+  grid-column: 2;
+  grid-row: 7;
+}
+#contentModal.is-watchlist .orientation-control {
+  margin-inline: 0;
+  width: 48px;
+  height: 46px;
+}
+#contentModal.is-watchlist .orientation-control svg {
+  width: 32px;
+  height: 32px;
+}
+.tile-control:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--muted);
+  border-color: var(--line);
+}
+#contentModal.is-watchlist .gallery-picker--single .gallery-add,
+#contentModal.is-watchlist .gallery-picker--single .gallery-thumb {
+  width: 96px;
+  height: 96px;
+}
+#contentModal.is-watchlist .gallery-thumb img {
+  object-fit: contain;
+}
+#contentModal.is-watchlist .watchlist-thumbnail-field .tile-background-picker {
+  align-items: center;
+}
+.watchlist-lookup-help {
+  color: var(--muted);
+  font-size: 11px;
+}
+.tmdb-results-card {
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+}
+.tmdb-results {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+.tmdb-result {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) minmax(100px, 0.8fr);
+  gap: 18px;
+  text-align: left;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--input-bg, var(--bg-elevated));
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.tmdb-result:hover,
+.tmdb-result:focus-visible {
+  border-color: var(--accent);
+}
+.tmdb-result-description,
+.tmdb-result-director,
+.tmdb-results-hint {
+  color: var(--muted);
+}
+.tmdb-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.tmdb-attribution {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 20px;
+}
+.tmdb-attribution a {
+  color: inherit;
+}
+
+@media (max-width: 1050px) {
+  .watchlist-row--media {
+    grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1.7fr) 74px;
+    gap: 18px 24px;
+  }
+  .watchlist-row--media .watchlist-row-poster {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+  .watchlist-row--media .watchlist-row-name {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .watchlist-row--media .watchlist-row-description {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+  .watchlist-row--media > div:nth-child(4) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .watchlist-row--media > div:nth-child(5) {
+    grid-column: 3;
+    grid-row: 3;
+  }
+  .watchlist-row--media .watchlist-row-actions {
+    grid-column: 4;
+    grid-row: 1;
+  }
+}
+@media (max-width: 680px) {
+  .watchlist-row--media {
+    grid-template-columns: 48px minmax(0, 1fr) 74px;
+    gap: 16px;
+    padding: 14px;
+  }
+  .watchlist-row--media .watchlist-row-poster {
+    width: 48px;
+    grid-row: 1 / 3;
+  }
+  .watchlist-row--media .watchlist-row-name {
+    grid-column: 2;
+  }
+  .watchlist-row--media .watchlist-row-description {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+  .watchlist-row--media > div:nth-child(4) {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .watchlist-row--media > div:nth-child(5) {
+    grid-column: 2 / -1;
+    grid-row: 4;
+  }
+  .watchlist-row--media .watchlist-row-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  #contentModal.is-watchlist #contentForm .content-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #contentModal.is-watchlist .watchlist-media-status {
+    flex-direction: column;
+  }
+  .watchlist-media-types {
+    gap: 10px;
+  }
+  .watchlist-status-field {
+    flex-basis: auto;
+  }
+  #contentModal.is-watchlist .watchlist-author-field {
+    grid-column: 1;
+    grid-row: 6;
+  }
+  #contentModal.is-watchlist .watchlist-thumbnail-field {
+    grid-row: 7;
+  }
+  #contentModal.is-watchlist .tile-size-field {
+    grid-column: 1;
+    grid-row: 8;
+  }
+  #contentModal.is-watchlist .tile-orientation-field {
+    grid-column: 1;
+    grid-row: 9;
+  }
+  .tmdb-result {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+.tmdb-logo {
+  display: inline-block;
+  width: 80px;
+  height: auto;
+  vertical-align: middle;
+}
+@media (max-width: 680px) {
+  .watchlist-row:not(.watchlist-row--media) .watchlist-row-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}

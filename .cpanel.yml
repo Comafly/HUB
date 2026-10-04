@@ -7,6 +7,9 @@ deployment:
     - /bin/cp backup.php $DEPLOYPATH
     - /bin/cp metadata.php $DEPLOYPATH
     - /bin/cp tab-config.php $DEPLOYPATH
+    - /bin/cp tmdb.php $DEPLOYPATH
+    - /bin/mkdir -p $DEPLOYPATH/data
+    - /bin/cp data/.htaccess $DEPLOYPATH/data/
     - /bin/cp -R config $DEPLOYPATH
     - /bin/cp user.ini $DEPLOYPATH
     - /bin/cp -R assets $DEPLOYPATH

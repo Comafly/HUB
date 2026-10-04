@@ -2,3 +2,5 @@ uploads/
 data/app.json
 node_modules/
 test-results/
+data/tmdb-config.php
+data/tmdb-cache/
