@@ -59,6 +59,7 @@ export class TabController {
     state.section = id;
     state.tag = "All";
     state.genreFilters = [];
+    state.mediaTypeFilters = [];
     state.query = "";
     state.activeCollectionId = null;
     els.search.value = "";
@@ -103,7 +104,7 @@ export class TabController {
       return false;
     if (
       this.current.form === "watchlist" &&
-      !this.services.watchlist.matchesGenres(tile)
+      (!this.services.watchlist.matchesGenres(tile) || !this.services.watchlist.matchesMediaTypes(tile))
     )
       return false;
     if (

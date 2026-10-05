@@ -8,7 +8,7 @@
     <!-- build: collections-ui-v4-chevron -->
     <link
       rel="stylesheet"
-      href="assets/css/style.css?v=20261005-mobile-hold-sort"
+      href="assets/css/style.css?v=20261005-screenshot-pickers"
     />
   </head>
   <body>
@@ -105,13 +105,14 @@
                 aria-label="Watchlist genres"
                 hidden
               >
+                <button type="button" class="genre-filter-button select-media-types-button" id="selectWatchlistMediaTypes" aria-haspopup="dialog" aria-controls="watchlistMediaTypesModal">Select Media Types</button>
                 <div
                   class="genre-filter-list"
                   id="watchlistGenreList"
                   role="group"
                   aria-label="Select genres"
                 ></div>
-                <button type="button" class="genre-filter-button select-genres-button" id="selectWatchlistGenres">Select Genres</button>
+                <button type="button" class="genre-filter-button select-genres-button" id="selectWatchlistGenres" aria-haspopup="dialog" aria-controls="watchlistGenresModal">Select Genres</button>
               </section>
             </div>
 
@@ -856,10 +857,23 @@
       </button>
     </dialog>
 
-    <dialog class="modal genre-picker-modal" id="watchlistGenresModal" aria-labelledby="watchlistGenresTitle">
+    <dialog class="modal genre-picker-modal watchlist-selection-modal" id="watchlistGenresModal" aria-labelledby="watchlistGenresTitle">
       <form method="dialog" class="modal-card">
         <div class="modal-head"><h2 id="watchlistGenresTitle">Select Genres</h2></div>
+        <p class="selection-hint">No selections shows all genres.</p>
         <div class="genre-toggle-list" id="watchlistGenreOptions" role="group" aria-label="Available genres"></div>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn--ghost" value="cancel">Cancel</button>
+          <button type="submit" class="btn" value="ok">OK</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal watchlist-selection-modal" id="watchlistMediaTypesModal" aria-labelledby="watchlistMediaTypesTitle">
+      <form method="dialog" class="modal-card">
+        <div class="modal-head"><h2 id="watchlistMediaTypesTitle">Select Media Types</h2></div>
+        <p class="selection-hint">No selections shows all media types.</p>
+        <div class="genre-toggle-list" id="watchlistMediaTypeOptions" role="group" aria-label="Available media types"></div>
         <div class="modal-actions">
           <button type="submit" class="btn btn--ghost" value="cancel">Cancel</button>
           <button type="submit" class="btn" value="ok">OK</button>
@@ -871,7 +885,7 @@
 
     <script
       type="module"
-      src="assets/js/app.js?v=20261005-mobile-hold-sort"
+      src="assets/js/app.js?v=20261005-screenshot-pickers"
     ></script>
   </body>
 </html>

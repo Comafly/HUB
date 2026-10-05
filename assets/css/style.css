@@ -6110,4 +6110,180 @@ body.is-mobile-collection-dragging {
     touch-action: pan-y;
     -webkit-touch-callout: none;
   }
+}
+/* Screenshot-matched Watchlist filters and selection dialogs. */
+.select-media-types-button {
+  display: none;
+}
+
+.watchlist-genre-filters .genre-filter-list {
+  display: contents;
+}
+
+.watchlist-genre-filters .genre-filter-all {
+  order: 0;
+}
+
+.watchlist-genre-filters .select-genres-button {
+  order: 1;
+  margin-left: 0;
+  border-style: dashed;
+  border-width: 2px;
+  background: transparent;
+  font-weight: 500;
+}
+
+.watchlist-genre-filters [data-genre]:not(.genre-filter-all) {
+  order: 2;
+}
+
+.watchlist-selection-modal .modal-card {
+  display: flex;
+  flex-direction: column;
+  width: min(500px, 100%);
+  height: min(640px, 100dvh - 2 * var(--modal-gutter));
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.watchlist-selection-modal .modal-head {
+  flex: none;
+}
+
+.selection-hint {
+  flex: none;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.watchlist-selection-modal .genre-toggle-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+  overscroll-behavior: contain;
+  padding: 4px 4px 16px;
+}
+
+.watchlist-selection-modal .modal-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  flex: none;
+  display: flex;
+  gap: 12px;
+  margin-top: 0;
+  padding: 16px 0 max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--bg-elevated);
+}
+
+.watchlist-selection-modal .modal-actions .btn {
+  flex: 1;
+  min-height: 48px;
+}
+
+@media (max-width: 900px) {
+  .tags-panel.is-watchlist-filters {
+    display: none;
+  }
+  .watchlist-genre-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .watchlist-genre-filters .genre-filter-list [data-genre] {
+    display: none;
+  }
+  .watchlist-genre-filters .select-media-types-button,
+  .watchlist-genre-filters .select-genres-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    order: 0;
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    padding: 10px 8px;
+    margin: 0;
+    border: 1px solid var(--line-strong);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: normal;
+    text-align: center;
+  }
+  .watchlist-genre-filters .has-selection {
+    border-color: var(--accent);
+  }
+  .watchlist-row--media {
+    grid-template-columns: clamp(72px, 24vw, 116px) minmax(0, 1fr) 76px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "name name actions" "poster description description" "poster tags tags";
+    gap: 12px 14px;
+    padding: 16px;
+    align-items: start;
+  }
+  .watchlist-row--media .watchlist-row-name {
+    display: contents;
+  }
+  .watchlist-row--media .watchlist-row-name strong {
+    grid-area: name;
+    min-width: 0;
+    align-self: center;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  .watchlist-row--media .watchlist-row-poster {
+    width: 100%;
+    border-radius: 12px;
+  }
+  .watchlist-row--media .watchlist-row-description {
+    align-self: start;
+  }
+  .watchlist-row--media .watchlist-row-description p {
+    -webkit-line-clamp: 4;
+  }
+  .watchlist-row--media .watchlist-row-tags {
+    grid-area: tags;
+    align-self: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+  }
+  .watchlist-row--media .watchlist-row-tags span {
+    padding: 5px 9px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: transparent;
+    font-size: 10px;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .watchlist-row--media .watchlist-row-media-icon {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+  }
+  .watchlist-row--media .watched-toggle {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line-strong);
+  }
+}
+@media (max-width: 480px) {
+  .watchlist-genre-filters {
+    gap: 10px;
+  }
+  .watchlist-row--media {
+    padding: 14px;
+    gap: 12px;
+  }
+  .watchlist-row--media .watchlist-row-name strong {
+    font-size: 15px;
+  }
 }/*# sourceMappingURL=style.css.map */

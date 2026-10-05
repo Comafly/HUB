@@ -1,6 +1,7 @@
 import { Feature } from "./feature.js";
 import {
   state,
+  $,
   els,
   GLOBE_ICON,
   escapeHtml,
@@ -19,10 +20,15 @@ export class ContentBoard extends Feature {
   renderTags() {
     const tab = this.services.tabs.current;
     const filters = ["All", ...(tab.filters || [])];
+    const watchlist = tab.form === "watchlist";
+    $(".tags-panel").classList.toggle("is-watchlist-filters", watchlist);
+    const selected = (tag) => watchlist && state.mediaTypeFilters.length
+      ? state.mediaTypeFilters.includes(tag)
+      : state.tag === tag;
     els.tagList.innerHTML = filters
       .map(
         (tag) =>
-          `<button class="tag-btn ${state.tag === tag ? "is-active" : ""}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span>↗</span></button>`,
+          `<button class="tag-btn ${selected(tag) ? "is-active" : ""}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span>↗</span></button>`,
       )
       .join("");
     if (!tab.metadataFilters) return;
@@ -286,6 +292,10 @@ export class ContentBoard extends Feature {
     const tag = e.target.closest("[data-tag]");
     if (tag) {
       state.tag = tag.dataset.tag;
+      if (this.services.tabs.current.form === "watchlist") {
+        state.mediaTypeFilters = [];
+        this.services.watchlist.syncSelectionButtons();
+      }
       this.renderTags();
       this.renderTiles();
       return;

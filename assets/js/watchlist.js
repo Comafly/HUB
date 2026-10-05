@@ -92,12 +92,16 @@ export class Watchlist extends Feature {
     const genres = this.availableGenres();
     // A compact preview; every available genre remains in the picker.
     const selected = genres.filter(([key]) => state.genreFilters.includes(key));
-    const preview = [...selected, ...genres.filter(([key]) => !state.genreFilters.includes(key))].slice(0, 3);
+    const preferred = ["action", "comedy", "documentary", "drama", "horror", "science fiction"]
+      .map((key) => genres.find(([genre]) => genre === key)).filter(Boolean);
+    const preview = [...new Map([...selected, ...preferred, ...genres].map((genre) => [genre[0], genre])).values()].slice(0, 6);
+    const picker = $("#selectWatchlistGenres");
     $("#watchlistGenreList").innerHTML =
-      '<button type="button" class="genre-filter-button" data-genre="" aria-pressed="false">All genres</button>' +
+      '<button type="button" class="genre-filter-button genre-filter-all" data-genre="" aria-pressed="false">All genres</button>' +
       preview.map(([key, name]) =>
         `<button type="button" class="genre-filter-button" data-genre="${escapeHtml(key)}" aria-pressed="false">${escapeHtml(name)}</button>`,
       ).join("");
+    $("#watchlistGenreList").firstElementChild.after(picker);
     this.syncGenreButtons();
   }
 
@@ -108,6 +112,38 @@ export class Watchlist extends Feature {
     ).join("");
     dialog.returnValue = "cancel";
     dialog.showModal();
+  }
+
+  availableMediaTypes() {
+    const values = this.services.tabs.current.filters || MEDIA.map(([value]) => value);
+    return [...new Set([...values, ...this.services.tabs.items.map((tile) => tile.mediaType).filter(Boolean)])];
+  }
+
+  openMediaTypePicker() {
+    const dialog = $("#watchlistMediaTypesModal");
+    const selected = state.mediaTypeFilters.length ? state.mediaTypeFilters : state.tag !== "All" ? [state.tag] : [];
+    $("#watchlistMediaTypeOptions").innerHTML = this.availableMediaTypes().map((value) =>
+      `<label class="genre-toggle"><span>${escapeHtml(value)}</span><input type="checkbox" role="switch" value="${escapeHtml(value)}" ${selected.includes(value) ? "checked" : ""}><span class="genre-toggle-track" aria-hidden="true"></span></label>`,
+    ).join("");
+    dialog.returnValue = "cancel";
+    dialog.showModal();
+  }
+
+  matchesMediaTypes(tile) {
+    return !state.mediaTypeFilters.length || state.mediaTypeFilters.includes(tile.mediaType);
+  }
+
+  syncSelectionButtons() {
+    const mediaButton = $("#selectWatchlistMediaTypes");
+    const genreButton = $("#selectWatchlistGenres");
+    const customTypes = state.mediaTypeFilters.length > 0 || state.tag !== "All";
+    const customGenres = state.genreFilters.length > 0;
+    mediaButton.textContent = customTypes ? "Customs Types" : "Select Media Types";
+    genreButton.textContent = customGenres ? "Custom Genres" : "Select Genres";
+    mediaButton.classList.toggle("has-selection", customTypes);
+    genreButton.classList.toggle("has-selection", customGenres);
+    mediaButton.setAttribute("aria-label", `${mediaButton.textContent}. Open media type selection`);
+    genreButton.setAttribute("aria-label", `${genreButton.textContent}. Open genre selection`);
   }
 
   get sortMode() {
@@ -154,6 +190,7 @@ export class Watchlist extends Feature {
   }
 
   syncGenreButtons() {
+    this.syncSelectionButtons();
     for (const button of $$("[data-genre]", $("#watchlistGenreFilters"))) {
       const selected = button.dataset.genre
         ? state.genreFilters.includes(button.dataset.genre)
@@ -501,6 +538,7 @@ export class Watchlist extends Feature {
     try {
       if (target.id === "watchlistSort") return this.toggleSort();
       if (target.id === "selectWatchlistGenres") return this.openGenrePicker();
+      if (target.id === "selectWatchlistMediaTypes") return this.openMediaTypePicker();
       if (target.dataset.genre !== undefined) {
         event.preventDefault();
         return this.toggleGenre(target.dataset.genre);
@@ -547,17 +585,25 @@ export class Watchlist extends Feature {
   }
 
   bindEvents() {
-    const genresDialog = $("#watchlistGenresModal");
-    genresDialog.addEventListener("close", () => {
-      if (genresDialog.returnValue !== "ok" || !this.isActive()) return;
-      state.genreFilters = $$("input:checked", genresDialog).map((input) => input.value);
-      this.renderGenreFilters();
-      this.services.board.renderTiles();
-    });
-    genresDialog.addEventListener("cancel", () => { genresDialog.returnValue = "cancel"; });
-    genresDialog.addEventListener("click", (event) => {
-      if (event.target === genresDialog) { genresDialog.returnValue = "cancel"; genresDialog.close(); }
-    });
+    const pickers = [
+      ["#watchlistGenresModal", "genreFilters"],
+      ["#watchlistMediaTypesModal", "mediaTypeFilters"],
+    ];
+    for (const [selector, field] of pickers) {
+      const dialog = $(selector);
+      dialog.addEventListener("close", () => {
+        if (dialog.returnValue !== "ok" || !this.isActive()) return;
+        state[field] = $$("input:checked", dialog).map((input) => input.value);
+        if (field === "mediaTypeFilters") state.tag = "All";
+        this.renderGenreFilters();
+        this.services.board.renderTags?.();
+        this.services.board.renderTiles();
+      });
+      dialog.addEventListener("cancel", () => { dialog.returnValue = "cancel"; });
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) { dialog.returnValue = "cancel"; dialog.close(); }
+      });
+    }
     document.addEventListener("click", this.handleClick);
     els.contentForm.elements.label.addEventListener("input", () => {
       if (this.isActive()) {

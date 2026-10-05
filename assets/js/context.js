@@ -44,6 +44,7 @@ export const state = {
   tabs: [],
   tag: "All",
   genreFilters: [],
+  mediaTypeFilters: [],
   query: "",
   pendingDrop: null,
   pendingThumbnail: null,
