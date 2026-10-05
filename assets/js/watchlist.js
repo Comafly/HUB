@@ -70,30 +70,87 @@ export class Watchlist extends Feature {
     return this.services.tabs.current.form === "watchlist";
   }
 
-  renderGenreFilters() {
-    const panel = $("#watchlistGenreFilters");
-    panel.hidden = !this.isActive();
-    if (panel.hidden) return;
+  availableGenres() {
     const genres = new Map();
-    const labels = [
+    for (const label of [
       ...(this.services.tabs.current.tagPresets || []),
       ...this.services.tabs.items.flatMap((tile) => tile.tags || []),
       ...state.genreFilters,
-    ];
-    for (const label of labels) {
+    ]) {
       const name = String(label).trim();
       const key = name.toLowerCase();
       if (name && !genres.has(key)) genres.set(key, name);
     }
+    return [...genres].sort((a, b) => a[1].localeCompare(b[1]));
+  }
+
+  renderGenreFilters() {
+    const panel = $("#watchlistGenreFilters");
+    panel.hidden = !this.isActive();
+    this.syncSortButton();
+    if (panel.hidden) return;
+    const genres = this.availableGenres();
+    // A compact preview; every available genre remains in the picker.
+    const selected = genres.filter(([key]) => state.genreFilters.includes(key));
+    const preview = [...selected, ...genres.filter(([key]) => !state.genreFilters.includes(key))].slice(0, 3);
     $("#watchlistGenreList").innerHTML =
       '<button type="button" class="genre-filter-button" data-genre="" aria-pressed="false">All genres</button>' +
-      [...genres]
-        .map(
-          ([key, name]) =>
-            `<button type="button" class="genre-filter-button" data-genre="${escapeHtml(key)}" aria-pressed="false">${escapeHtml(name)}</button>`,
-        )
-        .join("");
+      preview.map(([key, name]) =>
+        `<button type="button" class="genre-filter-button" data-genre="${escapeHtml(key)}" aria-pressed="false">${escapeHtml(name)}</button>`,
+      ).join("");
     this.syncGenreButtons();
+  }
+
+  openGenrePicker() {
+    const dialog = $("#watchlistGenresModal");
+    $("#watchlistGenreOptions").innerHTML = this.availableGenres().map(([key, name]) =>
+      `<label class="genre-toggle"><span>${escapeHtml(name)}</span><input type="checkbox" role="switch" value="${escapeHtml(key)}" ${state.genreFilters.includes(key) ? "checked" : ""}><span class="genre-toggle-track" aria-hidden="true"></span></label>`,
+    ).join("");
+    dialog.returnValue = "cancel";
+    dialog.showModal();
+  }
+
+  get sortMode() {
+    return state.settings.watchlistSort === "releaseDate" ? "releaseDate" : "alphabetical";
+  }
+
+  sortItems(items) {
+    const alphabetical = (a, b) => (a.label || "").localeCompare(b.label || "", undefined, { sensitivity: "base", numeric: true });
+    return [...items].sort((a, b) => {
+      if (this.sortMode === "alphabetical") return alphabetical(a, b);
+      // Chronological, with undated titles last and alphabetical ties.
+      return (a.releaseDate || "9999").localeCompare(b.releaseDate || "9999") || alphabetical(a, b);
+    });
+  }
+
+  syncSortButton() {
+    const button = $("#watchlistSort");
+    button.hidden = !this.isActive();
+    const byDate = this.sortMode === "releaseDate";
+    const label = byDate ? "Release Date" : "Alphabetical";
+    button.dataset.tooltip = `Sort: ${label}`;
+    button.setAttribute("aria-label", `Sort: ${label}. Switch to ${byDate ? "Alphabetical" : "Release Date"}`);
+    button.setAttribute("aria-pressed", String(byDate));
+    $(".watchlist-sort-label", button).textContent = byDate ? "Date" : "A–Z";
+  }
+
+  toggleSort() {
+    state.settings.watchlistSort = this.sortMode === "alphabetical" ? "releaseDate" : "alphabetical";
+    this.services.application.saveLocalTheme();
+    this.syncSortButton();
+    this.services.board.renderTiles();
+  }
+
+  releaseDateLabel(tile) {
+    const value = tile.releaseDate;
+    if (!value) return "";
+    const date = new Date(`${value}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(date);
+  }
+
+  mediaTypeIcon(value) {
+    const media = MEDIA.find(([stored]) => stored === value);
+    return `<span class="watchlist-row-media-icon" role="img" aria-label="${escapeHtml(this.mediaTypeLabel(value))}" data-tooltip="${escapeHtml(this.mediaTypeLabel(value))}">${media?.[2] || icon('<circle cx="12" cy="12" r="8"/>')}</span>`;
   }
 
   syncGenreButtons() {
@@ -119,7 +176,7 @@ export class Watchlist extends Feature {
         (value) => value !== genre,
       );
     else state.genreFilters.push(genre);
-    // Keep the focused button and the horizontal scroll position intact.
+    // Keep the focused quick filter in place.
     this.syncGenreButtons();
     this.services.board.renderTiles();
   }
@@ -442,6 +499,8 @@ export class Watchlist extends Feature {
       event.stopPropagation();
     }
     try {
+      if (target.id === "watchlistSort") return this.toggleSort();
+      if (target.id === "selectWatchlistGenres") return this.openGenrePicker();
       if (target.dataset.genre !== undefined) {
         event.preventDefault();
         return this.toggleGenre(target.dataset.genre);
@@ -488,6 +547,17 @@ export class Watchlist extends Feature {
   }
 
   bindEvents() {
+    const genresDialog = $("#watchlistGenresModal");
+    genresDialog.addEventListener("close", () => {
+      if (genresDialog.returnValue !== "ok" || !this.isActive()) return;
+      state.genreFilters = $$("input:checked", genresDialog).map((input) => input.value);
+      this.renderGenreFilters();
+      this.services.board.renderTiles();
+    });
+    genresDialog.addEventListener("cancel", () => { genresDialog.returnValue = "cancel"; });
+    genresDialog.addEventListener("click", (event) => {
+      if (event.target === genresDialog) { genresDialog.returnValue = "cancel"; genresDialog.close(); }
+    });
     document.addEventListener("click", this.handleClick);
     els.contentForm.elements.label.addEventListener("input", () => {
       if (this.isActive()) {

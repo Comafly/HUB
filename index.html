@@ -8,7 +8,7 @@
     <!-- build: collections-ui-v4-chevron -->
     <link
       rel="stylesheet"
-      href="assets/css/style.css?v=20261005-responsive-genres"
+      href="assets/css/style.css?v=20261005-mobile-hold-sort"
     />
   </head>
   <body>
@@ -64,6 +64,10 @@
                   aria-pressed="false"
                   data-tooltip="Switch to equal grid"
                 ></button>
+                <button type="button" class="icon-btn watchlist-sort-button" id="watchlistSort" aria-label="Sort: Alphabetical. Switch to Release Date" data-tooltip="Sort: Alphabetical" hidden>
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 5h16M4 12h11M4 19h6m10-9v11m-3-3 3 3 3-3"/></svg>
+                  <span class="watchlist-sort-label">A–Z</span>
+                </button>
                 <div class="search-wrap">
                   <span class="search-icon" aria-hidden="true">⌕</span>
                   <input
@@ -101,13 +105,13 @@
                 aria-label="Watchlist genres"
                 hidden
               >
-                <span class="genre-filter-label">Genres</span>
                 <div
                   class="genre-filter-list"
                   id="watchlistGenreList"
                   role="group"
                   aria-label="Select genres"
                 ></div>
+                <button type="button" class="genre-filter-button select-genres-button" id="selectWatchlistGenres">Select Genres</button>
               </section>
             </div>
 
@@ -852,11 +856,22 @@
       </button>
     </dialog>
 
+    <dialog class="modal genre-picker-modal" id="watchlistGenresModal" aria-labelledby="watchlistGenresTitle">
+      <form method="dialog" class="modal-card">
+        <div class="modal-head"><h2 id="watchlistGenresTitle">Select Genres</h2></div>
+        <div class="genre-toggle-list" id="watchlistGenreOptions" role="group" aria-label="Available genres"></div>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn--ghost" value="cancel">Cancel</button>
+          <button type="submit" class="btn" value="ok">OK</button>
+        </div>
+      </form>
+    </dialog>
+
     <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
     <script
       type="module"
-      src="assets/js/app.js?v=20261005-responsive-genres"
+      src="assets/js/app.js?v=20261005-mobile-hold-sort"
     ></script>
   </body>
 </html>

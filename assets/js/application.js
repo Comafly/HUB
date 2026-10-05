@@ -147,6 +147,8 @@ export class Application extends Feature {
         state.settings.mode = saved.mode;
       if (typeof saved.alwaysShowTileDetails === "boolean")
         state.settings.alwaysShowTileDetails = saved.alwaysShowTileDetails;
+      if (["alphabetical", "releaseDate"].includes(saved.watchlistSort))
+        state.settings.watchlistSort = saved.watchlistSort;
       if (["asymmetric", "equal"].includes(saved.gridLayout))
         state.settings.gridLayout = saved.gridLayout;
       if (

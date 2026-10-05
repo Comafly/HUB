@@ -18,12 +18,13 @@ export class TabController {
     if (!Array.isArray(definitions) || !definitions.length)
       throw new Error("No tabs are configured. Check config/tabs.json.");
     this.definitions = definitions;
-    $(".main-nav").innerHTML = definitions
+    $(".main-nav").innerHTML = '<div class="nav-track">' + definitions
       .map(
         (tab) =>
           `<button type="button" class="nav-tab" data-section="${escapeHtml(tab.id)}">${escapeHtml(tab.title)}</button>`,
       )
-      .join("");
+      .join("") + "</div>";
+    this.centerNavigation();
   }
 
   get current() {
@@ -79,6 +80,7 @@ export class TabController {
       if (active) button.setAttribute("aria-current", "page");
       else button.removeAttribute("aria-current");
     });
+    this.centerNavigation();
     this.services.application.renderAll();
     this.applyView();
     document.dispatchEvent(
@@ -193,13 +195,79 @@ export class TabController {
       .map((tile) => {
         const tags =
           watchlist && tile.tags?.length
-            ? `<div class="viewer-tags watchlist-row-tags">${tile.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>`
+            ? `<div class="viewer-tags watchlist-row-tags">${tile.tags.slice(0, 3).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>`
             : "";
         const edit = `<button class="tile-action${watchlist ? " watchlist-row-edit" : ""}" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit ${escapeHtml(tile.label || "content")}" data-tooltip="Edit content">✎</button>`;
-        return `<article class="watchlist-row${watchlist ? " watchlist-row--media" : ""}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0" aria-label="${escapeHtml(tile.label || "Untitled")}">${watchlist ? `<div class="watchlist-row-poster">${this.services.board.tileMedia(tile)}</div>` : ""}<div class="watchlist-row-name">${watchlist ? "" : '<span class="list-field-label">Name</span>'}<strong>${escapeHtml(tile.label || "Untitled")}</strong>${tags}</div><div class="watchlist-row-description"><span class="list-field-label">Description</span><p>${escapeHtml(tile.description || "—")}</p></div><div class="list-row-type"><span class="list-field-label">Media type</span><span>${escapeHtml(tile.mediaType || tile.type)}</span></div><div class="list-row-date"><span class="list-field-label">${watchlist ? "Release date" : "Date added"}</span><time datetime="${escapeHtml(dateValue(tile))}">${escapeHtml(date(tile))}</time></div><div class="watchlist-row-actions">${watchlist ? this.services.watchlist.watchedButton(tile) : edit}</div>${watchlist ? edit : ""}</article>`;
+        const year = watchlist && /^\d{4}/.test(tile.releaseDate || "") ? ` (${tile.releaseDate.slice(0, 4)})` : "";
+        return `<article class="watchlist-row${watchlist ? " watchlist-row--media" : ""}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0" aria-label="${escapeHtml(tile.label || "Untitled")}">${watchlist ? `<div class="watchlist-row-poster">${this.services.board.tileMedia(tile)}</div>` : ""}<div class="watchlist-row-name">${watchlist ? "" : '<span class="list-field-label">Name</span>'}<strong>${escapeHtml(tile.label || "Untitled")}<span class="watchlist-row-year">${escapeHtml(year)}</span></strong>${tags}</div><div class="watchlist-row-description">${watchlist ? "" : '<span class="list-field-label">Description</span>'}<p>${escapeHtml(tile.description || "—")}</p></div><div class="list-row-type"><span class="list-field-label">Media type</span><span>${escapeHtml(tile.mediaType || tile.type)}</span></div><div class="list-row-date"><span class="list-field-label">${watchlist ? "Release date" : "Date added"}</span><time datetime="${escapeHtml(dateValue(tile))}">${escapeHtml(date(tile))}</time></div><div class="watchlist-row-actions">${watchlist ? this.services.watchlist.mediaTypeIcon(tile.mediaType) + this.services.watchlist.watchedButton(tile) : edit}</div>${watchlist ? edit : ""}</article>`;
       })
       .join("");
     els.emptyState.hidden = items.length > 0;
+  }
+
+  centerNavigation() {
+    const nav = $(".main-nav");
+    const active = $(".nav-tab.is-active", nav) || $(".nav-tab", nav);
+    if (!active) return;
+    const offset = nav.clientWidth / 2 - parseFloat(getComputedStyle(nav).paddingLeft) - (active.offsetLeft + active.offsetWidth / 2);
+    nav.style.setProperty("--nav-offset", `${offset}px`);
+  }
+
+  bindEvents() {
+    const nav = $(".main-nav");
+    let gesture = null;
+    let suppressClick = false;
+    new ResizeObserver(() => this.centerNavigation()).observe(nav);
+    document.fonts?.ready.then(() => this.centerNavigation());
+    nav.addEventListener("pointerdown", (event) => {
+      if (!matchMedia("(max-width: 900px)").matches || !event.isPrimary || event.button !== 0) return;
+      gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, swiping: false };
+      suppressClick = false;
+    });
+    nav.addEventListener("pointermove", (event) => {
+      if (!gesture || event.pointerId !== gesture.id) return;
+      const dx = event.clientX - gesture.x;
+      const dy = event.clientY - gesture.y;
+      if (!gesture.swiping && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { gesture = null; return; }
+      if (Math.abs(dx) > 12) {
+        gesture.swiping = true;
+        suppressClick = true;
+        nav.setPointerCapture?.(event.pointerId);
+        nav.classList.add("is-swiping");
+        nav.style.setProperty("--nav-swipe", `${dx * 0.65}px`);
+        event.preventDefault();
+      }
+    });
+    const finish = (event) => {
+      if (!gesture || event.pointerId !== gesture.id) return;
+      const dx = event.clientX - gesture.x;
+      const swiping = gesture.swiping;
+      gesture = null;
+      nav.classList.remove("is-swiping");
+      nav.style.removeProperty("--nav-swipe");
+      if (nav.hasPointerCapture?.(event.pointerId)) nav.releasePointerCapture(event.pointerId);
+      if (event.type === "pointerup" && swiping && Math.abs(dx) >= 40) {
+        const index = this.definitions.findIndex((tab) => tab.id === state.section);
+        const next = this.definitions[index + (dx < 0 ? 1 : -1)];
+        if (next) this.select(next.id);
+      }
+      setTimeout(() => { suppressClick = false; }, 0);
+    };
+    nav.addEventListener("pointerup", finish);
+    nav.addEventListener("pointercancel", finish);
+    nav.addEventListener("lostpointercapture", finish);
+    nav.addEventListener("click", (event) => {
+      if (!suppressClick) return;
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClick = false;
+    }, true);
+    nav.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      const index = this.definitions.findIndex((tab) => tab.id === state.section);
+      const next = this.definitions[index + (event.key === "ArrowRight" ? 1 : -1)];
+      if (next) { event.preventDefault(); this.select(next.id); $(".nav-tab.is-active", nav)?.focus(); }
+    });
   }
 
   fieldsMarkup(pending) {
