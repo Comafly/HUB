@@ -1,6 +1,6 @@
-import { STEPPER_PREFERENCES, normalizePreference } from "./preferences.js?v=20261006-inline-links-steppers";
-import { api } from "./api.js?v=20261006-inline-links-steppers";
-import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
+import { STEPPER_PREFERENCES, normalizePreference } from "./preferences.js?v=20261007-watchlist-controls";
+import { api } from "./api.js?v=20261007-watchlist-controls";
+import { Feature } from "./feature.js?v=20261007-watchlist-controls";
 import {
   ENABLE_CALENDAR_MODULE,
   state,
@@ -11,7 +11,7 @@ import {
   escapeHtml,
   favicon,
   normalizeUrl,
-} from "./context.js?v=20261006-inline-links-steppers";
+} from "./context.js?v=20261007-watchlist-controls";
 
 export class Application extends Feature {
   constructor(services) {
@@ -150,6 +150,8 @@ export class Application extends Feature {
         state.settings[key] = normalizePreference(key, saved[key] ?? state.settings[key]);
       if (typeof saved.alwaysShowTileDetails === "boolean")
         state.settings.alwaysShowTileDetails = saved.alwaysShowTileDetails;
+      if (["alphabetical", "releaseDate"].includes(saved.watchlistSort))
+        state.settings.watchlistSort = saved.watchlistSort;
       if (["asymmetric", "equal"].includes(saved.gridLayout))
         state.settings.gridLayout = saved.gridLayout;
       if (

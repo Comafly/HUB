@@ -1,4 +1,4 @@
-import { cleanLinkInfo, cleanLinkTile } from "./link-metadata.js?v=20261006-inline-links-steppers";
+import { cleanLinkInfo, cleanLinkTile } from "./link-metadata.js?v=20261007-watchlist-controls";
 const API_URL = "api.php";
 
 async function request(action, options = {}) {

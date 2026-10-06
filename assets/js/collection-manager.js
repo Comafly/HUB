@@ -1,6 +1,6 @@
-import { api } from "./api.js?v=20261006-inline-links-steppers";
-import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
-import { state, $, $$, els, escapeHtml, defaultTileLabel } from "./context.js?v=20261006-inline-links-steppers";
+import { api } from "./api.js?v=20261007-watchlist-controls";
+import { Feature } from "./feature.js?v=20261007-watchlist-controls";
+import { state, $, $$, els, escapeHtml, defaultTileLabel } from "./context.js?v=20261007-watchlist-controls";
 
 export class CollectionManager extends Feature {
   constructor(services) {

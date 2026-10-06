@@ -1,5 +1,5 @@
-import { api } from "./api.js?v=20261006-inline-links-steppers";
-import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
+import { api } from "./api.js?v=20261007-watchlist-controls";
+import { Feature } from "./feature.js?v=20261007-watchlist-controls";
 import {
   IMAGE_LIMIT,
   encode,
@@ -18,7 +18,7 @@ import {
   safeHostname,
   displayText,
   tileColor,
-} from "./context.js?v=20261006-inline-links-steppers";
+} from "./context.js?v=20261007-watchlist-controls";
 
 export class ContentEditor extends Feature {
   constructor(services) {

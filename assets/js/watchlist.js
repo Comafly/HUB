@@ -1,6 +1,6 @@
-import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
-import { state, els, $, $$, escapeHtml } from "./context.js?v=20261006-inline-links-steppers";
-import { api } from "./api.js?v=20261006-inline-links-steppers";
+import { Feature } from "./feature.js?v=20261007-watchlist-controls";
+import { state, els, $, $$, escapeHtml } from "./context.js?v=20261007-watchlist-controls";
+import { api } from "./api.js?v=20261007-watchlist-controls";
 
 const icon = (paths) =>
   `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
@@ -70,33 +70,127 @@ export class Watchlist extends Feature {
     return this.services.tabs.current.form === "watchlist";
   }
 
-  renderGenreFilters() {
-    const panel = $("#watchlistGenreFilters");
-    panel.hidden = !this.isActive();
-    if (panel.hidden) return;
+  availableGenres() {
     const genres = new Map();
-    const labels = [
+    for (const label of [
       ...(this.services.tabs.current.tagPresets || []),
       ...this.services.tabs.items.flatMap((tile) => tile.tags || []),
       ...state.genreFilters,
-    ];
-    for (const label of labels) {
+    ]) {
       const name = String(label).trim();
       const key = name.toLowerCase();
       if (name && !genres.has(key)) genres.set(key, name);
     }
+    return [...genres].sort((a, b) => a[1].localeCompare(b[1]));
+  }
+
+  renderGenreFilters() {
+    const panel = $("#watchlistGenreFilters");
+    panel.hidden = !this.isActive();
+    this.syncSortButton();
+    if (panel.hidden) return;
+    const genres = this.availableGenres();
+    // A compact preview; every available genre remains in the picker.
+    const selected = genres.filter(([key]) => state.genreFilters.includes(key));
+    const preferred = ["action", "comedy", "drama", "horror", "science fiction"]
+      .map((key) => genres.find(([genre]) => genre === key)).filter(Boolean);
+    const preview = [...new Map([...selected, ...preferred, ...genres].map((genre) => [genre[0], genre])).values()].slice(0, 6);
+    const picker = $("#selectWatchlistGenres");
     $("#watchlistGenreList").innerHTML =
-      '<button type="button" class="genre-filter-button" data-genre="" aria-pressed="false">All genres</button>' +
-      [...genres]
-        .map(
-          ([key, name]) =>
-            `<button type="button" class="genre-filter-button" data-genre="${escapeHtml(key)}" aria-pressed="false">${escapeHtml(name)}</button>`,
-        )
-        .join("");
+      '<button type="button" class="genre-filter-button genre-filter-all" data-genre="" aria-pressed="false">All genres</button>' +
+      preview.map(([key, name]) =>
+        `<button type="button" class="genre-filter-button" data-genre="${escapeHtml(key)}" aria-pressed="false">${escapeHtml(name)}</button>`,
+      ).join("");
+    $("#watchlistGenreList").firstElementChild.after(picker);
     this.syncGenreButtons();
   }
 
+  openGenrePicker() {
+    const dialog = $("#watchlistGenresModal");
+    $("#watchlistGenreOptions").innerHTML = this.availableGenres().map(([key, name]) =>
+      `<label class="genre-toggle"><span>${escapeHtml(name)}</span><input type="checkbox" role="switch" value="${escapeHtml(key)}" ${state.genreFilters.includes(key) ? "checked" : ""}><span class="genre-toggle-track" aria-hidden="true"></span></label>`,
+    ).join("");
+    dialog.returnValue = "cancel";
+    dialog.showModal();
+  }
+
+  availableMediaTypes() {
+    const values = this.services.tabs.current.filters || MEDIA.map(([value]) => value);
+    return [...new Set([...values, ...this.services.tabs.items.map((tile) => tile.mediaType).filter(Boolean)])];
+  }
+
+  openMediaTypePicker() {
+    const dialog = $("#watchlistMediaTypesModal");
+    const selected = state.mediaTypeFilters.length ? state.mediaTypeFilters : state.tag !== "All" ? [state.tag] : [];
+    $("#watchlistMediaTypeOptions").innerHTML = this.availableMediaTypes().map((value) =>
+      `<label class="genre-toggle"><span>${escapeHtml(value)}</span><input type="checkbox" role="switch" value="${escapeHtml(value)}" ${selected.includes(value) ? "checked" : ""}><span class="genre-toggle-track" aria-hidden="true"></span></label>`,
+    ).join("");
+    dialog.returnValue = "cancel";
+    dialog.showModal();
+  }
+
+  matchesMediaTypes(tile) {
+    return !state.mediaTypeFilters.length || state.mediaTypeFilters.includes(tile.mediaType);
+  }
+
+  syncSelectionButtons() {
+    const mediaButton = $("#selectWatchlistMediaTypes");
+    const genreButton = $("#selectWatchlistGenres");
+    const customTypes = state.mediaTypeFilters.length > 0 || state.tag !== "All";
+    const customGenres = state.genreFilters.length > 0;
+    mediaButton.textContent = customTypes ? "Custom Types" : "Select Media Types";
+    genreButton.textContent = customGenres ? "Custom Genres" : "Select Genres";
+    mediaButton.classList.toggle("has-selection", customTypes);
+    genreButton.classList.toggle("has-selection", customGenres);
+    mediaButton.setAttribute("aria-label", `${mediaButton.textContent}. Open media type selection`);
+    genreButton.setAttribute("aria-label", `${genreButton.textContent}. Open genre selection`);
+  }
+
+  get sortMode() {
+    return state.settings.watchlistSort === "releaseDate" ? "releaseDate" : "alphabetical";
+  }
+
+  sortItems(items) {
+    const alphabetical = (a, b) => (a.label || "").localeCompare(b.label || "", undefined, { sensitivity: "base", numeric: true });
+    return [...items].sort((a, b) => {
+      if (this.sortMode === "alphabetical") return alphabetical(a, b);
+      // Chronological, with undated titles last and alphabetical ties.
+      return (a.releaseDate || "9999").localeCompare(b.releaseDate || "9999") || alphabetical(a, b);
+    });
+  }
+
+  syncSortButton() {
+    const button = $("#watchlistSort");
+    button.hidden = !this.isActive();
+    const byDate = this.sortMode === "releaseDate";
+    const label = byDate ? "Release Date" : "Alphabetical";
+    button.dataset.tooltip = `Sort: ${label}`;
+    button.setAttribute("aria-label", `Sort: ${label}. Switch to ${byDate ? "Alphabetical" : "Release Date"}`);
+    button.setAttribute("aria-pressed", String(byDate));
+    $(".watchlist-sort-label", button).textContent = byDate ? "Date" : "A–Z";
+  }
+
+  toggleSort() {
+    state.settings.watchlistSort = this.sortMode === "alphabetical" ? "releaseDate" : "alphabetical";
+    this.services.application.saveLocalTheme();
+    this.syncSortButton();
+    this.services.board.renderTiles();
+  }
+
+  releaseDateLabel(tile) {
+    const value = tile.releaseDate;
+    if (!value) return "";
+    const date = new Date(`${value}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(date);
+  }
+
+  mediaTypeIcon(value) {
+    const media = MEDIA.find(([stored]) => stored === value);
+    return `<span class="watchlist-row-media-icon" role="img" aria-label="${escapeHtml(this.mediaTypeLabel(value))}" data-tooltip="${escapeHtml(this.mediaTypeLabel(value))}">${media?.[2] || icon('<circle cx="12" cy="12" r="8"/>')}</span>`;
+  }
+
   syncGenreButtons() {
+    this.syncSelectionButtons();
     for (const button of $$("[data-genre]", $("#watchlistGenreFilters"))) {
       const selected = button.dataset.genre
         ? state.genreFilters.includes(button.dataset.genre)
@@ -442,6 +536,9 @@ export class Watchlist extends Feature {
       event.stopPropagation();
     }
     try {
+      if (target.id === "watchlistSort") return this.toggleSort();
+      if (target.id === "selectWatchlistGenres") return this.openGenrePicker();
+      if (target.id === "selectWatchlistMediaTypes") return this.openMediaTypePicker();
       if (target.dataset.genre !== undefined) {
         event.preventDefault();
         return this.toggleGenre(target.dataset.genre);
@@ -488,6 +585,26 @@ export class Watchlist extends Feature {
   }
 
   bindEvents() {
+    const pickers = [
+      ["#watchlistGenresModal", "genreFilters"],
+      ["#watchlistMediaTypesModal", "mediaTypeFilters"],
+    ];
+    for (const [selector, field] of pickers) {
+      const dialog = $(selector);
+      dialog.addEventListener("close", () => {
+        if (dialog.returnValue !== "ok" || !this.isActive()) return;
+        state[field] = $$("input:checked", dialog).map((input) => input.value);
+        if (field === "mediaTypeFilters") state.tag = "All";
+        this.renderGenreFilters();
+        this.services.board.renderTags?.();
+        this.services.board.renderTiles();
+      });
+      dialog.addEventListener("cancel", () => { dialog.returnValue = "cancel"; });
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) { dialog.returnValue = "cancel"; dialog.close(); }
+      });
+    }
+
     document.addEventListener("click", this.handleClick);
     els.contentForm.elements.label.addEventListener("input", () => {
       if (this.isActive()) {

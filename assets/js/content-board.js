@@ -1,8 +1,9 @@
-import { isInstagramLink } from "./link-metadata.js?v=20261006-inline-links-steppers";
-import { api } from "./api.js?v=20261006-inline-links-steppers";
-import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
+import { isInstagramLink } from "./link-metadata.js?v=20261007-watchlist-controls";
+import { api } from "./api.js?v=20261007-watchlist-controls";
+import { Feature } from "./feature.js?v=20261007-watchlist-controls";
 import {
   state,
+  $,
   els,
   GLOBE_ICON,
   escapeHtml,
@@ -10,7 +11,7 @@ import {
   defaultTileLabel,
   displayText,
   tileColor,
-} from "./context.js?v=20261006-inline-links-steppers";
+} from "./context.js?v=20261007-watchlist-controls";
 
 export class ContentBoard extends Feature {
   constructor(services) {
@@ -21,10 +22,13 @@ export class ContentBoard extends Feature {
   renderTags() {
     const tab = this.services.tabs.current;
     const filters = ["All", ...(tab.filters || [])];
+    const watchlist = tab.form === "watchlist";
+    $(".tags-panel").classList.toggle("is-watchlist-filters", watchlist);
+    const selected = (tag) => watchlist && state.mediaTypeFilters.length ? state.mediaTypeFilters.includes(tag) : state.tag === tag;
     els.tagList.innerHTML = filters
       .map(
         (tag) =>
-          `<button class="tag-btn ${state.tag === tag ? "is-active" : ""}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span>↗</span></button>`,
+          `<button class="tag-btn ${selected(tag) ? "is-active" : ""}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span>↗</span></button>`,
       )
       .join("");
     if (!tab.metadataFilters) return;
@@ -37,7 +41,7 @@ export class ContentBoard extends Feature {
         !filters.some((preset) => preset.toLowerCase() === tag.toLowerCase()),
     );
     if (metadataTags.length)
-      els.tagList.innerHTML += `<div class="metadata-filter-row"><span class="metadata-label">File metadata</span>${metadataTags.map((tag) => `<button type="button" class="tag-btn metadata-filter ${state.tag === tag ? "is-active" : ""}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span>↗</span></button>`).join("")}</div>`;
+      els.tagList.innerHTML += `<div class="metadata-filter-row"><span class="metadata-label">File metadata</span>${metadataTags.map((tag) => `<button type="button" class="tag-btn metadata-filter ${selected(tag) ? "is-active" : ""}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span>↗</span></button>`).join("")}</div>`;
   }
 
   tileMatches(tile) {
@@ -147,20 +151,22 @@ export class ContentBoard extends Feature {
   }
 
   renderTiles() {
-    const filterKey = JSON.stringify([state.section, state.tag, state.query, state.genreFilters, state.activeCollectionId, state.activeHistoryMonth, state.settings.resultsPerPage]);
+    const filterKey = JSON.stringify([state.section, state.tag, state.query, state.genreFilters, state.mediaTypeFilters, state.settings.watchlistSort, state.activeCollectionId, state.activeHistoryMonth, state.settings.resultsPerPage]);
     if (this.filterKey !== filterKey) state.page = 1;
     this.filterKey = filterKey;
-    const all = [...(state.pendingLinks || []), ...state.tiles].filter(this.tileMatches).sort((a, b) => this.createdTime(b) - this.createdTime(a));
+    const watchlist = this.services.tabs.current.form === "watchlist";
+    let all = [...(state.pendingLinks || []), ...state.tiles].filter(this.tileMatches).sort((a, b) => this.createdTime(b) - this.createdTime(a));
+    if (watchlist) all = this.services.watchlist.sortItems(all);
     const perPage = Math.max(1, Math.min(50, Number(state.settings.resultsPerPage) || 25));
     const pages = Math.max(1, Math.ceil(all.length / perPage));
     state.page = Math.max(1, Math.min(state.page || 1, pages));
     const offset = (state.page - 1) * perPage;
     const items = all.slice(offset, offset + perPage);
-    const boundary = state.lastVisit && !state.activeHistoryMonth && !state.activeCollectionId
+    const boundary = !watchlist && state.lastVisit && !state.activeHistoryMonth && !state.activeCollectionId
       ? all.findIndex((tile) => this.createdTime(tile) <= state.lastVisit) : -1;
     // A separator belongs immediately before the first previously seen result.
     this.seenIndex = boundary > 0 && boundary >= offset && boundary < offset + items.length ? boundary - offset : -1;
-    if (boundary === -1 && all.length && state.lastVisit && this.createdTime(all.at(-1)) > state.lastVisit && state.page === pages && !state.activeHistoryMonth && !state.activeCollectionId) this.seenIndex = items.length;
+    if (!watchlist && boundary === -1 && all.length && state.lastVisit && this.createdTime(all.at(-1)) > state.lastVisit && state.page === pages && !state.activeHistoryMonth && !state.activeCollectionId) this.seenIndex = items.length;
     document.getElementById("pageNav").innerHTML = `<button type="button" data-page="${state.page - 1}" aria-label="Previous page" ${state.page === 1 ? "disabled" : ""}>&lt;</button><span aria-live="polite">${state.page} / ${pages}</span><button type="button" data-page="${state.page + 1}" aria-label="Next page" ${state.page === pages ? "disabled" : ""}>&gt;</button>`;
     if (this.services.tabs.view === "list") {
       this.services.tabs.renderList(items);
@@ -184,7 +190,8 @@ export class ContentBoard extends Feature {
     const grid = els.tileGrid;
     const gap = parseFloat(getComputedStyle(grid).columnGap) || 13;
     const limit = Math.max(1, Math.min(8, Number(state.settings.gridRowLimit) || 3));
-    const count = Math.min(limit, Math.max(1, Math.floor((grid.clientWidth + gap) / (220 + gap))));
+    const minWidth = this.services.tabs.current.form === "watchlist" ? 120 : 220;
+    const count = Math.min(limit, Math.max(1, Math.floor((grid.clientWidth + gap) / (minWidth + gap))));
     // Reset old explicit placement before changing the number of tracks. Stale
     // spans otherwise create implicit columns, squeezing the intended tracks.
     [...grid.children].forEach((el) => { el.style.gridColumn = ""; el.style.gridRow = ""; });
@@ -306,6 +313,10 @@ export class ContentBoard extends Feature {
     const tag = e.target.closest("[data-tag]");
     if (tag) {
       state.tag = tag.dataset.tag;
+      if (this.services.tabs.current.form === "watchlist") {
+        state.mediaTypeFilters = [];
+        this.services.watchlist.syncSelectionButtons();
+      }
       this.renderTags();
       this.renderTiles();
       return;

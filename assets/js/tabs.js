@@ -1,5 +1,5 @@
-import { isInstagramLink } from "./link-metadata.js?v=20261006-inline-links-steppers";
-import { state, els, $, $$, escapeHtml } from "./context.js?v=20261006-inline-links-steppers";
+import { isInstagramLink } from "./link-metadata.js?v=20261007-watchlist-controls";
+import { state, els, $, $$, escapeHtml } from "./context.js?v=20261007-watchlist-controls";
 
 // Keep all view icons at the original 24 px size.
 const VIEW_ICON_PATHS = {
@@ -61,6 +61,7 @@ export class TabController {
     state.page = 1;
     state.tag = "All";
     state.genreFilters = [];
+    state.mediaTypeFilters = [];
     state.query = "";
     state.activeCollectionId = null;
     els.search.value = "";
@@ -105,7 +106,7 @@ export class TabController {
       return false;
     if (
       this.current.form === "watchlist" &&
-      !this.services.watchlist.matchesGenres(tile)
+      (!this.services.watchlist.matchesGenres(tile) || !this.services.watchlist.matchesMediaTypes(tile))
     )
       return false;
     if (

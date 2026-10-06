@@ -1,5 +1,5 @@
-import { isInstagramLink } from "./link-metadata.js?v=20261006-inline-links-steppers";
-import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
+import { isInstagramLink } from "./link-metadata.js?v=20261007-watchlist-controls";
+import { Feature } from "./feature.js?v=20261007-watchlist-controls";
 import {
   MEDIA_TYPES,
   state,
@@ -9,7 +9,7 @@ import {
   defaultTileLabel,
   displayText,
   tileColor,
-} from "./context.js?v=20261006-inline-links-steppers";
+} from "./context.js?v=20261007-watchlist-controls";
 
 export class MediaViewer extends Feature {
   constructor(services) {

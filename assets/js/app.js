@@ -1,13 +1,13 @@
-import "./tab-extensions.js?v=20261006-inline-links-steppers";
-import { Application } from "./application.js?v=20261006-inline-links-steppers";
-import { ContentBoard } from "./content-board.js?v=20261006-inline-links-steppers";
-import { ContentEditor } from "./content-editor.js?v=20261006-inline-links-steppers";
-import { MediaManager } from "./media-manager.js?v=20261006-inline-links-steppers";
-import { CollectionManager } from "./collection-manager.js?v=20261006-inline-links-steppers";
-import { Calendar } from "./calendar.js?v=20261006-inline-links-steppers";
-import { MediaViewer } from "./media-viewer.js?v=20261006-inline-links-steppers";
-import { Watchlist } from "./watchlist.js?v=20261006-inline-links-steppers";
-import { TabController } from "./tabs.js?v=20261006-inline-links-steppers";
+import "./tab-extensions.js?v=20261007-watchlist-controls";
+import { Application } from "./application.js?v=20261007-watchlist-controls";
+import { ContentBoard } from "./content-board.js?v=20261007-watchlist-controls";
+import { ContentEditor } from "./content-editor.js?v=20261007-watchlist-controls";
+import { MediaManager } from "./media-manager.js?v=20261007-watchlist-controls";
+import { CollectionManager } from "./collection-manager.js?v=20261007-watchlist-controls";
+import { Calendar } from "./calendar.js?v=20261007-watchlist-controls";
+import { MediaViewer } from "./media-viewer.js?v=20261007-watchlist-controls";
+import { Watchlist } from "./watchlist.js?v=20261007-watchlist-controls";
+import { TabController } from "./tabs.js?v=20261007-watchlist-controls";
 
 // Construct features before starting; dependencies are explicit and share one state.
 const services = {};
