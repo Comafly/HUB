@@ -13,12 +13,78 @@ require_once __DIR__ . '/metadata.php';
 require_once __DIR__ . '/tab-config.php';
 require_once __DIR__ . '/tmdb.php';
 // Remote media helpers are bundled so a missing optional file cannot break the API.
+/** Stream fallback: connect to the validated IP, but verify TLS against the host. */
+function fetchPinnedMediaStream(array $parts, string $ip, int $limit, bool $headOnly, int $timeout): array {
+    if (!filter_var(ini_get('allow_url_fopen'), FILTER_VALIDATE_BOOLEAN)) {
+        throw new RuntimeException('Remote media needs PHP cURL or allow_url_fopen enabled. Ask your hosting administrator to enable cURL for this site.');
+    }
+    $scheme = strtolower($parts['scheme']);
+    if (!in_array($scheme, stream_get_wrappers(), true)) {
+        throw new RuntimeException('Remote HTTPS media needs PHP cURL or the OpenSSL HTTPS stream wrapper. Ask your hosting administrator to enable cURL for this site.');
+    }
+    $host = $parts['host'];
+    $port = $parts['port'] ?? ($scheme === 'https' ? 443 : 80);
+    $address = str_contains($ip, ':') ? '['.$ip.']' : $ip;
+    $target = $scheme.'://'.$address.':'.$port.($parts['path'] ?? '/').(isset($parts['query']) ? '?'.$parts['query'] : '');
+    $context = stream_context_create([
+        'http' => [
+            'method' => $headOnly ? 'HEAD' : 'GET',
+            'header' => ['Host: '.$host.(isset($parts['port']) ? ':'.$port : ''), 'Connection: close', 'Accept-Encoding: identity'],
+            'user_agent' => 'HUB Media/1.0',
+            'protocol_version' => 1.1,
+            'follow_location' => 0,
+            'max_redirects' => 0,
+            'ignore_errors' => true,
+            'timeout' => $timeout,
+        ],
+        'ssl' => ['peer_name' => trim($host, '[]'), 'verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false, 'SNI_enabled' => true],
+    ]);
+    $deadline = microtime(true) + $timeout;
+    $stream = @fopen($target, 'rb', false, $context);
+    if ($stream === false) throw new RuntimeException('Could not fetch remote media. Check outbound HTTP/HTTPS access and PHP CA certificates, or enable PHP cURL.');
+    try {
+        $headers = []; $status = 0; $body = '';
+        foreach (stream_get_meta_data($stream)['wrapper_data'] ?? [] as $line) {
+            if (preg_match('~^HTTP/\S+\s+(\d{3})\b~i', $line, $match)) {
+                $status = (int)$match[1]; $headers = [];
+            } else {
+                $pair = explode(':', $line, 2);
+                if (count($pair) === 2) $headers[strtolower(trim($pair[0]))] = trim($pair[1]);
+            }
+        }
+        // Only successful GET bodies are needed; redirects are checked by the caller.
+        if (!$headOnly && $status >= 200 && $status < 300) {
+            if (isset($headers['content-length']) && (float)$headers['content-length'] > $limit) {
+                throw new RuntimeException('Remote media exceeds the '.round($limit/1048576).' MB download limit.');
+            }
+            while (!feof($stream)) {
+                $remaining = $deadline - microtime(true);
+                if ($remaining <= 0) throw new RuntimeException('Remote media request timed out.');
+                $seconds = (int)$remaining;
+                stream_set_timeout($stream, $seconds, (int)(($remaining - $seconds) * 1000000));
+                $chunk = @fread($stream, min(8192, $limit - strlen($body) + 1));
+                if (stream_get_meta_data($stream)['timed_out']) throw new RuntimeException('Remote media request timed out.');
+                if ($chunk === false || ($chunk === '' && !feof($stream))) throw new RuntimeException('Could not read remote media.');
+                $body .= $chunk;
+                if (strlen($body) > $limit) throw new RuntimeException('Remote media exceeds the '.round($limit/1048576).' MB download limit.');
+            }
+            if (isset($headers['content-length']) && !isset($headers['transfer-encoding']) && strlen($body) !== (int)$headers['content-length']) {
+                throw new RuntimeException('The media download ended before the full file was received.');
+            }
+        }
+        return ['body'=>$body, 'headers'=>$headers, 'status'=>$status];
+    } finally {
+        fclose($stream);
+    }
+}
+
 /** Fetch only public HTTP(S) addresses, pin DNS, and revalidate each redirect. */
 function fetchPublicMedia(string $url, int $limit = 2097152, bool $headOnly = false, int $timeout = 45): array {
-    if (!function_exists('curl_init')) throw new RuntimeException('Remote media requires the PHP cURL extension.');
     for ($redirect = 0; $redirect < 6; $redirect++) {
+        if (preg_match('/[\x00-\x20\x7f]/', $url) || str_contains($url, '\\')) throw new RuntimeException('Use a public HTTP or HTTPS media URL.');
         $parts = parse_url($url);
         if (!$parts || !in_array(strtolower($parts['scheme'] ?? ''), ['http','https'], true) || empty($parts['host']) || isset($parts['user']) || isset($parts['pass']) || isset($parts['port']) && !in_array($parts['port'], [80,443], true)) throw new RuntimeException('Use a public HTTP or HTTPS media URL.');
+        $parts['scheme'] = strtolower($parts['scheme']);
         $host = strtolower($parts['host']);
         $records = filter_var($host, FILTER_VALIDATE_IP) ? [['ip'=>$host]] : dns_get_record($host, DNS_A | DNS_AAAA);
         $ips = [];
@@ -30,20 +96,25 @@ function fetchPublicMedia(string $url, int $limit = 2097152, bool $headOnly = fa
         }
         if (!$ips) throw new RuntimeException('Unable to resolve the media host.');
         $port = $parts['port'] ?? ($parts['scheme'] === 'https' ? 443 : 80);
-        $curl = curl_init($url); $body = ''; $headers = []; $tooLarge = false;
-        curl_setopt_array($curl, [CURLOPT_PROXY=>'', CURLOPT_FOLLOWLOCATION=>false, CURLOPT_NOBODY=>$headOnly, CURLOPT_CONNECTTIMEOUT=>10, CURLOPT_TIMEOUT=>$timeout,
-            CURLOPT_PROTOCOLS=>CURLPROTO_HTTP | CURLPROTO_HTTPS, CURLOPT_USERAGENT=>'HUB Media/1.0',
-            CURLOPT_RESOLVE=>[$host.':'.$port.':'.(str_contains($ips[0], ':') ? '['.$ips[0].']' : $ips[0])],
-            CURLOPT_HEADERFUNCTION=>static function($ch, $line) use (&$headers) { $pair = explode(':', $line, 2); if (count($pair) === 2) $headers[strtolower(trim($pair[0]))] = trim($pair[1]); return strlen($line); },
-            CURLOPT_WRITEFUNCTION=>static function($ch, $chunk) use (&$body, &$tooLarge, $limit) { if (strlen($body)+strlen($chunk)>$limit) { $tooLarge=true; return 0; } $body.=$chunk; return strlen($chunk); }
-        ]);
-        $ok = curl_exec($curl); $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE); $error = curl_error($curl); curl_close($curl);
-        if ($tooLarge) throw new RuntimeException('Remote media exceeds the '.round($limit/1048576).' MB download limit.');
-        if ($ok === false) throw new RuntimeException('Could not fetch remote media: '.$error);
+        if (function_exists('curl_init')) {
+            $curl = curl_init($url); $body = ''; $headers = []; $tooLarge = false;
+            curl_setopt_array($curl, [CURLOPT_PROXY=>'', CURLOPT_FOLLOWLOCATION=>false, CURLOPT_NOBODY=>$headOnly, CURLOPT_CONNECTTIMEOUT=>10, CURLOPT_TIMEOUT=>$timeout,
+                CURLOPT_PROTOCOLS=>CURLPROTO_HTTP | CURLPROTO_HTTPS, CURLOPT_USERAGENT=>'HUB Media/1.0',
+                CURLOPT_RESOLVE=>[$host.':'.$port.':'.(str_contains($ips[0], ':') ? '['.$ips[0].']' : $ips[0])],
+                CURLOPT_HEADERFUNCTION=>static function($ch, $line) use (&$headers) { $pair = explode(':', $line, 2); if (count($pair) === 2) $headers[strtolower(trim($pair[0]))] = trim($pair[1]); return strlen($line); },
+                CURLOPT_WRITEFUNCTION=>static function($ch, $chunk) use (&$body, &$tooLarge, $limit) { if (strlen($body)+strlen($chunk)>$limit) { $tooLarge=true; return 0; } $body.=$chunk; return strlen($chunk); }
+            ]);
+            $ok = curl_exec($curl); $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE); $error = curl_error($curl); curl_close($curl);
+            if ($tooLarge) throw new RuntimeException('Remote media exceeds the '.round($limit/1048576).' MB download limit.');
+            if ($ok === false) throw new RuntimeException('Could not fetch remote media: '.$error);
+        } else {
+            $remote = fetchPinnedMediaStream($parts, $ips[0], $limit, $headOnly, $timeout);
+            $body = $remote['body']; $headers = $remote['headers']; $status = $remote['status'];
+        }
         if ($status >= 300 && $status < 400 && !empty($headers['location'])) {
             $next = $headers['location'];
             if (str_starts_with($next, '//')) $next = $parts['scheme'].':'.$next;
-            elseif (!preg_match('~^https?://~i', $next)) $next = $parts['scheme'].'://'.$host.(str_starts_with($next, '/') ? $next : rtrim(dirname($parts['path'] ?? '/'), '/').'/'.$next);
+            elseif (!preg_match('~^https?://~i', $next)) $next = $parts['scheme'].'://'.$host.(isset($parts['port']) ? ':'.$parts['port'] : '').(str_starts_with($next, '/') ? $next : rtrim(dirname($parts['path'] ?? '/'), '/').'/'.$next);
             $url = $next; continue;
         }
         if ($status < 200 || $status >= 300) throw new RuntimeException('The media host returned HTTP '.$status.'.');
@@ -63,7 +134,7 @@ function socialMediaInfo(string $url): ?array {
     }
     if ($id && preg_match('/^[\w-]{11}$/', $id)) return ['provider'=>'youtube','url'=>'https://www.youtube.com/watch?v='.$id,'embedUrl'=>'https://www.youtube.com/embed/'.$id,'thumbnail'=>'https://i.ytimg.com/vi/'.$id.'/hqdefault.jpg'];
     if (in_array($host, ['tiktok.com','www.tiktok.com','m.tiktok.com'], true) && preg_match('~/(?:video|player/v1|embed/v2)/(\d+)~', $path, $match)) return ['provider'=>'tiktok','url'=>$url,'embedUrl'=>'https://www.tiktok.com/player/v1/'.$match[1], 'thumbnail'=>''];
-    if (in_array($host, ['instagram.com','www.instagram.com'], true) && preg_match('~^/(p|reel|reels|tv)/([\w-]+)~', $path, $match)) {
+    if (in_array($host, ['instagram.com','www.instagram.com','m.instagram.com'], true) && preg_match('~^/(?:[\w.]+/)?(p|reel|reels|tv)/([\w-]+)(?:/|$)~', $path, $match)) {
         $canonical = 'https://www.instagram.com/'.($match[1] === 'reels' ? 'reel' : $match[1]).'/'.$match[2].'/';
         return ['provider'=>'instagram','url'=>$canonical,'embedUrl'=>$canonical.'embed/', 'thumbnail'=>''];
     }
@@ -108,22 +179,45 @@ function cleanPageTitle(string $title): string {
     return function_exists('mb_substr') ? mb_substr($title, 0, 500) : substr($title, 0, 500);
 }
 
+function cleanPageDescription(string $value): string {
+    $value = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8')) ?? '');
+    return function_exists('mb_substr') ? mb_substr($value, 0, 2000) : substr($value, 0, 2000);
+}
+
 function parsePageMetadata(string $html, string $url): array {
-    $title = ''; $poster = ''; $icon = ''; $ogTitle = '';
-    // Read attributes without executing any page scripts or remote XML entities.
-    preg_match_all('~<(meta|link)\b[^>]*>~i', $html, $elements, PREG_SET_ORDER);
+    $meta = []; $icon = ''; $imageLink = '';
+    // Ignore tag-like strings in scripts, styles, and comments.
+    $html = preg_replace('~<!--[\s\S]*?-->|<(script|style)\b[^>]*>[\s\S]*?</\1\s*>~i', '', $html) ?? $html;
+    preg_match_all('~<(meta|link)\b(?:[^>"\x27]|"[^"]*"|\x27[^\x27]*\x27)*>~i', $html, $elements, PREG_SET_ORDER);
     foreach ($elements as $element) {
         preg_match_all('~([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))~', $element[0], $matches, PREG_SET_ORDER);
         $attributes = [];
         foreach ($matches as $match) $attributes[strtolower($match[1])] = html_entity_decode(($match[2] ?? '') !== '' ? $match[2] : (($match[3] ?? '') !== '' ? $match[3] : ($match[4] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         if (strtolower($element[1]) === 'meta') {
             $key = strtolower($attributes['property'] ?? $attributes['name'] ?? '');
-            if ($key === 'og:title') $ogTitle = $attributes['content'] ?? '';
-            if (in_array($key, ['og:image','twitter:image'], true) && !$poster) $poster = absolutePageUrl($url, $attributes['content'] ?? '');
-        } elseif (!$icon && preg_match('/(?:^|\s)icon(?:\s|$)/i', $attributes['rel'] ?? '')) $icon = absolutePageUrl($url, $attributes['href'] ?? '');
+            $value = trim($attributes['content'] ?? '');
+            if ($value !== '') $meta[$key][] = $value;
+        } else {
+            if (!$icon && preg_match('/(?:^|\s)icon(?:\s|$)/i', $attributes['rel'] ?? '')) $icon = absolutePageUrl($url, $attributes['href'] ?? '');
+            if (!$imageLink && strtolower($attributes['rel'] ?? '') === 'image_src') $imageLink = absolutePageUrl($url, $attributes['href'] ?? '');
+        }
     }
-    if (preg_match('~<title\b[^>]*>(.*?)</title>~is', $html, $match)) $title = $match[1];
-    return ['title'=>cleanPageTitle($ogTitle ?: $title), 'thumbnail'=>$poster, 'faviconUrl'=>$icon ?: absolutePageUrl($url, '/favicon.ico')];
+    $title = ''; if (preg_match('~<title\b[^>]*>(.*?)</title>~is', $html, $match)) $title = $match[1];
+    $images = [];
+    foreach (['og:image:secure_url','og:image','og:image:url','twitter:image','twitter:image:src'] as $key) {
+        foreach ($meta[$key] ?? [] as $value) {
+            $image = absolutePageUrl($url, $value);
+            if ($image) $images[] = $image;
+        }
+    }
+    if ($imageLink) $images[] = $imageLink;
+    $images = array_values(array_unique($images));
+    return [
+        'title'=>cleanPageTitle($meta['og:title'][0] ?? $meta['twitter:title'][0] ?? $title),
+        'description'=>cleanPageDescription($meta['og:description'][0] ?? $meta['twitter:description'][0] ?? $meta['description'][0] ?? ''),
+        'thumbnail'=>$images[0] ?? '', 'thumbnailUrls'=>$images,
+        'faviconUrl'=>$icon ?: absolutePageUrl($url, '/favicon.ico'),
+    ];
 }
 
 function urlBackgrounds(): array {
@@ -155,11 +249,12 @@ function resolveSocialMedia(string $url): array {
             $meta = parsePageMetadata($page['body'], $page['url']);
             $framePolicy = strtolower($page['headers']['x-frame-options'] ?? '');
             if (str_contains($page['url'], '/accounts/') || in_array($framePolicy, ['deny','sameorigin'], true) || preg_match("~frame-ancestors\\s+'none'~i", $page['headers']['content-security-policy'] ?? '')) throw new RuntimeException('The owner or provider does not allow embedding.');
-            $data = ['html'=>preg_match('~(?:EmbeddedMedia|Embed\\b|instagram-media)~i', $page['body']) ? 'public-embed' : '', 'thumbnail_url'=>$meta['thumbnail'], 'title'=>$meta['title']];
+            $data = ['html'=>preg_match('~(?:EmbeddedMedia|Embed\\b|instagram-media)~i', $page['body']) ? 'public-embed' : '', 'thumbnail_url'=>$meta['thumbnail'], 'title'=>$meta['title'], 'description'=>$meta['description']];
         }
     }
     if (empty($data['html']) || !empty($data['error']) || !empty($data['error_code'])) throw new RuntimeException('The owner or provider does not allow embedding.');
     $info['thumbnail'] = publicHttpUrl((string)($data['thumbnail_url'] ?? $info['thumbnail'] ?? ''));
+    $info['description'] = cleanPageDescription((string)($data['description'] ?? ''));
     $info['title'] = cleanPageTitle((string)($data['title'] ?? ''));
     $info['faviconUrl'] = absolutePageUrl($info['url'], '/favicon.ico');
     $info['embedWidth'] = max(0, (int)($data['width'] ?? 0));
@@ -171,7 +266,13 @@ function inspectLinkMetadata(string $url): array {
     $url = publicHttpUrl($url);
     if (!$url) throw new RuntimeException('Enter a valid HTTP or HTTPS URL.');
     $social = socialMediaInfo($url);
-    $result = ['title'=>'', 'faviconUrl'=>absolutePageUrl($url, '/favicon.ico'), 'thumbnail'=>$social['thumbnail'] ?? '', 'embedAllowed'=>false, 'embedUrl'=>'', 'provider'=>$social['provider'] ?? ''];
+    $result = ['title'=>'', 'description'=>'', 'faviconUrl'=>absolutePageUrl($url, '/favicon.ico'), 'thumbnail'=>$social['thumbnail'] ?? '', 'embedAllowed'=>false, 'embedUrl'=>'', 'provider'=>$social['provider'] ?? ''];
+    // Instagram metadata probes can fail independently of browser embedding.
+    // Here embedAllowed enables an attempt; Instagram still enforces access in the frame.
+    if (($social['provider'] ?? '') === 'instagram') {
+        $result['embedAllowed'] = true;
+        $result['embedUrl'] = $social['embedUrl'];
+    }
     // A failed embed check must never stop independent page/poster discovery.
     if ($social || preg_match('~^https?://(?:vm|vt)\.tiktok\.com/~i', $url)) {
         try {
@@ -179,11 +280,13 @@ function inspectLinkMetadata(string $url): array {
             $result = array_merge($result, $embed, ['embedAllowed'=>true]);
         } catch (Throwable $error) { /* Embedding is optional. */ }
     }
-    if (!$result['thumbnail'] || !$result['title']) {
+    $result['thumbnailUrls'] = array_values(array_filter([$result['thumbnail']]));
+    if (!$result['thumbnail'] || !$result['title'] || !$result['description']) {
         try {
             $page = fetchPublicMedia($url, 2097152, false, 12);
             $meta = parsePageMetadata($page['body'], $page['url']);
-            foreach (['title','thumbnail','faviconUrl'] as $key) if (!empty($meta[$key]) && (empty($result[$key]) || $key === 'faviconUrl')) $result[$key] = $meta[$key];
+            $result['thumbnailUrls'] = array_values(array_unique(array_merge($result['thumbnailUrls'], $meta['thumbnailUrls'])));
+            foreach (['title','description','thumbnail','faviconUrl'] as $key) if (!empty($meta[$key]) && (empty($result[$key]) || $key === 'faviconUrl')) $result[$key] = $meta[$key];
         } catch (Throwable $error) { /* Keep any independent poster or embed result. */ }
     }
     return $result;
@@ -204,7 +307,7 @@ function ensureStorage(): void {
     if (!is_dir(UPLOAD_DIR)) mkdir(UPLOAD_DIR, 0775, true);
     if (!is_dir(FONT_DIR)) mkdir(FONT_DIR, 0775, true);
     if (!is_dir(CALENDAR_DIR)) mkdir(CALENDAR_DIR, 0775, true);
-    if (!file_exists(DATA_FILE)) file_put_contents(DATA_FILE, json_encode(defaultData(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    if (!is_file(dirname(DATA_FILE).'/.htaccess')) file_put_contents(dirname(DATA_FILE).'/.htaccess', "Require all denied\n");
 }
 function defaultData(): array {
     return [
@@ -222,29 +325,9 @@ function defaultData(): array {
         'fonts' => [],
     ];
 }
-function readData(): array {
-    ensureStorage();
-    $fp = fopen(DATA_FILE, 'c+');
-    if (!$fp) fail('Unable to open data file', 500);
-    flock($fp, LOCK_SH);
-    $json = stream_get_contents($fp) ?: '{}';
-    flock($fp, LOCK_UN);
-    fclose($fp);
-    return array_replace(defaultData(), json_decode($json, true) ?: []);
-}
-function mutateData(callable $callback): mixed {
-    ensureStorage();
-    $fp = fopen(DATA_FILE, 'c+');
-    if (!$fp) fail('Unable to open data file', 500);
-    flock($fp, LOCK_EX);
-    $json = stream_get_contents($fp) ?: '{}';
-    $data = array_replace(defaultData(), json_decode($json, true) ?: []);
-    $result = $callback($data);
-    ftruncate($fp, 0); rewind($fp);
-    fwrite($fp, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-    fflush($fp); flock($fp, LOCK_UN); fclose($fp);
-    return $result;
-}
+require_once __DIR__ . '/history-storage.php';
+function readData(): array { return storageTransaction(); }
+function mutateData(callable $callback): mixed { return storageTransaction($callback); }
 function bodyJson(): array {
     $raw = file_get_contents('php://input') ?: '{}';
     $data = json_decode($raw, true);
@@ -404,6 +487,7 @@ try {
                 unset($tile);
                 return $data;
             });
+            $data = readData();
             $data['calendar'] = calendarPayload();
             $data['urlBackgrounds'] = urlBackgrounds();
             $data['tabs'] = tabDefinitions();
@@ -484,6 +568,9 @@ try {
             $settings = [
                 'theme' => in_array(($input['theme'] ?? 'umber'), ['umber','midnight-blue','bubblegum','caramel','marble','carbon-lavender'], true) ? $input['theme'] : 'umber',
                 'mode' => in_array(($input['mode'] ?? 'dark'), ['dark','light'], true) ? $input['mode'] : 'dark',
+                'alwaysShowTileDetails' => (bool)($input['alwaysShowTileDetails'] ?? false),
+                'gridRowLimit' => max(1, min(8, (int)($input['gridRowLimit'] ?? 3))),
+                'resultsPerPage' => max(5, min(50, (int)(round((int)($input['resultsPerPage'] ?? 25) / 5) * 5))),
             ];
             mutateData(function (&$data) use ($settings) { $data['settings'] = $settings; });
             response($settings);
@@ -572,6 +659,7 @@ try {
                 'tags'=>cleanTags($input['tags'] ?? ''), 'size'=>in_array($input['size'] ?? '', ['small','medium','large'], true) ? $input['size'] : 'medium',
                 'orientation'=>$tab['orientation'] ?? (in_array($input['orientation'] ?? '', ['landscape','portrait'], true) ? $input['orientation'] : 'landscape'), 'createdAt'=>$existing['createdAt'] ?? date(DATE_ATOM),
             ];
+            foreach (['historyMonth', 'archiveEligibleMonth'] as $key) if (isset($existing[$key])) $tile[$key] = $existing[$key];
             $tile = array_merge($tile, $customFields);
             if ($section === 'watchlist' && ($tile['tmdbId'] ?? '') !== '') {
                 TmdbClient::validateIdentity($tile['tmdbType'] ?? '', $tile['tmdbId']);

@@ -1,12 +1,12 @@
-import { api } from "./api.js";
-import { Feature } from "./feature.js";
+import { api } from "./api.js?v=20261006-inline-links-steppers";
+import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
 import {
   ENABLE_CALENDAR_MODULE,
   state,
   $,
   els,
   escapeHtml,
-} from "./context.js";
+} from "./context.js?v=20261006-inline-links-steppers";
 
 export class Calendar extends Feature {
   constructor(services) {

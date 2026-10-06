@@ -16,7 +16,7 @@ function tabDefinitions(): array {
         if (empty($tab['views']) || array_diff($tab['views'], ['asymmetric','equal','list'])) throw new RuntimeException('Invalid tab views.');
         if (isset($tab['orientation']) && !in_array($tab['orientation'], ['portrait','landscape'], true)) throw new RuntimeException('Invalid locked orientation.');
         $names = [];
-        $reserved = ['id','section','type','label','description','location','dateAdded','createdAt','updatedAt','files','thumbnail','tags','metadataTags','fileMetadata','text','textStyle','url','embedUrl','size','orientation','existingFiles','existingThumbnail','backgroundColor','urlBackground','faviconUrl','linkTitle','font','fontSize','bold','italic','underline','align','embedWidth','embedHeight','mediaWidth','mediaHeight','metadata'];
+        $reserved = ['historyMonth','archiveEligibleMonth','id','section','type','label','description','location','dateAdded','createdAt','updatedAt','files','thumbnail','tags','metadataTags','fileMetadata','text','textStyle','url','embedUrl','size','orientation','existingFiles','existingThumbnail','backgroundColor','urlBackground','faviconUrl','linkTitle','font','fontSize','bold','italic','underline','align','embedWidth','embedHeight','mediaWidth','mediaHeight','metadata'];
         foreach ($tab['fields'] ?? [] as $field) {
             $name = $field['name'] ?? '';
             if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/', $name) || in_array($name, $reserved, true) || isset($names[$name])) throw new RuntimeException('Custom field names must be unique and cannot replace standard fields.');

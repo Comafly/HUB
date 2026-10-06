@@ -25,6 +25,9 @@ export const MEDIA_TYPES = new Set([
 
 export const state = {
   tiles: [],
+  activeHistoryMonth: null,
+  page: 1,
+  lastVisit: null,
   urlBackgrounds: [],
   topLinks: [],
   bookmarks: [],
@@ -35,6 +38,8 @@ export const state = {
     mode: "dark",
     alwaysShowTileDetails: false,
     gridLayout: "asymmetric",
+    gridRowLimit: 3,
+    resultsPerPage: 25,
   },
   calendar: { exists: false, fileName: "", updatedAt: null, content: "" },
   editingId: null,
@@ -44,7 +49,6 @@ export const state = {
   tabs: [],
   tag: "All",
   genreFilters: [],
-  mediaTypeFilters: [],
   query: "",
   pendingDrop: null,
   pendingThumbnail: null,

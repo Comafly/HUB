@@ -1,5 +1,6 @@
-import { api } from "./api.js";
-import { Feature } from "./feature.js";
+import { STEPPER_PREFERENCES, normalizePreference } from "./preferences.js?v=20261006-inline-links-steppers";
+import { api } from "./api.js?v=20261006-inline-links-steppers";
+import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
 import {
   ENABLE_CALENDAR_MODULE,
   state,
@@ -10,7 +11,7 @@ import {
   escapeHtml,
   favicon,
   normalizeUrl,
-} from "./context.js";
+} from "./context.js?v=20261006-inline-links-steppers";
 
 export class Application extends Feature {
   constructor(services) {
@@ -145,10 +146,10 @@ export class Application extends Feature {
         state.settings.theme = saved.theme;
       if (["dark", "light"].includes(saved.mode))
         state.settings.mode = saved.mode;
+      for (const key of Object.keys(STEPPER_PREFERENCES))
+        state.settings[key] = normalizePreference(key, saved[key] ?? state.settings[key]);
       if (typeof saved.alwaysShowTileDetails === "boolean")
         state.settings.alwaysShowTileDetails = saved.alwaysShowTileDetails;
-      if (["alphabetical", "releaseDate"].includes(saved.watchlistSort))
-        state.settings.watchlistSort = saved.watchlistSort;
       if (["asymmetric", "equal"].includes(saved.gridLayout))
         state.settings.gridLayout = saved.gridLayout;
       if (
@@ -174,10 +175,32 @@ export class Application extends Feature {
     el.textContent = `${date.toLocaleDateString("en-AU", { weekday: "long" })}, ${day}${suffix} of ${date.toLocaleDateString("en-AU", { month: "long" })} (${date.toLocaleDateString("en-GB")})`;
   }
 
+  syncPreferenceSteppers() {
+    for (const [key, {min, max}] of Object.entries(STEPPER_PREFERENCES)) {
+      const value = normalizePreference(key, state.settings[key]);
+      state.settings[key] = value;
+      $("#" + key).value = String(value);
+      $$(`[data-preference="${key}"]`).forEach((button) => {
+        button.disabled = Number(button.dataset.step) < 0 ? value <= min : value >= max;
+      });
+    }
+  }
+
+  changePreference(key, direction) {
+    const config = STEPPER_PREFERENCES[key];
+    if (!config || ![-1, 1].includes(direction)) return;
+    state.settings[key] = normalizePreference(key, normalizePreference(key, state.settings[key]) + direction * config.step);
+    state.page = 1;
+    this.syncPreferenceSteppers();
+    this.saveLocalTheme();
+    this.services.board.renderTiles();
+  }
+
   applyDisplayPreferences() {
     const always = state.settings.alwaysShowTileDetails === true;
     document.documentElement.dataset.tileDetails = always ? "always" : "hover";
     els.tileDetailsToggle.checked = always;
+    this.syncPreferenceSteppers();
     this.services.tabs.applyView();
   }
 
@@ -341,6 +364,7 @@ export class Application extends Feature {
       return;
     }
     this.loadLocalTheme();
+    this.services.board.startVisitTracking();
     this.updateToday();
 
     let calendarResizeFrame = 0;
@@ -476,6 +500,8 @@ export class Application extends Feature {
     }
     const saved = e.target.closest("[data-bookmark-id]");
     if (saved) {
+      // Nested controls own their clicks, regardless of document listener order.
+      if (e.target.closest("button,a,input,textarea,select")) return;
       this.services.viewer.activateTile(saved.dataset.bookmarkId);
       return;
     }
@@ -486,6 +512,27 @@ export class Application extends Feature {
   }
 
   bindEvents() {
+    const selectSettings = (key) => {
+      document.querySelectorAll("[data-settings-tab]").forEach((button) => {
+        const active = button.dataset.settingsTab === key;
+        button.setAttribute("aria-selected", String(active));
+        button.tabIndex = active ? 0 : -1;
+        document.getElementById(button.getAttribute("aria-controls")).inert = !active;
+      });
+    };
+    document.querySelectorAll("[data-settings-tab]").forEach((button, index, buttons) => {
+      button.addEventListener("click", () => selectSettings(button.dataset.settingsTab));
+      button.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
+        buttons[next].click(); buttons[next].focus();
+      });
+    });
+    document.querySelectorAll("[data-preference]").forEach((button) => {
+      button.addEventListener("click", () => this.changePreference(button.dataset.preference, Number(button.dataset.step)));
+    });
+
     els.tileDetailsToggle.addEventListener("change", () => {
       state.settings.alwaysShowTileDetails = els.tileDetailsToggle.checked;
       this.applyDisplayPreferences();

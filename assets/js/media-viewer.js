@@ -1,4 +1,5 @@
-import { Feature } from "./feature.js";
+import { isInstagramLink } from "./link-metadata.js?v=20261006-inline-links-steppers";
+import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
 import {
   MEDIA_TYPES,
   state,
@@ -8,7 +9,7 @@ import {
   defaultTileLabel,
   displayText,
   tileColor,
-} from "./context.js";
+} from "./context.js?v=20261006-inline-links-steppers";
 
 export class MediaViewer extends Feature {
   constructor(services) {
@@ -265,7 +266,7 @@ export class MediaViewer extends Feature {
           (dx < 0 && state.viewerIndex === tile.files.length - 1);
         track.style.transform = `translate3d(${Math.max(-width, Math.min(width, edge ? dx * 0.25 : dx))}px,0,0)`;
       },
-      settle(nextIndex) {
+      settle: (nextIndex) => {
         if (settling || finished) return;
         settling = true;
         const changed = nextIndex !== state.viewerIndex;
@@ -298,6 +299,7 @@ export class MediaViewer extends Feature {
   }
 
   renderViewerSelection(tile) {
+    els.viewerMeta.classList.toggle("viewer-meta--instagram", isInstagramLink(tile));
     els.mediaViewer.classList.toggle(
       "media-viewer--watchlist",
       this.isWatchlist(tile),

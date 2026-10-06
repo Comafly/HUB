@@ -1,5 +1,5 @@
-import { api } from "./api.js";
-import { Feature } from "./feature.js";
+import { api } from "./api.js?v=20261006-inline-links-steppers";
+import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
 import {
   IMAGE_LIMIT,
   encode,
@@ -18,7 +18,7 @@ import {
   safeHostname,
   displayText,
   tileColor,
-} from "./context.js";
+} from "./context.js?v=20261006-inline-links-steppers";
 
 export class ContentEditor extends Feature {
   constructor(services) {
@@ -28,6 +28,7 @@ export class ContentEditor extends Feature {
     this.urlProcessing = null;
     this.linkMetadataTimer = undefined;
     this.videoPosterCache = new Map();
+    state.pendingLinks ||= [];
   }
 
   revokePreviewUrls() {
@@ -78,6 +79,223 @@ export class ContentEditor extends Feature {
       return { type: "link", url: normalizeUrl(candidate.trim()) };
     if (plain.trim()) return { type: "text", text: plain };
     return null;
+  }
+
+  instagramEmbedUrl(value) {
+    try {
+      const url = new URL(value);
+      const match = /^\/(?:[\w.]+\/)?(p|reel|reels|tv)\/([\w-]+)\/?$/.exec(
+        url.pathname,
+      );
+      if (
+        ["http:", "https:"].includes(url.protocol) &&
+        ["instagram.com", "www.instagram.com", "m.instagram.com"].includes(
+          url.hostname,
+        ) &&
+        !url.username &&
+        !url.password &&
+        match
+      )
+        return `https://www.instagram.com/${match[1] === "reels" ? "reel" : match[1]}/${match[2]}/embed/`;
+    } catch {
+      /* Not an Instagram post. */
+    }
+    return "";
+  }
+
+  randomUrlBackground() {
+    const backgrounds = state.urlBackgrounds || [];
+    return backgrounds.length
+      ? backgrounds[Math.floor(Math.random() * backgrounds.length)]
+      : "";
+  }
+
+  // Pasted or dropped links skip the editor: a tile appears straight away with
+  // a status bar while its title, description and thumbnail are retrieved.
+  // Returns true when the link was taken over (false: caller opens the editor).
+  tryQuickAddLink(pending) {
+    if (pending?.type !== "link" || !pending.url) return false;
+    // Entry tabs (e.g. Watchlist) need their own fields.
+    if (this.services.tabs.current.editor === "entry") return false;
+    const url = normalizeUrl(String(pending.url).trim());
+    if (!/^https?:\/\/\S+$/i.test(url)) return false;
+    try { const parsed = new URL(url); if (parsed.username || parsed.password) return false; } catch { return false; }
+    this.quickAddLink(url);
+    return true;
+  }
+
+  setPendingLink(item, progress, message) {
+    item.progress = Math.max(item.progress, progress);
+    if (message) item.message = message;
+    this.services.board.updatePendingTile(item);
+  }
+
+  // Ease the bar toward a ceiling while a network step runs so it never looks stuck.
+  creepPendingLink(item, ceiling) {
+    const timer = setInterval(
+      () =>
+        this.setPendingLink(
+          item,
+          item.progress + (ceiling - item.progress) * 0.1,
+        ),
+      300,
+    );
+    return () => clearInterval(timer);
+  }
+
+  async fetchLinkThumbnailFile(info) {
+    const candidates = [
+      ...new Set(
+        [info?.thumbnail, ...(info?.thumbnailUrls || [])].filter(Boolean),
+      ),
+    ];
+    for (const candidate of candidates) {
+      try {
+        let file = await api.downloadMedia(candidate);
+        if (!file.type.startsWith("image/")) continue;
+        if (file.size > IMAGE_LIMIT)
+          file = await this.services.media.compressImage(file);
+        const objectUrl = URL.createObjectURL(file);
+        try {
+          const image = new Image();
+          image.src = objectUrl;
+          await image.decode();
+          return {
+            file,
+            width: image.naturalWidth || 0,
+            height: image.naturalHeight || 0,
+          };
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      } catch {
+        /* Try the next candidate image. */
+      }
+    }
+    return null;
+  }
+
+  async quickAddLink(url) {
+    const tab = this.services.tabs.current;
+    const item = {
+      id: `pending-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      section: state.section,
+      url,
+      pending: true,
+      type: "link",
+      label: safeHostname(url),
+      size: "medium",
+      tags: [],
+      createdAt: new Date().toISOString(),
+      progress: 0.05,
+      message: "Reading link…",
+      background: this.randomUrlBackground(),
+    };
+    state.pendingLinks.unshift(item);
+    state.activeHistoryMonth = null;
+    state.activeCollectionId = null;
+    state.query = "";
+    state.tag = "All";
+    state.page = 1;
+    els.search.value = "";
+    els.clearSearch.classList.remove("is-visible");
+    this.services.board.renderTags();
+    this.services.collections.renderBookmarks();
+    this.services.board.renderTiles();
+    try {
+      let info = null;
+      let stopCreep = this.creepPendingLink(item, 0.36);
+      try {
+        info = await api.inspectLink(url);
+      } catch {
+        /* Fall back to the address alone. */
+      } finally {
+        stopCreep();
+      }
+      this.setPendingLink(item, 0.4, "Fetching thumbnail…");
+      stopCreep = this.creepPendingLink(item, 0.76);
+      let thumbnail;
+      try {
+        thumbnail = await this.fetchLinkThumbnailFile(info);
+      } finally {
+        stopCreep();
+      }
+      this.setPendingLink(item, 0.8, "Saving…");
+
+      const instagramEmbed = this.instagramEmbedUrl(url);
+      const providerEmbed =
+        info?.embedAllowed &&
+        info.embedUrl &&
+        ["youtube", "instagram", "tiktok", "facebook"].includes(info.provider)
+          ? info.embedUrl
+          : "";
+      const build = (embedUrl) => {
+        const form = new FormData();
+        const fields = {
+          type: "link",
+          section: item.section,
+          url,
+          label: info?.title || safeHostname(url) || url,
+          description: info?.description || url,
+          linkTitle: info?.title || "",
+          faviconUrl: info?.faviconUrl || "",
+          size: "medium",
+          orientation: tab.orientation || "landscape",
+          tags: "",
+          embedUrl,
+          embedWidth: String(embedUrl ? Number(info?.embedWidth || 0) : 0),
+          embedHeight: String(embedUrl ? Number(info?.embedHeight || 0) : 0),
+          mediaWidth: String(embedUrl && thumbnail ? thumbnail.width : 0),
+          mediaHeight: String(embedUrl && thumbnail ? thumbnail.height : 0),
+          // Used when no thumbnail could be retrieved.
+          urlBackground: item.background,
+          existingFiles: "[]",
+          existingThumbnail: "",
+        };
+        for (const [name, value] of Object.entries(fields))
+          form.set(name, value);
+        if (thumbnail)
+          form.set(
+            "thumbnail",
+            thumbnail.file,
+            thumbnail.file.name || "thumbnail.jpg",
+          );
+        return form;
+      };
+      const send = (embedUrl) =>
+        api.createTile(build(embedUrl), {
+          onProgress: ({ ratio = 0 } = {}) =>
+            this.setPendingLink(item, 0.8 + ratio * 0.18, "Saving…"),
+        });
+      const embedUrl = instagramEmbed || providerEmbed;
+      let tile;
+      try {
+        tile = await send(embedUrl);
+      } catch (error) {
+        // A rejected embed should never cost the user the tile itself.
+        if (!embedUrl || error.status !== 400 || !/embed/i.test(error.message)) throw error;
+        tile = await send("");
+      }
+      this.setPendingLink(item, 1, "Done");
+      state.pendingLinks = state.pendingLinks.filter((p) => p !== item);
+      state.tiles = [tile, ...state.tiles.filter((existing) => existing.id !== tile.id)];
+      this.services.board.renderTags();
+      this.services.board.renderTiles();
+      this.services.collections.renderBookmarks();
+      document.dispatchEvent(
+        new CustomEvent("hub:content-change", {
+          detail: { action: "create", tile },
+        }),
+      );
+      this.services.application.toast("Link added");
+    } catch (error) {
+      state.pendingLinks = state.pendingLinks.filter((p) => p !== item);
+      this.services.board.renderTiles();
+      this.services.application.toast(
+        error?.message || "Could not add the link",
+        "error",
+      );
+    }
   }
 
   async refreshMetadataTags() {
@@ -672,6 +890,28 @@ export class ContentEditor extends Feature {
     const draft = state.pendingDrop,
       toggle = $("#embedUrlToggle"),
       retrieve = $("#retrieveLinkThumbnail");
+    // A metadata probe is not an embedding permission check. Offer Instagram
+    // frames immediately, even while retrieval is pending or has failed.
+    if (draft?.type === "link") {
+      try {
+        const url = new URL(this.currentContentUrl());
+        const match = /^\/(?:[\w.]+\/)?(p|reel|reels|tv)\/([\w-]+)\/?$/.exec(url.pathname);
+        if (
+          ["http:", "https:"].includes(url.protocol) &&
+          ["instagram.com", "www.instagram.com", "m.instagram.com"].includes(url.hostname) &&
+          !url.username && !url.password && match
+        ) {
+          const kind = match[1] === "reels" ? "reel" : match[1];
+          const embedUrl = `https://www.instagram.com/${kind}/${match[2]}/embed/`;
+          draft.linkInfo = { ...draft.linkInfo, provider: "instagram", embedUrl, embedAllowed: true };
+          draft.embedAllowed = true;
+          if (draft.embedPreference !== false) {
+            draft.embedUrl = embedUrl;
+            draft.provider = "instagram";
+          }
+        }
+      } catch { /* An incomplete URL has no local embed candidate. */ }
+    }
     if (toggle) {
       toggle.disabled = !draft?.embedAllowed || state.savingContent;
       toggle.checked = !!draft?.embedUrl;
@@ -686,6 +926,8 @@ export class ContentEditor extends Feature {
       if (draft.autoLabel || !els.contentForm.elements.label.value.trim())
         els.contentForm.elements.label.value = info.title;
     }
+    if (info.description && (draft.autoDescription || !els.contentForm.elements.description.value.trim()))
+      els.contentForm.elements.description.value = info.description;
     if (info.faviconUrl) draft.faviconUrl = info.faviconUrl;
   }
 
@@ -742,8 +984,18 @@ export class ContentEditor extends Feature {
   }
 
   async downloadLinkThumbnail(draft, info, url, revision) {
-    if (!info?.thumbnail) throw new Error("No thumbnail was provided.");
-    let file = await api.downloadMedia(info.thumbnail);
+    const candidates = [...new Set([info?.thumbnail, ...(info?.thumbnailUrls || [])].filter(Boolean))];
+    if (!candidates.length) throw new Error("No thumbnail was provided.");
+    let file, lastError;
+    for (const candidate of candidates) {
+      try {
+        const downloaded = await api.downloadMedia(candidate);
+        if (!downloaded.type.startsWith("image/")) throw new Error("The thumbnail is not an image.");
+        file = downloaded;
+        break;
+      } catch (error) { lastError = error; }
+    }
+    if (!file) throw lastError || new Error("No thumbnail could be downloaded.");
     if (file.size > IMAGE_LIMIT)
       file = await this.services.media.compressImage(file);
     if (!file.type.startsWith("image/"))
@@ -1589,7 +1841,8 @@ export class ContentEditor extends Feature {
         const value = (e.clipboardData?.getData("text/plain") || "").trim();
         if (/^https?:\/\//i.test(value)) {
           e.preventDefault();
-          this.openContentModal({ type: "link", url: value });
+          const pending = { type: "link", url: value };
+          if (!this.tryQuickAddLink(pending)) this.openContentModal(pending);
           return;
         }
         const files = [...(e.clipboardData?.files || [])];

@@ -8,7 +8,7 @@
     <!-- build: collections-ui-v4-chevron -->
     <link
       rel="stylesheet"
-      href="assets/css/style.css?v=20261005-screenshot-pickers"
+      href="assets/css/style.css?v=20261006-inline-links-steppers"
     />
   </head>
   <body>
@@ -64,10 +64,6 @@
                   aria-pressed="false"
                   data-tooltip="Switch to equal grid"
                 ></button>
-                <button type="button" class="icon-btn watchlist-sort-button" id="watchlistSort" aria-label="Sort: Alphabetical. Switch to Release Date" data-tooltip="Sort: Alphabetical" hidden>
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 5h16M4 12h11M4 19h6m10-9v11m-3-3 3 3 3-3"/></svg>
-                  <span class="watchlist-sort-label">A–Z</span>
-                </button>
                 <div class="search-wrap">
                   <span class="search-icon" aria-hidden="true">⌕</span>
                   <input
@@ -105,14 +101,13 @@
                 aria-label="Watchlist genres"
                 hidden
               >
-                <button type="button" class="genre-filter-button select-media-types-button" id="selectWatchlistMediaTypes" aria-haspopup="dialog" aria-controls="watchlistMediaTypesModal">Select Media Types</button>
+                <span class="genre-filter-label">Genres</span>
                 <div
                   class="genre-filter-list"
                   id="watchlistGenreList"
                   role="group"
                   aria-label="Select genres"
                 ></div>
-                <button type="button" class="genre-filter-button select-genres-button" id="selectWatchlistGenres" aria-haspopup="dialog" aria-controls="watchlistGenresModal">Select Genres</button>
               </section>
             </div>
 
@@ -128,7 +123,9 @@
                 aria-label="Show all content"
               ></button>
             </div>
-            <div class="tile-grid" id="tileGrid" aria-live="polite"></div>
+            <div id="historyFilterBar" class="collection-filter-bar" hidden>History: <strong></strong><button type="button" class="capsule-x" data-history-month="" aria-label="Return to current dashboard"></button></div>
+<div class="tile-grid" id="tileGrid" aria-live="polite"></div>
+<nav id="pageNav" class="page-nav" aria-label="Content pages"></nav>
             <div class="empty-state" id="emptyState" hidden>
               <h2>No matching content</h2>
               <p>Change the search or filter, or use Add to create content.</p>
@@ -146,11 +143,11 @@
         <aside
           class="bookmarks-panel"
           id="bookmarksPanel"
-          aria-label="Collections"
+          aria-label="History and collections"
         >
           <div class="bookmarks-header">
             <div>
-              <div class="eyebrow">Collections</div>
+              <div class="sidebar-tabs" role="tablist" aria-label="Saved content"><button type="button" role="tab" id="historyTab" aria-controls="historyPanel" aria-selected="false" tabindex="-1" data-sidebar-tab="history">History</button><button type="button" role="tab" id="collectionsTab" aria-controls="collectionsPanel" aria-selected="true" data-sidebar-tab="collections">Collections</button></div>
             </div>
             <div class="collections-header-actions">
               <button
@@ -164,11 +161,11 @@
               </button>
             </div>
           </div>
-          <div class="bookmark-dropzone" id="bookmarkList"></div>
+          <div id="historyPanel" role="tabpanel" aria-labelledby="historyTab" hidden></div><div id="collectionsPanel" role="tabpanel" aria-labelledby="collectionsTab"><div class="bookmark-dropzone" id="bookmarkList"></div>
           <p class="bookmark-hint">
             Drag tiles into a collection. Drag collections, and their contents,
             to reorder.
-          </p>
+          </p></div>
         </aside>
       </main>
     </div>
@@ -494,7 +491,7 @@
             ×
           </button>
         </div>
-        <section class="settings-section">
+<div class="settings-tabs" role="tablist" aria-label="Settings"><button type="button" role="tab" id="settings-tab-appearance" aria-controls="settings-appearance" aria-selected="true" tabindex="0" data-settings-tab="appearance">Appearance</button><button type="button" role="tab" id="settings-tab-data" aria-controls="settings-data" aria-selected="false" tabindex="-1" data-settings-tab="data">Data</button><button type="button" role="tab" id="settings-tab-credits" aria-controls="settings-credits" aria-selected="false" tabindex="-1" data-settings-tab="credits">Credits</button></div><div class="settings-panels"><div role="tabpanel" id="settings-appearance" aria-labelledby="settings-tab-appearance" class="settings-tab-panel" >        <section class="settings-section">
           <div class="settings-copy">
             <h3>Themes</h3>
             <p>
@@ -616,7 +613,24 @@
             ><input id="tileDetailsToggle" type="checkbox" /><span></span
           ></label>
         </section>
-        <section class="settings-section">
+
+<section class="settings-section settings-toggle-section">
+  <div class="settings-copy"><h3 id="gridRowLimitLabel">Grid Row Limit</h3><p>Maximum tiles per row. Smaller screens use fewer tiles.</p></div>
+  <div class="stepper" role="group" aria-labelledby="gridRowLimitLabel">
+    <button class="stepper-btn" type="button" data-preference="gridRowLimit" data-step="-1" aria-label="Decrease grid row limit">−</button>
+    <output class="stepper-value" id="gridRowLimit" aria-live="polite">3</output>
+    <button class="stepper-btn" type="button" data-preference="gridRowLimit" data-step="1" aria-label="Increase grid row limit">+</button>
+  </div>
+</section>
+<section class="settings-section settings-toggle-section">
+  <div class="settings-copy"><h3 id="resultsPerPageLabel">Results Per Page</h3><p>Show 5–50 tiles per page, in steps of 5.</p></div>
+  <div class="stepper" role="group" aria-labelledby="resultsPerPageLabel">
+    <button class="stepper-btn" type="button" data-preference="resultsPerPage" data-step="-1" aria-label="Decrease results per page">−</button>
+    <output class="stepper-value" id="resultsPerPage" aria-live="polite">25</output>
+    <button class="stepper-btn" type="button" data-preference="resultsPerPage" data-step="1" aria-label="Increase results per page">+</button>
+  </div>
+</section>
+</div><div role="tabpanel" id="settings-data" aria-labelledby="settings-tab-data" class="settings-tab-panel" inert>        <section class="settings-section">
           <div class="settings-copy">
             <h3>Calendar</h3>
             <p>
@@ -678,9 +692,9 @@
             Download Content
           </button>
         </section>
-        <section class="settings-section tmdb-credits">
+</div><div role="tabpanel" id="settings-credits" aria-labelledby="settings-tab-credits" class="settings-tab-panel" inert>        <section class="settings-section tmdb-credits">
           <div class="settings-copy">
-            <h3>Credits</h3>
+            <h3>TMDB Credits</h3>
             <p>
               <a
                 href="https://www.themoviedb.org/"
@@ -701,6 +715,7 @@
             </p>
           </div>
         </section>
+</div></div>
       </div>
     </dialog>
 
@@ -857,35 +872,11 @@
       </button>
     </dialog>
 
-    <dialog class="modal genre-picker-modal watchlist-selection-modal" id="watchlistGenresModal" aria-labelledby="watchlistGenresTitle">
-      <form method="dialog" class="modal-card">
-        <div class="modal-head"><h2 id="watchlistGenresTitle">Select Genres</h2></div>
-        <p class="selection-hint">No selections shows all genres.</p>
-        <div class="genre-toggle-list" id="watchlistGenreOptions" role="group" aria-label="Available genres"></div>
-        <div class="modal-actions">
-          <button type="submit" class="btn btn--ghost" value="cancel">Cancel</button>
-          <button type="submit" class="btn" value="ok">OK</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog class="modal watchlist-selection-modal" id="watchlistMediaTypesModal" aria-labelledby="watchlistMediaTypesTitle">
-      <form method="dialog" class="modal-card">
-        <div class="modal-head"><h2 id="watchlistMediaTypesTitle">Select Media Types</h2></div>
-        <p class="selection-hint">No selections shows all media types.</p>
-        <div class="genre-toggle-list" id="watchlistMediaTypeOptions" role="group" aria-label="Available media types"></div>
-        <div class="modal-actions">
-          <button type="submit" class="btn btn--ghost" value="cancel">Cancel</button>
-          <button type="submit" class="btn" value="ok">OK</button>
-        </div>
-      </form>
-    </dialog>
-
     <div class="toast-region" id="toastRegion" aria-live="polite"></div>
 
     <script
       type="module"
-      src="assets/js/app.js?v=20261005-screenshot-pickers"
+      src="assets/js/app.js?v=20261006-inline-links-steppers"
     ></script>
   </body>
 </html>

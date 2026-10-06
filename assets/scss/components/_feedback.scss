@@ -234,8 +234,8 @@
   min-width: 92px;
 }
 
-.compression-picker {
-  max-width: min(680px, calc(100vw - 32px));
+.compression-picker .modal-card {
+  width: min(680px, 100%);
 }
 
 .compression-image-list {

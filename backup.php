@@ -6,10 +6,11 @@ if (!defined('DATA_FILE')) { http_response_code(404); exit; }
 /** Build a portable, uncompressed ZIP on disk without requiring ext-zip. */
 function downloadBackup(array $data): never {
     $entries = [
-        ['name'=>'data/app.json', 'text'=>json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)],
         ['name'=>'data/.htaccess', 'text'=>"Require all denied\n"],
         ['name'=>'uploads/', 'text'=>''],
     ];
+    foreach (storagePartitions($data) as $name => $contents) $entries[] = ['name'=>'data/'.$name, 'text'=>json_encode($contents, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)];
+    foreach (glob(CALENDAR_DIR.'/*.ics') ?: [] as $path) $entries[] = ['name'=>'data/'.basename($path), 'path'=>$path];
     $root = realpath(UPLOAD_DIR);
     if ($root) {
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));

@@ -342,7 +342,7 @@
     transform: translateY(8px) scale(0.98);
   }
   to {
-    opacity: 1;
+    opacity: var(--calendar-day-opacity, 1);
     transform: none;
   }
 }
@@ -356,7 +356,8 @@
   color: var(--text);
 }
 
-.calendar-event.is-past {
+.calendar-day.is-past {
+  --calendar-day-opacity: 0.5;
   opacity: 0.5;
 }
 

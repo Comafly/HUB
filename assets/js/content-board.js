@@ -1,7 +1,8 @@
-import { Feature } from "./feature.js";
+import { isInstagramLink } from "./link-metadata.js?v=20261006-inline-links-steppers";
+import { api } from "./api.js?v=20261006-inline-links-steppers";
+import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
 import {
   state,
-  $,
   els,
   GLOBE_ICON,
   escapeHtml,
@@ -9,7 +10,7 @@ import {
   defaultTileLabel,
   displayText,
   tileColor,
-} from "./context.js";
+} from "./context.js?v=20261006-inline-links-steppers";
 
 export class ContentBoard extends Feature {
   constructor(services) {
@@ -20,15 +21,10 @@ export class ContentBoard extends Feature {
   renderTags() {
     const tab = this.services.tabs.current;
     const filters = ["All", ...(tab.filters || [])];
-    const watchlist = tab.form === "watchlist";
-    $(".tags-panel").classList.toggle("is-watchlist-filters", watchlist);
-    const selected = (tag) => watchlist && state.mediaTypeFilters.length
-      ? state.mediaTypeFilters.includes(tag)
-      : state.tag === tag;
     els.tagList.innerHTML = filters
       .map(
         (tag) =>
-          `<button class="tag-btn ${selected(tag) ? "is-active" : ""}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span>↗</span></button>`,
+          `<button class="tag-btn ${state.tag === tag ? "is-active" : ""}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<span>↗</span></button>`,
       )
       .join("");
     if (!tab.metadataFilters) return;
@@ -102,13 +98,7 @@ export class ContentBoard extends Feature {
         : textHtml;
     }
     if (tile.type === "image" && tile.files?.length) {
-      const previewFiles =
-        tile.files.length > 1
-          ? Array.from(
-              { length: 4 },
-              (_, i) => tile.files[i % tile.files.length],
-            )
-          : tile.files;
+      const previewFiles = tile.files.slice(0, 4);
       const imgs = previewFiles
         .slice(0, 4)
         .map(
@@ -116,7 +106,7 @@ export class ContentBoard extends Feature {
             `<img src="${escapeHtml(src)}" alt="${escapeHtml(tile.label || `Image ${i + 1}`)}" />`,
         )
         .join("");
-      return `<div class="gallery gallery--${tile.files.length > 1 ? 4 : 1}">${imgs}</div>${tile.files.length > 1 ? `<span class="gallery-count" aria-label="${tile.files.length} images">+${tile.files.length}</span>` : ""}`;
+      return `<div class="gallery gallery--${previewFiles.length}">${imgs}</div>${tile.files.length > 1 ? `<span class="gallery-count" aria-label="${tile.files.length} images">+${tile.files.length}</span>` : ""}`;
     }
     if (tile.type === "video" && tile.files?.[0])
       return `<video src="${escapeHtml(tile.files[0])}"${tile.thumbnail ? ` poster="${escapeHtml(tile.thumbnail)}"` : ""} muted loop playsinline preload="${tile.thumbnail ? "metadata" : "auto"}"></video><span class="video-tile-play" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21"/><path d="m19 14 15 10-15 10z"/></svg></span>`;
@@ -134,126 +124,143 @@ export class ContentBoard extends Feature {
     return `<div class="file-symbol">${tile.type === "audio" ? "♪" : tile.type === "font" ? "Aa" : "↗"}</div>`;
   }
 
+  pendingTileMarkup(item) {
+    const percent = Math.round(Math.max(0, Math.min(1, item.progress)) * 100);
+    const orientation = this.services.tabs.current.orientation || "landscape";
+    let host = item.url;
+    try {
+      host = new URL(item.url).hostname.replace(/^www\./, "");
+    } catch {}
+    return `<article class="tile tile--medium tile--${escapeHtml(orientation)} tile--pending" data-pending-link="${escapeHtml(item.id)}" aria-busy="true" aria-label="Adding ${escapeHtml(host)}"><div class="tile-media"><div class="link-preview link-preview--site">${item.background ? `<img class="link-thumbnail" src="${escapeHtml(item.background)}" alt="" />` : ""}</div></div><div class="tile-gradient"></div><div class="tile-content"><h3>${escapeHtml(host)}</h3><p data-pending-message>${escapeHtml(item.message)}</p></div><div class="pending-bar" role="progressbar" aria-label="Adding link" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div></article>`;
+  }
+
+  // Update one in-progress tile without rebuilding the whole grid.
+  updatePendingTile(item) {
+    const el = els.tileGrid.querySelector(
+      `[data-pending-link="${CSS.escape(item.id)}"]`,
+    );
+    if (!el) return;
+    const percent = Math.round(Math.max(0, Math.min(1, item.progress)) * 100);
+    el.querySelector(".pending-bar span").style.width = `${percent}%`;
+    el.querySelector(".pending-bar").setAttribute("aria-valuenow", String(percent));
+    el.querySelector("[data-pending-message]").textContent = item.message;
+  }
+
   renderTiles() {
-    let items = state.tiles.filter(this.tileMatches);
-    if (this.services.tabs.current.form === "watchlist") items = this.services.watchlist.sortItems(items);
+    const filterKey = JSON.stringify([state.section, state.tag, state.query, state.genreFilters, state.activeCollectionId, state.activeHistoryMonth, state.settings.resultsPerPage]);
+    if (this.filterKey !== filterKey) state.page = 1;
+    this.filterKey = filterKey;
+    const all = [...(state.pendingLinks || []), ...state.tiles].filter(this.tileMatches).sort((a, b) => this.createdTime(b) - this.createdTime(a));
+    const perPage = Math.max(1, Math.min(50, Number(state.settings.resultsPerPage) || 25));
+    const pages = Math.max(1, Math.ceil(all.length / perPage));
+    state.page = Math.max(1, Math.min(state.page || 1, pages));
+    const offset = (state.page - 1) * perPage;
+    const items = all.slice(offset, offset + perPage);
+    const boundary = state.lastVisit && !state.activeHistoryMonth && !state.activeCollectionId
+      ? all.findIndex((tile) => this.createdTime(tile) <= state.lastVisit) : -1;
+    // A separator belongs immediately before the first previously seen result.
+    this.seenIndex = boundary > 0 && boundary >= offset && boundary < offset + items.length ? boundary - offset : -1;
+    if (boundary === -1 && all.length && state.lastVisit && this.createdTime(all.at(-1)) > state.lastVisit && state.page === pages && !state.activeHistoryMonth && !state.activeCollectionId) this.seenIndex = items.length;
+    document.getElementById("pageNav").innerHTML = `<button type="button" data-page="${state.page - 1}" aria-label="Previous page" ${state.page === 1 ? "disabled" : ""}>&lt;</button><span aria-live="polite">${state.page} / ${pages}</span><button type="button" data-page="${state.page + 1}" aria-label="Next page" ${state.page === pages ? "disabled" : ""}>&gt;</button>`;
     if (this.services.tabs.view === "list") {
       this.services.tabs.renderList(items);
+      this.insertSeenDivider();
+      els.tileGrid.style.removeProperty("grid-template-columns");
       return;
     }
     els.tileGrid.innerHTML = items
       .map(
-        (tile) =>
-          `<article draggable="false" class="tile tile--${escapeHtml(tile.size || "medium")} tile--${escapeHtml(this.services.tabs.current.orientation || tile.orientation || "landscape")}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0"><div class="tile-media">${this.tileMedia(tile)}</div><div class="tile-gradient"></div>${this.services.tabs.current.form === "watchlist" ? this.services.watchlist.watchedButton(tile, true) : ""}<div class="tile-actions"><button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit tile" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button></div><div class="tile-content"><h3>${escapeHtml(tile.label || defaultTileLabel(tile))}</h3>${this.services.tabs.current.form === "watchlist" && this.services.watchlist.releaseDateLabel(tile) ? `<time class="watchlist-tile-release" datetime="${escapeHtml(tile.releaseDate)}">Release date: ${escapeHtml(this.services.watchlist.releaseDateLabel(tile))}</time>` : ""}${tile.description || (tile.type === "link" ? tile.url : "") ? `<p>${escapeHtml(tile.description || tile.url)}</p>` : ""}</div></article>`,
+        (tile) => tile.pending ? this.pendingTileMarkup(tile) :
+          `<article draggable="false" class="tile${isInstagramLink(tile) ? " tile--instagram" : ""} tile--${escapeHtml(tile.size || "medium")} tile--${escapeHtml(this.services.tabs.current.orientation || tile.orientation || "landscape")}" data-tile-id="${escapeHtml(tile.id)}" tabindex="0"><div class="tile-media">${this.tileMedia(tile)}</div><div class="tile-gradient"></div>${this.services.tabs.current.form === "watchlist" ? this.services.watchlist.watchedButton(tile, true) : ""}<div class="tile-actions"><button class="tile-action" data-edit-tile="${escapeHtml(tile.id)}" aria-label="Edit tile" data-tooltip="Edit content"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/></svg></button></div><div class="tile-content"><h3>${escapeHtml(tile.label || defaultTileLabel(tile))}</h3>${tile.description || (tile.type === "link" ? tile.url : "") ? `<p>${escapeHtml(tile.description || tile.url)}</p>` : ""}</div></article>`,
       )
       .join("");
     els.emptyState.hidden = items.length > 0;
+    this.insertSeenDivider();
     this.layoutTiles();
   }
 
   layoutTiles() {
     if (!els.tileGrid.clientWidth || this.services.tabs.view === "list") return;
+    const grid = els.tileGrid;
+    const gap = parseFloat(getComputedStyle(grid).columnGap) || 13;
+    const limit = Math.max(1, Math.min(8, Number(state.settings.gridRowLimit) || 3));
+    const count = Math.min(limit, Math.max(1, Math.floor((grid.clientWidth + gap) / (220 + gap))));
+    // Reset old explicit placement before changing the number of tracks. Stale
+    // spans otherwise create implicit columns, squeezing the intended tracks.
+    [...grid.children].forEach((el) => { el.style.gridColumn = ""; el.style.gridRow = ""; });
     if (this.services.tabs.view === "equal") {
-      [...els.tileGrid.children].forEach((el) => {
-        el.style.gridColumn = "auto";
-        el.style.gridRow = "auto";
-      });
+      grid.style.gridTemplateColumns = `repeat(${count}, minmax(0, 1fr))`;
       this.fitTextTiles();
       return;
     }
-    const columns = getComputedStyle(els.tileGrid).gridTemplateColumns.split(
-      " ",
-    ).length;
+    const tracks = count * 12;
+    grid.style.gridTemplateColumns = `repeat(${tracks}, minmax(0, 1fr))`;
+    // Narrow internal gutters keep 12 layout units from consuming tile width.
+    grid.style.setProperty("--layout-columns", count);
     const tiles = new Map(state.tiles.map((tile) => [tile.id, tile]));
-    const cells = [],
-      placed = [];
-    const free = (x, y, w, h) =>
-      x >= 0 &&
-      y >= 0 &&
-      x + w <= columns &&
-      Array.from({ length: h }, (_, j) =>
-        Array.from({ length: w }, (_, i) => !cells[y + j]?.[x + i]).every(
-          Boolean,
-        ),
-      ).every(Boolean);
-    const occupy = (item) => {
-      for (let y = item.y; y < item.y + item.h; y++) {
-        cells[y] ||= Array(columns).fill(false);
-        for (let x = item.x; x < item.x + item.w; x++) cells[y][x] = true;
-      }
-    };
-    [...els.tileGrid.children].forEach((el) => {
-      const tile = tiles.get(el.dataset.tileId),
-        size = tile.size || "medium";
-      const portrait = tile.orientation === "portrait";
-      let w = portrait
-        ? size === "large" && columns === 6
-          ? 3
-          : 2
-        : { small: 2, medium: 3, large: 4 }[size] || 3;
-      if (columns === 2) w = size === "small" && portrait ? 1 : 2;
-      w = Math.min(columns, w);
-      const h = portrait
-        ? { small: 3, medium: 4, large: 6 }[size] || 4
-        : { small: 2, medium: 3, large: 4 }[size] || 3;
-      let x = 0,
-        y = 0;
-      while (!free(x, y, w, h)) {
-        if (++x + w > columns) {
-          x = 0;
-          y++;
-        }
-      }
-      const titleMatch =
-        state.query &&
-        (tile.label || "").toLowerCase().includes(state.query.toLowerCase());
-      const item = {
-        el,
-        x,
-        y,
-        w,
-        h,
-        score:
-          (titleMatch ? 10 : 0) +
-          ({ small: 1, medium: 2, large: 3 }[size] || 2),
-      };
-      occupy(item);
-      placed.push(item);
-    });
-    // Fill adjacent rectangular gaps without displacing or covering another tile.
-    const bottom = cells.length;
-    [...placed]
-      .sort((a, b) => b.score - a.score)
-      .forEach((item) => {
-        let changed = true;
-        while (changed) {
-          changed = false;
-          if (free(item.x + item.w, item.y, 1, item.h)) {
-            item.w++;
-            changed = true;
-          } else if (free(item.x - 1, item.y, 1, item.h)) {
-            item.x--;
-            item.w++;
-            changed = true;
-          } else if (
-            item.y + item.h < bottom &&
-            free(item.x, item.y + item.h, item.w, 1)
-          ) {
-            item.h++;
-            changed = true;
-          } else if (free(item.x, item.y - 1, item.w, 1)) {
-            item.y--;
-            item.h++;
-            changed = true;
-          }
-          if (changed) occupy(item);
-        }
+    let row = 1, batch = [];
+    const placeRow = () => {
+      if (!batch.length) return;
+      const weights = batch.map((el) => ({small: 2, medium: 3, large: 4}[tiles.get(el.dataset.tileId)?.size] || 3));
+      const total = weights.reduce((a, b) => a + b, 0);
+      const available = batch.length === count ? tracks : batch.length * 12;
+      let column = 1;
+      batch.forEach((el, i) => {
+        const width = i === batch.length - 1 ? available - column + 1 : Math.max(1, Math.round(available * weights[i] / total));
+        el.style.gridColumn = `${column} / span ${width}`;
+        el.style.gridRow = String(row);
+        column += width;
       });
-    placed.forEach((item) => {
-      item.el.style.gridColumn = `${item.x + 1} / span ${item.w}`;
-      item.el.style.gridRow = `${item.y + 1} / span ${item.h}`;
+      row++; batch = [];
+    };
+    [...grid.children].forEach((el) => {
+      if (el.classList.contains("seen-divider")) {
+        placeRow(); el.style.gridColumn = "1 / -1"; el.style.gridRow = String(row++);
+      } else {
+        batch.push(el); if (batch.length === count) placeRow();
+      }
     });
+    placeRow();
     this.fitTextTiles();
+  }
+
+
+  createdTime(tile) {
+    return Date.parse(tile.createdAt || tile.dateAdded || "") || 0;
+  }
+
+  insertSeenDivider() {
+    if (this.seenIndex < 0) return;
+    const divider = document.createElement("div");
+    divider.className = "seen-divider";
+    divider.setAttribute("role", "separator");
+    divider.setAttribute("aria-label", "Previously seen content");
+    divider.innerHTML = "<span>SEEN</span>";
+    els.tileGrid.insertBefore(divider, els.tileGrid.children[this.seenIndex] || null);
+  }
+
+  startVisitTracking() {
+    const key = `hub:last-visit:${location.pathname}`;
+    const read = () => { try { const value = Number(localStorage.getItem(key)); return value > 0 && value <= Date.now() ? value : null; } catch { return null; } };
+    const record = () => { try { localStorage.setItem(key, String(Date.now())); } catch { /* Session still works without storage. */ } };
+    state.lastVisit = read();
+    record();
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "hidden") record();
+      else {
+        state.lastVisit = read(); record();
+        if (!state.savingContent && !(state.pendingLinks || []).length) {
+          try {
+            const fresh = await api.bootstrap();
+            state.tiles = fresh.tiles;
+            state.history = fresh.history || [];
+            // Keep local collection changes while a write may still be pending.
+            this.services.application.renderAll();
+          } catch { this.renderTiles(); }
+        }
+      }
+    });
+    window.addEventListener("pagehide", record);
   }
 
   fitTextTiles() {
@@ -289,13 +296,16 @@ export class ContentBoard extends Feature {
   }
 
   async handleClick(e) {
+    const page = e.target.closest("[data-page]");
+    if (page && !page.disabled) {
+      state.page = Number(page.dataset.page);
+      this.renderTiles();
+      els.tileGrid.scrollIntoView({block: "start", behavior: "auto"});
+      return;
+    }
     const tag = e.target.closest("[data-tag]");
     if (tag) {
       state.tag = tag.dataset.tag;
-      if (this.services.tabs.current.form === "watchlist") {
-        state.mediaTypeFilters = [];
-        this.services.watchlist.syncSelectionButtons();
-      }
       this.renderTags();
       this.renderTiles();
       return;

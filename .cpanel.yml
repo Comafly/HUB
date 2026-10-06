@@ -5,6 +5,8 @@ deployment:
     - /bin/cp index.html $DEPLOYPATH
     - /bin/cp api.php $DEPLOYPATH
     - /bin/cp backup.php $DEPLOYPATH
+    - /bin/cp history-storage.php $DEPLOYPATH
+    - /bin/cp rollover.php $DEPLOYPATH
     - /bin/cp metadata.php $DEPLOYPATH
     - /bin/cp tab-config.php $DEPLOYPATH
     - /bin/cp tmdb.php $DEPLOYPATH

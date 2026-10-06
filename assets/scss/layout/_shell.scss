@@ -218,7 +218,7 @@
 .search-wrap {
   height: 58px;
   border: 1px solid var(--line);
-  background: var(--bg-elevated);
+  background: transparent;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -243,6 +243,8 @@
 }
 
 .search-input {
+  appearance: none;
+  -webkit-appearance: none;
   flex: 1;
   min-width: 0;
   border: 0;

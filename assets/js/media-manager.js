@@ -1,5 +1,5 @@
-import { Feature } from "./feature.js";
-import { IMAGE_LIMIT, encode, escapeHtml } from "./context.js";
+import { Feature } from "./feature.js?v=20261006-inline-links-steppers";
+import { IMAGE_LIMIT, encode, escapeHtml } from "./context.js?v=20261006-inline-links-steppers";
 
 export class MediaManager extends Feature {
   constructor(services) {

@@ -1,3 +1,4 @@
+import { cleanLinkInfo, cleanLinkTile } from "./link-metadata.js?v=20261006-inline-links-steppers";
 const API_URL = "api.php";
 
 async function request(action, options = {}) {
@@ -20,12 +21,14 @@ async function request(action, options = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.ok === false) {
-    throw new Error(
+    const error = new Error(
       payload.error ||
         (response.status === 403
           ? "The server denied this save (403). Ask the host to check access and security rules for hub/api.php."
           : `Request failed (${response.status})`),
     );
+    error.status = response.status;
+    throw error;
   }
   return payload.data ?? payload;
 }
@@ -65,14 +68,14 @@ function multipartRequest(action, formData, { onProgress, signal } = {}) {
       if (signal) signal.removeEventListener("abort", abort);
       const payload = xhr.response || {};
       if (xhr.status < 200 || xhr.status >= 300 || payload.ok === false) {
-        reject(
-          new Error(
+        const error = new Error(
             payload.error ||
               (xhr.status === 403
                 ? "The server denied this save (403). Ask the host to check access and security rules for hub/api.php."
                 : `Request failed (${xhr.status})`),
-          ),
-        );
+          );
+        error.status = xhr.status;
+        reject(error);
         return;
       }
       onProgress?.({ loaded: totalFileBytes, total: totalFileBytes, ratio: 1 });
@@ -103,10 +106,11 @@ function tileRequest(action, form, options = {}) {
       hasFiles = true;
     }
   }
+  Object.assign(metadata, cleanLinkTile(metadata));
   if (!hasFiles)
-    return request(action, { method: "POST", body: JSON.stringify(metadata) });
+    return request(action, { method: "POST", body: JSON.stringify(metadata) }).then(cleanLinkTile);
   uploads.set("metadata", JSON.stringify(metadata));
-  return multipartRequest(action, uploads, options);
+  return multipartRequest(action, uploads, options).then(cleanLinkTile);
 }
 
 export const api = {
@@ -152,11 +156,12 @@ export const api = {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 45000);
     try {
-      return await request("links.inspect", {
+      const info = await request("links.inspect", {
         method: "POST",
         body: JSON.stringify({ url }),
         signal: controller.signal,
       });
+      return cleanLinkInfo(info, url);
     } finally {
       clearTimeout(timer);
     }
@@ -191,7 +196,10 @@ export const api = {
     form.append("file", file);
     return request("metadata.inspect", { method: "POST", body: form });
   },
-  bootstrap: () => request("bootstrap"),
+  bootstrap: async () => {
+    const data = await request("bootstrap");
+    return {...data, tiles: (data.tiles || []).map(cleanLinkTile)};
+  },
   saveSettings: (settings) =>
     request("settings.update", {
       method: "POST",
