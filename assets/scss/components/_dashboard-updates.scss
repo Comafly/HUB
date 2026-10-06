@@ -1,0 +1,141 @@
+// Settings panels overlap in one grid cell. Only Appearance contributes height.
+#settingsModal .modal-card { overflow-y: auto; max-height: calc(100dvh - 32px); }
+.settings-tabs, .sidebar-tabs { display: flex; gap: 6px; }
+.settings-tabs { border-bottom: 1px solid var(--line); margin-bottom: 20px; padding-bottom: 10px; }
+.settings-tabs button, .sidebar-tabs button { border: 1px solid transparent; border-radius: 12px; padding: 10px 12px; background: transparent; color: var(--muted); cursor: pointer; }
+.settings-tabs button[aria-selected="true"], .sidebar-tabs button[aria-selected="true"] { background: var(--panel-2); color: var(--text); border-color: var(--line); }
+.settings-panels { display: grid; position: relative; }
+.settings-tab-panel { grid-area: 1 / 1; min-width: 0; }
+.settings-tab-panel[inert] { visibility: hidden; pointer-events: none; }
+#settings-data, #settings-credits { position: absolute; inset: 0; overflow-y: auto; }
+.compression-image-list { grid-template-columns: repeat(auto-fill, 110px); justify-content: start; }
+.compression-image img { width: 110px; height: 110px; aspect-ratio: 1; object-fit: cover; }
+.content-toolbar .search-wrap, .search-wrap { background: var(--bg); }
+.page-nav { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 15; display: flex; align-items: center; justify-content: center; gap: 22px; width: max-content; margin: 0; padding: 5px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--bg); box-shadow: var(--shadow-soft); }
+.page-nav button { width: 40px; height: 36px; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--text); background: var(--panel); cursor: pointer; }
+.page-nav button:disabled { opacity: .35; cursor: default; }
+.page-nav span { min-width: 44px; text-align: center; font-size: 12px; }
+.seen-divider { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; margin: 20px 0; color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.seen-divider::before, .seen-divider::after { content: ""; height: 1px; background: var(--accent); flex: 1; }
+.tile-grid { scroll-margin-top: 110px; }
+.tile-grid:not(.tile-grid--equal):not(.tile-grid--list) { column-gap: 0; grid-auto-rows: auto; grid-auto-flow: row; }
+.tile-grid:not(.tile-grid--equal):not(.tile-grid--list) > .tile { margin-inline: 6px; min-height: 180px; height: clamp(180px, 23vw, 290px); }
+.tile-grid--equal > .seen-divider { aspect-ratio: auto; }
+.sidebar-tabs { gap: 0; }
+.sidebar-tabs button { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding-inline: 7px; }
+.history-month { display: flex; justify-content: space-between; gap: 10px; width: 100%; margin: 8px 0; padding: 14px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
+.history-month.is-active { border-color: var(--accent); background: var(--accent-soft); }
+.history-month small { color: var(--muted); }
+[hidden] { display: none !important; }
+
+.content-column { padding-bottom: 76px; }
+
+/* Integrated controls and automatic link tiles. */
+#settingsModal .settings-tab-panel > .settings-section:first-child { border-top: 0; padding-top: 0; }
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--panel);
+}
+
+.stepper-btn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--speed-fast) var(--ease);
+}
+
+.stepper-btn:hover:not(:disabled) {
+  background: var(--panel-3);
+}
+
+.stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepper-value {
+  min-width: 28px;
+  text-align: center;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile--pending {
+  cursor: progress;
+  pointer-events: none;
+}
+
+.tile--pending .tile-gradient {
+  opacity: 1;
+}
+
+.tile--pending .tile-content {
+  opacity: 1;
+  inset: auto 18px 26px;
+}
+
+.tile--pending .tile-media {
+  animation: pendingPulse 1.6s ease-in-out infinite;
+}
+
+.pending-bar {
+  position: absolute;
+  z-index: 4;
+  inset: auto 0 0;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+}
+
+.pending-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 0 999px 999px 0;
+  background: var(--accent-2, var(--accent));
+  transition: width 280ms var(--ease);
+}
+
+@keyframes pendingPulse {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.stepper-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tile-grid--list > .tile--pending { min-height: 150px; }
+.tile--instagram .tile-content h3,
+.tile--instagram .tile-content p,
+.watchlist-row--instagram .watchlist-row-name strong,
+.watchlist-row--instagram .watchlist-row-description p,
+.viewer-meta--instagram > h2,
+.viewer-meta--instagram > p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile--pending .tile-media { animation: none; }
+  .pending-bar span { transition: none; }
+}
